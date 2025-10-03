@@ -94,6 +94,11 @@ int main(int argc, char *argv[]) {
         count = get_single_int(db, query_count);
 
         printf("Qtd. artigos: %d\n", count);
+        printf("Parâmetros nomeados:\n"
+	       "nthreads: %d\n"
+	       "filename_tfidf: %s\n"
+	       "filename_db: %s\n"
+	       "query_user: %s", nthreads, filename_tfidf, filename_db, query_user);
 
     } else {
         printf("Arquivo binário encontrado: %s\n", filename_tfidf);

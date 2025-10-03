@@ -18,7 +18,8 @@
 
     ```bash
     cc main.c -o app -lsqlite3
-    ./app 4 "consulta qualquer"
+    ./app # Parâmetros padrões já definidos
+    ./app --nthreads 4 --filename_db alguma_coisa.db --filename_tfidf marcos.bin
     ```
 
 ## Próximos Passos
