@@ -1,3 +1,5 @@
+### <ins>**Observação**: Apenas comitem código testado e funcional.</ins> 
+
 ## Desenvolvimento
 
 1. Clone o repositório: `git clone https://github.com/saitoi/projeto-final-concorrente.git`
