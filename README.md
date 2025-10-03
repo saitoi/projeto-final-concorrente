@@ -24,4 +24,14 @@
 ## Próximos Passos
 
 Começar a processar 100 primeiros artigos somente para facilitar.
+
 Leia `instrucoes-projeto.pdf`.
+
+- [ ] Estrutura de Hash (`hash_t.h`).
+- [ ] Separar funções auxiliares do SQLite (`sqlite_helper.h`).
+- [ ] Makefile
+- [ ] Parâmetros nomeados CLI.
+- [ ] Pré-processamento:
+    - [ ] Tokenização.
+    - [ ] Remoção de Stopwords.
+    - [ ] Stemmer.  

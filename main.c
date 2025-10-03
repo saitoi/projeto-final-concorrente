@@ -52,8 +52,7 @@ int get_single_int(sqlite3 *db, const char *query) {
 
 int main(int argc, char *argv[]) {
     sqlite3 *db;
-    const char *filename = "busca.bin",
-	       *query_user;
+    const char *filename = "busca.bin", *query_user;
     int nthreads;
 
     if (argc < 2) {
