@@ -20,3 +20,8 @@
     cc main.c -o app -lsqlite3
     ./app 4 "consulta qualquer"
     ```
+
+## Próximos Passos
+
+Começar a processar 100 primeiros artigos somente para facilitar.
+Leia `instrucoes-projeto.pdf`.
