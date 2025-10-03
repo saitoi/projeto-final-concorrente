@@ -6,8 +6,10 @@
 #include <pthread.h>
 #include <semaphore.h>
 
-/* Argumentos de Linha de Comando */
-/* ./a.out <numero de threads> <texto> */
+int VERBOSE = 0;
+
+#define LOG(output, fmt, ...) \
+	do { if (VERBOSE) fprintf(output, "[VERBOSE] " fmt "\n", ##__VA_ARGS__); } while (0)
 
 sem_t mutex;
 sem_t cond_barreira;
@@ -67,6 +69,8 @@ int main(int argc, char *argv[]) {
             filename_tfidf = argv[++i];
         else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
             query_user = argv[++i];
+        else if (strcmp(argv[i], "--verbose") == 0)
+	        VERBOSE = 1;
         else {
             fprintf(stderr, "Uso: %s <parametros nomeados>\n"
                             "--nthreads: Número de threads (default: 4)\n"
@@ -76,6 +80,14 @@ int main(int argc, char *argv[]) {
             return 1;
         }
     }
+
+    LOG(stdout, "Parâmetros nomeados:\n"
+		"argc: %d\n"
+		"argv: %s\n"
+       		"nthreads: %d\n"
+       		"filename_tfidf: %s\n"
+       		"filename_db: %s\n"
+       		"query_user: %s", argc, *argv, nthreads, filename_tfidf, filename_db, query_user);
 
     // Caso o arquivo não exista: Pré-processamento
     if (access(filename_tfidf, F_OK) == -1) {
@@ -94,11 +106,6 @@ int main(int argc, char *argv[]) {
         count = get_single_int(db, query_count);
 
         printf("Qtd. artigos: %d\n", count);
-        printf("Parâmetros nomeados:\n"
-	       "nthreads: %d\n"
-	       "filename_tfidf: %s\n"
-	       "filename_db: %s\n"
-	       "query_user: %s", nthreads, filename_tfidf, filename_db, query_user);
 
     } else {
         printf("Arquivo binário encontrado: %s\n", filename_tfidf);
