@@ -30,7 +30,7 @@ Leia `instrucoes-projeto.pdf`.
 - [ ] Estrutura de Hash (`hash_t.h`).
 - [ ] Separar funções auxiliares do SQLite (`sqlite_helper.h`).
 - [ ] Makefile
-- [ ] Parâmetros nomeados CLI.
+- [x] Parâmetros nomeados CLI.
 - [ ] Pré-processamento:
     - [ ] Tokenização.
     - [ ] Remoção de Stopwords.

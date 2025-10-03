@@ -1,6 +1,7 @@
 #include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
@@ -54,8 +55,9 @@ int main(int argc, char *argv[]) {
     sqlite3 *db;
     const char *filename_tfidf = "tfidf.bin", *filename_db = "wiki-small.db";
     const char *query_user = "exemplo";
-    int nthreads;
+    int nthreads = 4;
 
+    // CLI com parâmetros nomeados
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc)
             nthreads = atoi(argv[++i]);
@@ -66,31 +68,23 @@ int main(int argc, char *argv[]) {
         else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
             query_user = argv[++i];
         else {
-            fprintf(stderr, "Uso: %s <parametros nomeados>\n
-                            --nthreads: Número de threads (default: 4)\n
-                            --filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n
-                            --filename_tfidf: Nome do arquivo com estrutura do TF-IDF (default: 'tfidf.bin')\n
-                            --query_user: Consulta do usuário (default: 'exemplo')\n", argv[0]);
+            fprintf(stderr, "Uso: %s <parametros nomeados>\n"
+                            "--nthreads: Número de threads (default: 4)\n"
+                            "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
+                            "--filename_tfidf: Nome do arquivo com estrutura do TF-IDF (default: 'tfidf.bin')\n"
+                            "--query_user: Consulta do usuário (default: 'exemplo')\n", argv[0]);
             return 1;
         }
     }
 
-    if (argc < 2) {
-        fprintf(stderr, "Uso: %s <numero de threads> <texto>", argv[0]);
-        return 1;
-    }
-
-    nthreads = (int) atoi(argv[1]);
-    query_user = (const char*) argv[2];
-
     // Caso o arquivo não exista: Pré-processamento
-    if (access(filename, F_OK) == -1) {
+    if (access(filename_tfidf, F_OK) == -1) {
         int rc,    // Variável auxiliar
             count; // Quantidade de registros do banco
         const char *query_count = "select count(*) from sample_articles;";
 
         // Abre conexão com o banco
-        rc = sqlite3_open("wiki-small.db", &db);
+        rc = sqlite3_open(filename_db, &db);
         if (rc) {
             fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
             return 1;
@@ -102,7 +96,7 @@ int main(int argc, char *argv[]) {
         printf("Qtd. artigos: %d\n", count);
 
     } else {
-        printf("Arquivo binário encontrado: %s\n", filename);
+        printf("Arquivo binário encontrado: %s\n", filename_tfidf);
     }
 
     sem_init(&mutex, 0, 1);
