@@ -1,0 +1,22 @@
+## Desenvolvimento
+
+1. Clone o repositório: `git clone https://github.com/saitoi/projeto-final-concorrente.git`
+2. Instale git lfs: https://git-lfs.com/
+3. Recupere o banco:
+
+    ```bash
+    git lfs install
+    git lfs fetch
+    git lfs pull
+    # Verifique se o arquivo está correto
+    file wiki-small.db
+    # Retorno: wiki-small.db: SQLite 3.x database, last written using SQLite version 3040001, file counter 1, database pages 93800, cookie 0x1, schema 4, UTF-8, version-valid-for 1
+    ```
+
+4. Verifique se sqlite3 os dev package está instalada.
+5. Compile e execute:
+
+    ```bash
+    cc main.c -o app -lsqlite3
+    ./app 4 "consulta qualquer"
+    ```
