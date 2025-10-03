@@ -11,11 +11,30 @@ int VERBOSE = 0;
 #define LOG(output, fmt, ...) \
 	do { if (VERBOSE) fprintf(output, "[VERBOSE] " fmt "\n", ##__VA_ARGS__); } while (0)
 
+// Ordem decrescente de tam
+typedef struct {
+    long int start;
+    long int chunk;
+    const char *filename_db;
+    int id;
+} thread_args;
+
 sem_t mutex;
 sem_t cond_barreira;
 
-void *preprocess(void *args) {
-    
+void *preprocess(void *arg) {
+    thread_args *t = (thread_args*) arg;
+
+    LOG(stdout, "Thread %d iniciou:\n"
+                "\tstart: %ld\n"
+                "\tchunk: %ld\n"
+                "\tfilename_db: %s\n", t->id, t->start, t->chunk, t->filename_db);
+
+    // Passo-a-passo
+    // 1. Inicializar conexão com o banco
+    // 2. Executar consulta para obter 
+
+    pthread_exit(NULL);
 }
 
 // Extraído do cods-lab7/barreira.c
@@ -28,16 +47,23 @@ void barreira(int nthreads) {
       sem_wait(&cond_barreira);
       bloqueadas--;
       if (bloqueadas==0) sem_post(&mutex);
-      else sem_post(&cond_barreira); 
+      else sem_post(&cond_barreira);
     } else {
       bloqueadas--;
       sem_post(&cond_barreira);
     }
 }
 
-int get_single_int(sqlite3 *db, const char *query) {
-    sqlite3_stmt *stmt;
+int get_single_int(const char *filename_db, const char *query) {
     int rc, result = -1;
+    sqlite3 *db;
+    sqlite3_stmt *stmt;
+
+    rc = sqlite3_open(filename_db, &db);
+    if (rc) {
+        fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
+        return 1;
+    }
 
     rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
     if (rc != SQLITE_OK) {
@@ -50,19 +76,22 @@ int get_single_int(sqlite3 *db, const char *query) {
         result = sqlite3_column_int(stmt, 0);
 
     sqlite3_finalize(stmt);
+    sqlite3_close(db);
     return result;
 }
 
 int main(int argc, char *argv[]) {
-    sqlite3 *db;
     const char *filename_tfidf = "tfidf.bin", *filename_db = "wiki-small.db";
     const char *query_user = "exemplo";
     int nthreads = 4;
+    long int entries = 0;
 
     // CLI com parâmetros nomeados
     for (int i = 1; i < argc; ++i) {
         if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc)
             nthreads = atoi(argv[++i]);
+        else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc)
+            entries = atol(argv[++i]);
         else if (strcmp(argv[i], "--filename_db") == 0 && i + 1 < argc)
             filename_db = argv[++i];
         else if (strcmp(argv[i], "--filename_tfidf") == 0 && i + 1 < argc)
@@ -74,6 +103,7 @@ int main(int argc, char *argv[]) {
         else {
             fprintf(stderr, "Uso: %s <parametros nomeados>\n"
                             "--nthreads: Número de threads (default: 4)\n"
+                            "--entries: Quantidade de entradas para pré-processamento (default: Toda tabela 'sample_articles')\n"
                             "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
                             "--filename_tfidf: Nome do arquivo com estrutura do TF-IDF (default: 'tfidf.bin')\n"
                             "--query_user: Consulta do usuário (default: 'exemplo')\n", argv[0]);
@@ -82,32 +112,53 @@ int main(int argc, char *argv[]) {
     }
 
     LOG(stdout, "Parâmetros nomeados:\n"
-		"argc: %d\n"
-		"argv: %s\n"
-       		"nthreads: %d\n"
-       		"filename_tfidf: %s\n"
-       		"filename_db: %s\n"
-       		"query_user: %s", argc, *argv, nthreads, filename_tfidf, filename_db, query_user);
+		"\targc: %d\n"
+       	"\tnthreads: %d\n"
+       	"\tfilename_tfidf: %s\n"
+       	"\tfilename_db: %s\n"
+       	"\tquery_user: %s", argc, nthreads, filename_tfidf, filename_db, query_user);
 
     // Caso o arquivo não exista: Pré-processamento
     if (access(filename_tfidf, F_OK) == -1) {
-        int rc,    // Variável auxiliar
-            count; // Quantidade de registros do banco
+        pthread_t *tids;
+        int count; // Quantidade de registros do banco
         const char *query_count = "select count(*) from sample_articles;";
 
-        // Abre conexão com o banco
-        rc = sqlite3_open(filename_db, &db);
-        if (rc) {
-            fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
-            return 1;
-        }
-
+        // Sobreescreve count=0
         // Quantos registros na tabela 'sample_articles'
-        count = get_single_int(db, query_count);
+        if (!entries)
+            count = get_single_int(filename_db, query_count);
 
         printf("Qtd. artigos: %d\n", count);
 
+        tids = (pthread_t*) malloc(nthreads * sizeof(pthread_t));
+        if (!tids) {
+            LOG(stderr, "Erro ao alocar memória para identificador das threads\n");
+            return 1;
+        }
+
+        int base = count / nthreads;
+        int rem = count % nthreads;
+        for (int i = 0; i < nthreads; ++i) {
+            thread_args *arg = (thread_args*) malloc(sizeof(thread_args));
+            if (!arg) {
+                fprintf(stderr, "Erro ao alocar memória para argumentos da thread\n");
+                free(tids);
+                return 1;
+            }
+            arg->id = i;
+            arg->filename_db = filename_db;
+            arg->chunk = base + (i < rem);
+            arg->start = i * base + (i < rem ? i : rem);
+            if (pthread_create(&tids[i], NULL, preprocess, (void*) arg)) {
+                fprintf(stderr, "Erro ao criar thread %d\n", i);
+                free(tids);
+                return 1;
+            }
+        }
+
     } else {
+        // Carregar estrutura hash TF-IDF do arquivo
         printf("Arquivo binário encontrado: %s\n", filename_tfidf);
     }
 

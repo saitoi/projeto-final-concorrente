@@ -34,6 +34,7 @@ Leia `instrucoes-projeto.pdf`.
 - [ ] Separar funções auxiliares do SQLite (`sqlite_helper.h`).
 - [ ] Makefile
 - [x] Parâmetros nomeados CLI.
+- [x] Criação e passagem de argumentos para as threads.
 - [ ] Pré-processamento:
     - [ ] Tokenização.
     - [ ] Remoção de Stopwords.
