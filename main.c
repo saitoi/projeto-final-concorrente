@@ -1,4 +1,4 @@
-// #include <sqlite3.h>
+#include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -22,7 +22,7 @@ void barreira(int nthreads) {
     bloqueadas++;
     if (bloqueadas < nthreads) {
       sem_post(&mutex);
-      sem_wait(&cond);
+      sem_wait(&cond_barreira);
       bloqueadas--;
       if (bloqueadas==0) sem_post(&mutex);
       else sem_post(&cond_barreira); 
@@ -52,7 +52,8 @@ int get_single_int(sqlite3 *db, const char *query) {
 
 int main(int argc, char *argv[]) {
     sqlite3 *db;
-    const char *filename = "busca.bin";
+    const char *filename = "busca.bin",
+	       *query_user;
     int nthreads;
 
     if (argc < 2) {
@@ -61,16 +62,16 @@ int main(int argc, char *argv[]) {
     }
 
     nthreads = (int) atoi(argv[1]);
-    query = (const char*) argv[2];
+    query_user = (const char*) argv[2];
 
     // Caso o arquivo não exista: Pré-processamento
-    if (access(filename, F_OK) != -1) {
+    if (access(filename, F_OK) == -1) {
         int rc,    // Variável auxiliar
             count; // Quantidade de registros do banco
         const char *query_count = "select count(*) from sample_articles;";
 
         // Abre conexão com o banco
-        int rc = sqlite3_open("wiki.db", &db);
+        rc = sqlite3_open("wiki-small.db", &db);
         if (rc) {
             fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
             return 1;
