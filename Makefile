@@ -2,7 +2,7 @@ CC = cc
 CFLAGS = -Wall -Wextra -I./include
 LDFLAGS = -lsqlite3 -lpthread
 
-SRC = src/main.c src/hash_t.c
+SRC = src/main.c src/hash_t.c src/sqlite_helper.c
 OBJ = $(SRC:.c=.o)
 TARGET = app
 

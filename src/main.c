@@ -1,10 +1,11 @@
-#include <sqlite3.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
+
+#include "../include/sqlite_helper.h"
 
 int VERBOSE = 0;
 
@@ -35,49 +36,6 @@ void *preprocess(void *arg) {
     // 2. Executar consulta para obter 
 
     pthread_exit(NULL);
-}
-
-// Extraído do cods-lab7/barreira.c
-void barreira(int nthreads) {
-    static int bloqueadas = 0;
-    sem_wait(&mutex);
-    bloqueadas++;
-    if (bloqueadas < nthreads) {
-      sem_post(&mutex);
-      sem_wait(&cond_barreira);
-      bloqueadas--;
-      if (bloqueadas==0) sem_post(&mutex);
-      else sem_post(&cond_barreira);
-    } else {
-      bloqueadas--;
-      sem_post(&cond_barreira);
-    }
-}
-
-int get_single_int(const char *filename_db, const char *query) {
-    int rc, result = -1;
-    sqlite3 *db;
-    sqlite3_stmt *stmt;
-
-    rc = sqlite3_open(filename_db, &db);
-    if (rc) {
-        fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
-        return 1;
-    }
-
-    rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
-    if (rc != SQLITE_OK) {
-        fprintf(stderr, "Erro ao preparar o statement: %s\n", sqlite3_errmsg(db));
-        return -1;
-    }
-
-    rc = sqlite3_step(stmt);
-    if (rc == SQLITE_ROW)
-        result = sqlite3_column_int(stmt, 0);
-
-    sqlite3_finalize(stmt);
-    sqlite3_close(db);
-    return result;
 }
 
 int main(int argc, char *argv[]) {
