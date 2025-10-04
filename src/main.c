@@ -16,8 +16,8 @@ int VERBOSE = 0;
 typedef struct {
     long int start;
     long int chunk;
+    long int id;
     const char *filename_db;
-    int id;
 } thread_args;
 
 sem_t mutex;
@@ -26,7 +26,7 @@ sem_t cond_barreira;
 void *preprocess(void *arg) {
     thread_args *t = (thread_args*) arg;
 
-    LOG(stdout, "Thread %d iniciou:\n"
+    LOG(stdout, "Thread %ld iniciou:\n"
                 "\tstart: %ld\n"
                 "\tchunk: %ld\n"
                 "\tfilename_db: %s\n", t->id, t->start, t->chunk, t->filename_db);
@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
     // Caso o arquivo não exista: Pré-processamento
     if (access(filename_tfidf, F_OK) == -1) {
         pthread_t *tids;
-        int count; // Quantidade de registros do banco
+        long int count; // Quantidade de registros do banco
         const char *query_count = "select count(*) from sample_articles;";
 
         // Sobreescreve count=0
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
         if (!entries)
             count = get_single_int(filename_db, query_count);
 
-        printf("Qtd. artigos: %d\n", count);
+        printf("Qtd. artigos: %ld\n", count);
 
         tids = (pthread_t*) malloc(nthreads * sizeof(pthread_t));
         if (!tids) {
@@ -95,9 +95,9 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        int base = count / nthreads;
-        int rem = count % nthreads;
-        for (int i = 0; i < nthreads; ++i) {
+        long int base = count / nthreads;
+        long int rem = count % nthreads;
+        for (long int i = 0; i < nthreads; ++i) {
             thread_args *arg = (thread_args*) malloc(sizeof(thread_args));
             if (!arg) {
                 fprintf(stderr, "Erro ao alocar memória para argumentos da thread\n");
@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
             arg->chunk = base + (i < rem);
             arg->start = i * base + (i < rem ? i : rem);
             if (pthread_create(&tids[i], NULL, preprocess, (void*) arg)) {
-                fprintf(stderr, "Erro ao criar thread %d\n", i);
+                fprintf(stderr, "Erro ao criar thread %ld\n", i);
                 free(tids);
                 return 1;
             }

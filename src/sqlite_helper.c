@@ -1,8 +1,9 @@
 #include <sqlite3.h>
 #include <stdio.h>
 
-int get_single_int(const char *filename_db, const char *query) {
-    int rc, result = -1;
+long int get_single_int(const char *filename_db, const char *query) {
+    int rc;
+    long int result = -1;
     sqlite3 *db;
     sqlite3_stmt *stmt;
 
@@ -20,7 +21,7 @@ int get_single_int(const char *filename_db, const char *query) {
 
     rc = sqlite3_step(stmt);
     if (rc == SQLITE_ROW)
-        result = sqlite3_column_int(stmt, 0);
+        result = sqlite3_column_int64(stmt, 0);
 
     sqlite3_finalize(stmt);
     sqlite3_close(db);
