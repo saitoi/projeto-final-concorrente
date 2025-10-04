@@ -21,7 +21,6 @@ typedef struct {
 } thread_args;
 
 sem_t mutex;
-sem_t cond_barreira;
 
 void *preprocess(void *arg) {
     thread_args *t = (thread_args*) arg;
@@ -133,11 +132,9 @@ int main(int argc, char *argv[]) {
     }
 
     sem_init(&mutex, 0, 1);
-    sem_init(&cond_barreira, 0, 0);
 
     
     sem_destroy(&mutex);
-    sem_destroy(&cond_barreira);
 
     return 0;
 }
