@@ -15,10 +15,15 @@ $(TARGET): $(OBJ)
 lint:
 	@command -v clang-tidy >/dev/null 2>&1 && clang-tidy $(SRC) $(FCLANG) -- $(CFLAGS) || echo "clang-tidy not found, skipping"
 
+format:
+	@command -v clang-format >/dev/null 2>&1 && clang-format -i $(SRC) include/*.h || echo "clang-format not found, skipping"
+
+check: lint format
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJ) $(TARGET)
 
-.PHONY: all clean lint
+.PHONY: all clean lint format check

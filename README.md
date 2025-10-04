@@ -24,7 +24,7 @@
     ./app --nthreads 4 --filename_db alguma_coisa.db --filename_tfidf marcos.bin
     ```
 
-6. (Preferencialmente) Use o Makefile:
+6. **(Preferencialmente) Use o Makefile:**
 
     ```bash
     make clean && make
@@ -49,3 +49,5 @@ Leia `instrucoes-projeto.pdf`.
     - [ ] Tokenização.
     - [ ] Remoção de Stopwords.
     - [ ] Stemmer.  
+- [ ] Montar a estrutura do TF-IDF com `hash_t`. 
+- [ ] 
