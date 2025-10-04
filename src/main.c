@@ -28,6 +28,8 @@ sem_t mutex;
 
 void *preprocess(void *arg) {
   thread_args *t = (thread_args *)arg;
+  char **article_texts;
+  char delim[256];
 
   LOG(stdout,
       "Thread %ld iniciou:\n"
@@ -42,10 +44,10 @@ void *preprocess(void *arg) {
   // 1. Inicializar conexão com o banco
   // 2. Executar consulta para obter textos dos intervalos desejados
 
-  char **article_texts = get_str_arr(t->filename_db,
-                                     "select article_text from \"%w\" "
-                                     "where article_id between ? and ?",
-                                     t->start, t->end, t->tablename);
+  article_texts = get_str_arr(t->filename_db,
+                              "select article_text from \"%w\" "
+                              "where article_id between ? and ?",
+                              t->start, t->end, t->tablename);
   if (!article_texts) {
     fprintf(stderr, "Erro ao obter dados do banco\n");
     pthread_exit(NULL);
@@ -63,15 +65,17 @@ void *preprocess(void *arg) {
     pthread_exit(NULL);
   }
 
-  char buffer[256];
-  if (fgets(buffer, sizeof(buffer), f) == NULL) {
-    fprintf(stderr, "Erro ao ler arquivo de separadores %s\n", buffer);
+  if (fgets(delim, sizeof(delim), f) == NULL) {
+    fprintf(stderr, "Erro ao ler arquivo de separadores %s\n", delim);
     pthread_exit(NULL);
   }
 
-  buffer[strcspn(buffer, "<end>") + 1] = '\0';
+  delim[strcspn(delim, "<end>") + 1] = '\0';
 
-  LOG(stdout, "Arquivo de separadores: %s\n", buffer);
+  LOG(stdout, "Arquivo de separadores: %s\n", delim);
+
+  // char *token = strtok(texto, delim);
+  // while ()
 
   pthread_exit(NULL);
 }
@@ -112,7 +116,8 @@ int main(int argc, char *argv[]) {
           "'tfidf.bin')\n"
           "--query_user: Consulta do usuário (default: 'exemplo')\n"
           "--tablename: Nome da tabela consultada (default: "
-          "'sample_articles')\n", argv[0]);
+          "'sample_articles')\n",
+          argv[0]);
       return 1;
     }
   }

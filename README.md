@@ -50,4 +50,4 @@ Leia `instrucoes-projeto.pdf`.
     - [ ] Remoção de Stopwords.
     - [ ] Stemmer.  
 - [ ] Montar a estrutura do TF-IDF com `hash_t`. 
-- [ ] 
+- [ ] Adicionar macros LOG e variável VERBOSE em `sqlite_helper.c`.
