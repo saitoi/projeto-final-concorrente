@@ -21,6 +21,7 @@ typedef struct {
   long int end;
   long int id;
   const char *filename_db;
+  const char *tablename;
 } thread_args;
 
 sem_t mutex;
@@ -42,9 +43,9 @@ void *preprocess(void *arg) {
   // 2. Executar consulta para obter textos dos intervalos desejados
 
   char **article_texts = get_str_arr(t->filename_db,
-                                     "select article_text from sample_articles "
+                                     "select article_text from \"%w\" "
                                      "where article_id between ? and ?",
-                                     t->start, t->end);
+                                     t->start, t->end, t->tablename);
   if (!article_texts) {
     fprintf(stderr, "Erro ao obter dados do banco\n");
     pthread_exit(NULL);
@@ -76,7 +77,8 @@ void *preprocess(void *arg) {
 }
 
 int main(int argc, char *argv[]) {
-  const char *filename_tfidf = "tfidf.bin", *filename_db = "wiki-small.db";
+  const char *filename_tfidf = "tfidf.bin", *filename_db = "wiki-small.db",
+             *tablename = "sample_articles";
   const char *query_user = "exemplo";
   int nthreads = 4;
   long int entries = 0;
@@ -93,20 +95,24 @@ int main(int argc, char *argv[]) {
       filename_tfidf = argv[++i];
     else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
       query_user = argv[++i];
+    else if (strcmp(argv[i], "--tablename") == 0 && i + 1 < argc)
+      tablename = argv[++i];
     else if (strcmp(argv[i], "--verbose") == 0)
       VERBOSE = 1;
     else {
       fprintf(
           stderr,
           "Uso: %s <parametros nomeados>\n"
+          "--verbose: Verbosidade (default: 0)\n"
           "--nthreads: Número de threads (default: 4)\n"
           "--entries: Quantidade de entradas para pré-processamento (default: "
           "Toda tabela 'sample_articles')\n"
           "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
           "--filename_tfidf: Nome do arquivo com estrutura do TF-IDF (default: "
           "'tfidf.bin')\n"
-          "--query_user: Consulta do usuário (default: 'exemplo')\n",
-          argv[0]);
+          "--query_user: Consulta do usuário (default: 'exemplo')\n"
+          "--tablename: Nome da tabela consultada (default: "
+          "'sample_articles')\n", argv[0]);
       return 1;
     }
   }
@@ -118,18 +124,20 @@ int main(int argc, char *argv[]) {
       "\tentries: %ld\n"
       "\tfilename_tfidf: %s\n"
       "\tfilename_db: %s\n"
-      "\tquery_user: %s",
-      argc, nthreads, entries, filename_tfidf, filename_db, query_user);
+      "\tquery_user: %s\n"
+      "\ttablename: %s",
+      argc, nthreads, entries, filename_tfidf, filename_db, query_user,
+      tablename);
 
   // Caso o arquivo não exista: Pré-processamento
   if (access(filename_tfidf, F_OK) == -1) {
     pthread_t *tids;
-    const char *query_count = "select count(*) from sample_articles;";
+    const char *query_count = "select count(*) from \"%w\";";
 
     // Sobreescreve count=0
     // Quantos registros na tabela 'sample_articles'
     if (!entries)
-      entries = get_single_int(filename_db, query_count);
+      entries = get_single_int(filename_db, query_count, tablename);
 
     printf("Qtd. artigos: %ld\n", entries);
 
@@ -151,6 +159,7 @@ int main(int argc, char *argv[]) {
       }
       arg->id = i;
       arg->filename_db = filename_db;
+      arg->tablename = tablename;
       arg->start = i * base + (i < rem ? i : rem);
       arg->end = arg->start + base + (i < rem);
       if (pthread_create(&tids[i], NULL, preprocess, (void *)arg)) {

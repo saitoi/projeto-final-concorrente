@@ -3,7 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-long int get_single_int(const char *filename_db, const char *query) {
+long int get_single_int(const char *filename_db, const char *query,
+                        const char *tablename) {
   int rc;
   long int result = -1;
   sqlite3 *db;
@@ -15,7 +16,15 @@ long int get_single_int(const char *filename_db, const char *query) {
     return 1;
   }
 
-  rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+  char *sql = sqlite3_mprintf(query, tablename);
+  if (!sql) {
+    fprintf(stderr, "Erro ao formatar statement: %s\n", sqlite3_errmsg(db));
+    return -1;
+  }
+
+  printf("Executando query: %s\n", sql);
+
+  rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
     fprintf(stderr, "Erro ao preparar o statement: %s\n", sqlite3_errmsg(db));
     return -1;
@@ -31,7 +40,7 @@ long int get_single_int(const char *filename_db, const char *query) {
 }
 
 char **get_str_arr(const char *filename_db, const char *query, long int start,
-                   long int end) {
+                   long int end, const char *tablename) {
   int rc;
   sqlite3 *db;
   sqlite3_stmt *stmt;
@@ -44,7 +53,15 @@ char **get_str_arr(const char *filename_db, const char *query, long int start,
     return NULL;
   }
 
-  rc = sqlite3_prepare_v2(db, query, -1, &stmt, NULL);
+  char *sql = sqlite3_mprintf(query, tablename);
+  if (!sql) {
+    fprintf(stderr, "Erro ao formatar statement: %s\n", sqlite3_errmsg(db));
+    return NULL;
+  }
+
+  printf("Executando query: %s\n", sql);
+
+  rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
     fprintf(stderr, "Erro ao preparar statement: %s\n", sqlite3_errmsg(db));
     sqlite3_close(db);
