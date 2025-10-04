@@ -72,22 +72,22 @@ int main(int argc, char *argv[]) {
     LOG(stdout, "Parâmetros nomeados:\n"
 		"\targc: %d\n"
        	"\tnthreads: %d\n"
+        "\tentries: %ld\n"
        	"\tfilename_tfidf: %s\n"
        	"\tfilename_db: %s\n"
-       	"\tquery_user: %s", argc, nthreads, filename_tfidf, filename_db, query_user);
+       	"\tquery_user: %s", argc, nthreads, entries, filename_tfidf, filename_db, query_user);
 
     // Caso o arquivo não exista: Pré-processamento
     if (access(filename_tfidf, F_OK) == -1) {
         pthread_t *tids;
-        long int count; // Quantidade de registros do banco
         const char *query_count = "select count(*) from sample_articles;";
 
         // Sobreescreve count=0
         // Quantos registros na tabela 'sample_articles'
         if (!entries)
-            count = get_single_int(filename_db, query_count);
+            entries = get_single_int(filename_db, query_count);
 
-        printf("Qtd. artigos: %ld\n", count);
+        printf("Qtd. artigos: %ld\n", entries);
 
         tids = (pthread_t*) malloc(nthreads * sizeof(pthread_t));
         if (!tids) {
@@ -95,8 +95,8 @@ int main(int argc, char *argv[]) {
             return 1;
         }
 
-        long int base = count / nthreads;
-        long int rem = count % nthreads;
+        long int base = entries / nthreads;
+        long int rem = entries % nthreads;
         for (long int i = 0; i < nthreads; ++i) {
             thread_args *arg = (thread_args*) malloc(sizeof(thread_args));
             if (!arg) {
@@ -115,6 +115,10 @@ int main(int argc, char *argv[]) {
             }
         }
 
+        for (long int i = 0; i < nthreads; ++i) {
+            pthread_join(tids[i], NULL);
+        }
+
     } else {
         // Carregar estrutura hash TF-IDF do arquivo
         printf("Arquivo binário encontrado: %s\n", filename_tfidf);
@@ -123,7 +127,7 @@ int main(int argc, char *argv[]) {
     sem_init(&mutex, 0, 1);
     sem_init(&cond_barreira, 0, 0);
 
-
+    
     sem_destroy(&mutex);
     sem_destroy(&cond_barreira);
 
