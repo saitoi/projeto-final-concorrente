@@ -32,7 +32,7 @@ Leia `instrucoes-projeto.pdf`.
 
 - [ ] Estrutura de Hash (`hash_t.h`).
 - [ ] Separar funções auxiliares do SQLite (`sqlite_helper.h`).
-- [ ] Makefile
+- [x] Makefile
 - [x] Parâmetros nomeados CLI.
 - [x] Criação e passagem de argumentos para as threads.
 - [ ] Pré-processamento:
