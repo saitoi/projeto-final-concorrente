@@ -15,7 +15,7 @@ int VERBOSE = 0;
 // Ordem decrescente de tam
 typedef struct {
     long int start;
-    long int chunk;
+    long int end;
     long int id;
     const char *filename_db;
 } thread_args;
@@ -29,11 +29,19 @@ void *preprocess(void *arg) {
     LOG(stdout, "Thread %ld iniciou:\n"
                 "\tstart: %ld\n"
                 "\tchunk: %ld\n"
-                "\tfilename_db: %s\n", t->id, t->start, t->chunk, t->filename_db);
+                "\tfilename_db: %s\n", t->id, t->start, t->end, t->filename_db);
 
     // Passo-a-passo
     // 1. Inicializar conexão com o banco
     // 2. Executar consulta para obter 
+
+    char **article_texts = get_str_arr(t->filename_db, "select article_text from sample_articles where article_id between ? and ?", t->start, t->end);
+    if (!article_texts) {
+        fprintf(stderr, "Erro ao obter dados do banco\n");
+        pthread_exit(NULL);
+    }
+
+    LOG(stdout, "Primeiro artigo da thread %ld: %s\n", t->id, article_texts[0]);
 
     pthread_exit(NULL);
 }
@@ -106,8 +114,8 @@ int main(int argc, char *argv[]) {
             }
             arg->id = i;
             arg->filename_db = filename_db;
-            arg->chunk = base + (i < rem);
             arg->start = i * base + (i < rem ? i : rem);
+            arg->end = arg->start + base + (i < rem);
             if (pthread_create(&tids[i], NULL, preprocess, (void*) arg)) {
                 fprintf(stderr, "Erro ao criar thread %ld\n", i);
                 free(tids);
