@@ -48,8 +48,14 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Tratamento especial de apóstrofes, vírgulas e dash.
     - [x] Substituir os seguintes caracteres por espaço: '#', ':', '"', '()', '[]', '{}', '~', '=', '\_', '|', ';', '<>', '\*', '$', '\`', '\\\'
 - [ ] Pré-processamento em C:
-    - [ ] Tokenização.
+    - [x] Tokenização.
     - [ ] Remoção de Stopwords.
-    - [ ] Stemmer.  
+    - [ ] Stemmer.
+- [ ] Pré-processamento da consulta:
+    - [ ] Processamento de texto (parecido com DuckDB).
+    - [ ] Delimitadores.
 - [ ] Montar a estrutura do TF-IDF com `hash_t`. 
+- Pré-computar:
+    - [ ] IDF.
+    - [ ] 
 - [ ] Adicionar macros LOG e variável VERBOSE em `sqlite_helper.c`.
