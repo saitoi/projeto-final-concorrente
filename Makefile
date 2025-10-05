@@ -3,7 +3,7 @@ CFLAGS = -Wall -Wextra -I./include
 LDFLAGS = -lsqlite3 -lpthread
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
-SRC = src/main.c src/hash_t.c src/sqlite_helper.c
+SRC = src/main.c src/hash_t.c src/sqlite_helper.c src/preprocess.c
 OBJ = $(SRC:.c=.o)
 TARGET = app
 

@@ -5,6 +5,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../include/preprocess.h"
 #include "../include/sqlite_helper.h"
 
 int VERBOSE = 0;
@@ -28,8 +29,9 @@ sem_t mutex;
 
 void *preprocess(void *arg) {
   thread_args *t = (thread_args *)arg;
-  char **article_texts; // Tamanho = t->end - t->start
-  char **article_vecs[t->end - t->start];
+  long int count = t->end - t->start;
+  char **article_texts;
+  char ***article_vecs;
 
   LOG(stdout,
       "Thread %ld iniciou:\n"
@@ -55,18 +57,29 @@ void *preprocess(void *arg) {
 
   LOG(stdout, "Primeiro artigo da thread %ld: %s\n", t->id, article_texts[0]);
 
-  // 3. Tokenizar os textos recuperados usando os delimitadores:
-  // ../assets/separadores.txt
-  // Para visitar os separadores, visite: https://gist.github.com/saitoi/f71e6f3f48e743c5e21e9e3eea514526
-
-  for (long int i = 0; i < 1; ++i) {
-      char *token = strtok(article_texts[i], " ");
-      while (token != NULL) {
-          LOG(stdout, "%s\n", token);
-          token = strtok(NULL, " ");
-      }
+  // 3. Tokenizar os textos recuperados
+  article_vecs = tokenize_articles(article_texts, count);
+  if (!article_vecs) {
+    fprintf(stderr, "Erro ao tokenizar artigos\n");
+    pthread_exit(NULL);
   }
-  
+
+  // Processar tokens (implementar aqui: TF-IDF, etc.)
+  for (long int i = 0; i < count; ++i) {
+    if (!article_vecs[i]) continue;
+    for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
+      LOG(stdout, "Thread %ld, Article %ld, Token %ld: %s", t->id, i, j, article_vecs[i][j]);
+    }
+  }
+
+  // Liberar memória
+  for (long int i = 0; i < count; ++i) {
+    if (article_texts[i]) free(article_texts[i]);
+  }
+  free(article_texts);
+
+  free_article_vecs(article_vecs, count);
+
   pthread_exit(NULL);
 }
 
