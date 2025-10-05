@@ -6,13 +6,16 @@ import re, duckdb
 LETTER = r"[^\W\d_]"
 APOS = rf"(?<={LETTER})'(?={LETTER})"
 
+
 def clean_quotes(text: str | None) -> str | None:
-    if text is None: return None
-    ph = "\uFFFF"
+    if text is None:
+        return None
+    ph = "\uffff"
     t = re.sub(APOS, ph, text)
     t = re.sub(r"'+", " ", t)
     t = re.sub(r"\s+", " ", t).strip()
     return t.replace(ph, "'")
+
 
 tests = [
     "O'Neill venceu",
@@ -29,13 +32,16 @@ tests = [
 ]
 
 if __name__ == "__main__":
-    con = duckdb.connect(":memory:")
+    con = duckdb.connect("../wiki-small.db")
     con.create_function("clean_quotes", clean_quotes)
-    con.execute("create table t(raw varchar)")
-    con.executemany("insert into t values (?)", [(s,) for s in tests])
-    rows = con.execute("select raw, clean_quotes(raw) as cleaned from t").fetchall()
-    w = max(len(r[0]) for r in rows)
-    print(f"{'RAW'.ljust(w)} | CLEANED")
-    print("-"*(w+10))
-    for raw, cleaned in rows:
-        print(f"{raw.ljust(w)} | {cleaned}")
+    con.execute("""
+        update sample_articles
+        set article_text = clean_quotes(
+            regexp_replace(
+                strip_accents(
+                    lower(article_text)
+                ), '[^\x20-\x7e]+', '', 'g'));
+                """)
+    rows = con.execute("from sample_articles limit 5;").fetchall()
+    print(rows)
+    con.close()
