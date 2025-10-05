@@ -44,8 +44,9 @@ Leia `instrucoes-projeto.pdf`.
 - [x] Parâmetros nomeados CLI.
 - [x] Criação e passagem de argumentos para as threads.
 - [ ] Pré-processamento no DuckDB:
-    - [x] Lower -> Remover acentos -> Restringir para ASCII (sem caracteres de controle) -> Tratar single quotes.
-    - [ ] Substituir os seguintes caracteres por espaço: '#', ':', '"', '()', '[]', '{}'
+    - [x] Lower -> Remover acentos -> Restringir para ASCII (sem caracteres de controle)
+    - [x] Tratamento especial de apóstrofes, vírgulas e dash.
+    - [ ] Substituir os seguintes caracteres por espaço: '#', ':', '"', '()', '[]', '{}', '~', '=', '\_', '|', ';', '<>', '\*', '$', '\`', '\\\'
 - [ ] Pré-processamento em C:
     - [ ] Tokenização.
     - [ ] Remoção de Stopwords.
