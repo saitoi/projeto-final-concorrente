@@ -66,15 +66,18 @@ void *preprocess(void *arg) {
 
   // Processar tokens (implementar aqui: TF-IDF, etc.)
   for (long int i = 0; i < count; ++i) {
-    if (!article_vecs[i]) continue;
+    if (!article_vecs[i])
+      continue;
     for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-      LOG(stdout, "Thread %ld, Article %ld, Token %ld: %s", t->id, i, j, article_vecs[i][j]);
+      LOG(stdout, "Thread %ld, Article %ld, Token %ld: %s", t->id, i, j,
+          article_vecs[i][j]);
     }
   }
 
   // Liberar memória
   for (long int i = 0; i < count; ++i) {
-    if (article_texts[i]) free(article_texts[i]);
+    if (article_texts[i])
+      free(article_texts[i]);
   }
   free(article_texts);
 

@@ -47,7 +47,8 @@ char ***tokenize_articles(char **article_texts, long int count) {
 }
 
 void free_article_vecs(char ***article_vecs, long int count) {
-  if (!article_vecs) return;
+  if (!article_vecs)
+    return;
 
   for (long int i = 0; i < count; ++i) {
     if (article_vecs[i]) {
