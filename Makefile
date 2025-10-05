@@ -20,10 +20,13 @@ format:
 
 check: lint format
 
+run: clean all
+	./$(TARGET) --entries 100 --verbose
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJ) $(TARGET)
 
-.PHONY: all clean lint format check
+.PHONY: all clean lint format check run
