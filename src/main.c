@@ -28,7 +28,7 @@ sem_t mutex;
 
 void *preprocess(void *arg) {
   thread_args *t = (thread_args *)arg;
-  char **article_texts;
+  char **article_texts; // Tamanho = t->end - t->start
   char delim[256];
 
   LOG(stdout,
@@ -47,7 +47,7 @@ void *preprocess(void *arg) {
   article_texts = get_str_arr(t->filename_db,
                               "select article_text from \"%w\" "
                               "where article_id between ? and ?",
-                              t->start, t->end, t->tablename);
+                              t->start, t->end - 1, t->tablename);
   if (!article_texts) {
     fprintf(stderr, "Erro ao obter dados do banco\n");
     pthread_exit(NULL);
