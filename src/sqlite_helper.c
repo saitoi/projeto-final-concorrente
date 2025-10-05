@@ -71,7 +71,7 @@ char **get_str_arr(const char *filename_db, const char *query, long int start,
   sqlite3_bind_int64(stmt, 1, start);
   sqlite3_bind_int64(stmt, 2, end);
 
-  result = malloc(end * sizeof(char *));
+  result = malloc((end - start) * sizeof(char *));
   if (!result) {
     fprintf(stderr, "Erro ao alocar memória\n");
     sqlite3_finalize(stmt);
@@ -79,7 +79,7 @@ char **get_str_arr(const char *filename_db, const char *query, long int start,
     return NULL;
   }
 
-  while (sqlite3_step(stmt) == SQLITE_ROW && i < end) {
+  while (sqlite3_step(stmt) == SQLITE_ROW && i < (end - start)) {
     const unsigned char *text = sqlite3_column_text(stmt, 0);
     if (text)
       result[i++] = strdup((const char *)text);

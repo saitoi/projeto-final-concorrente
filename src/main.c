@@ -29,7 +29,7 @@ sem_t mutex;
 void *preprocess(void *arg) {
   thread_args *t = (thread_args *)arg;
   char **article_texts; // Tamanho = t->end - t->start
-  char delim[256];
+  char **article_vecs[t->end - t->start];
 
   LOG(stdout,
       "Thread %ld iniciou:\n"
@@ -57,26 +57,16 @@ void *preprocess(void *arg) {
 
   // 3. Tokenizar os textos recuperados usando os delimitadores:
   // ../assets/separadores.txt
+  // Para visitar os separadores, visite: https://gist.github.com/saitoi/f71e6f3f48e743c5e21e9e3eea514526
 
-  FILE *f = fopen("assets/separadores.txt", "r");
-  if (!f) {
-    fprintf(stderr, "Erro ao abrir arquivo de separadores\n");
-    perror("fopen");
-    pthread_exit(NULL);
+  for (long int i = 0; i < 1; ++i) {
+      char *token = strtok(article_texts[i], " ");
+      while (token != NULL) {
+          LOG(stdout, "%s\n", token);
+          token = strtok(NULL, " ");
+      }
   }
-
-  if (fgets(delim, sizeof(delim), f) == NULL) {
-    fprintf(stderr, "Erro ao ler arquivo de separadores %s\n", delim);
-    pthread_exit(NULL);
-  }
-
-  delim[strcspn(delim, "<end>") + 1] = '\0';
-
-  LOG(stdout, "Arquivo de separadores: %s\n", delim);
-
-  // char *token = strtok(texto, delim);
-  // while ()
-
+  
   pthread_exit(NULL);
 }
 
