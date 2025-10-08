@@ -1,11 +1,28 @@
+# Detecta o sistema operacional
+ifeq ($(OS),Windows_NT)
+    # Configurações para Windows
+    RM = del /Q
+    RM_DIR = rmdir /S /Q
+    TARGET = app.exe
+    PATH_SEP = \\
+    NULL_DEVICE = NUL
+    LDFLAGS = -lsqlite3 -lpthread
+else
+    # Configurações para Linux/Unix
+    RM = rm -f
+    RM_DIR = rm -rf
+    TARGET = app
+    PATH_SEP = /
+    NULL_DEVICE = /dev/null
+    LDFLAGS = -lsqlite3 -lpthread
+endif
+
 CC = cc
-CFLAGS = -Wall -Wextra -I./include
-LDFLAGS = -lsqlite3 -lpthread
+CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
-SRC = src/main.c src/hash_t.c src/sqlite_helper.c src/preprocess.c
+SRC = src$(PATH_SEP)main.c src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c
 OBJ = $(SRC:.c=.o)
-TARGET = app
 
 all: $(TARGET)
 
@@ -13,20 +30,20 @@ $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS)
 
 lint:
-	@command -v clang-tidy >/dev/null 2>&1 && clang-tidy $(SRC) $(FCLANG) -- $(CFLAGS) || echo "clang-tidy not found, skipping"
+	@command -v clang-tidy >$(NULL_DEVICE) 2>&1 && clang-tidy $(SRC) $(FCLANG) -- $(CFLAGS) || echo "clang-tidy not found, skipping"
 
 format:
-	@command -v clang-format >/dev/null 2>&1 && clang-format -i $(SRC) include/*.h || echo "clang-format not found, skipping"
+	@command -v clang-format >$(NULL_DEVICE) 2>&1 && clang-format -i $(SRC) include$(PATH_SEP)*.h || echo "clang-format not found, skipping"
 
 check: lint format
 
 run: clean all
-	./$(TARGET) --entries 100 --verbose
+	.$(PATH_SEP)$(TARGET) --entries 100 --verbose
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJ) $(TARGET)
+	$(RM) $(OBJ) $(TARGET)
 
 .PHONY: all clean lint format check run
