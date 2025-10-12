@@ -72,6 +72,14 @@ void *preprocess(void *arg) {
   // 5. Stemming
   article_vecs = stem_articles(article_vecs, count);
 
+  // 6. Popula o hash com os termos e suas frequências
+  tf_hash *tf = populate_tf_hash(article_vecs, count, t->start);
+  if (!tf) {
+    fprintf(stderr, "Erro ao popular hash de termos\n");
+    pthread_exit(NULL);
+  }
+
+  
     for (long int i = 0; i < count; ++i) {
       if (!article_vecs[i])
         continue;

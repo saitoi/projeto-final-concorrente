@@ -1,13 +1,13 @@
+#include "../include/hash_t.h"
+#include <libstemmer.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <libstemmer.h>
-#include "../include/hash_t.h"
 
-generic_hash* global_stopwords = NULL;
+generic_hash *global_stopwords = NULL;
 
-void load_stopwords(const char* filename) {
-  FILE* f = fopen(filename, "r");
+void load_stopwords(const char *filename) {
+  FILE *f = fopen(filename, "r");
   if (!f) {
     fprintf(stderr, "Erro ao abrir arquivo de stopwords: %s\n", filename);
     return;
@@ -19,7 +19,8 @@ void load_stopwords(const char* filename) {
   while (fgets(line, sizeof(line), f)) {
     line[strcspn(line, "\n")] = '\0';
 
-    if (strlen(line) == 0) continue;
+    if (strlen(line) == 0)
+      continue;
 
     generic_hash_add(global_stopwords, line);
   }
@@ -37,26 +38,40 @@ void free_stopwords(void) {
 char ***stem_articles(char ***article_vecs, long int count) {
   struct sb_stemmer *stemmer = sb_stemmer_new("english", NULL);
   if (!stemmer) {
-      fprintf(stderr, "Erro ao criar o Stemmer.\n");
-      return NULL;
+    fprintf(stderr, "Erro ao criar o Stemmer.\n");
+    return NULL;
   }
-  
+
   for (long int i = 0; i < count; ++i) {
-      if (!article_vecs[i]) continue;
-      
-      for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-        const char* stemmed = (const char*) sb_stemmer_stem(
-              stemmer,
-              (const sb_symbol*)article_vecs[i][j],
-              strlen(article_vecs[i][j])
-          );
-        free(article_vecs[i][j]);
-        article_vecs[i][j] = strdup(stemmed); // Não é seguro
-      }
-      
+    if (!article_vecs[i])
+      continue;
+
+    for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
+      const char *stemmed = (const char *)sb_stemmer_stem(
+          stemmer, (const sb_symbol *)article_vecs[i][j],
+          strlen(article_vecs[i][j]));
+      free(article_vecs[i][j]);
+      article_vecs[i][j] = strdup(stemmed); // Não é seguro
+    }
   }
   sb_stemmer_delete(stemmer);
   return article_vecs;
+}
+
+tf_hash *populate_tf_hash(char ***article_vecs, long int count,
+                          long int offset) {
+  tf_hash *tf = tf_hash_new(); // Já verifica a alocação
+
+  for (long int i = 0; i < count; ++i) {
+    if (!article_vecs[i])
+      continue;
+
+    for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
+      tf_hash_set(tf, (const char *)article_vecs[i][j], i + offset, 0.0);
+    }
+  }
+
+  return tf;
 }
 
 char ***tokenize_articles(char **article_texts, long int count) {
@@ -105,14 +120,16 @@ char ***tokenize_articles(char **article_texts, long int count) {
 
 char ***remove_stopwords(char ***article_vecs, long int count) {
   if (!global_stopwords) {
-    fprintf(stderr, "Stopwords não carregadas. Chame load_stopwords() primeiro.\n");
+    fprintf(stderr,
+            "Stopwords não carregadas. Chame load_stopwords() primeiro.\n");
     return article_vecs;
   }
 
   for (long int i = 0; i < count; ++i) {
-    if (!article_vecs[i]) continue;
+    if (!article_vecs[i])
+      continue;
 
-    // Filtra stopwords 
+    // Filtra stopwords
     long int write_idx = 0;
     for (long int read_idx = 0; article_vecs[i][read_idx] != NULL; ++read_idx) {
       if (!generic_hash_contains(global_stopwords, article_vecs[i][read_idx])) {

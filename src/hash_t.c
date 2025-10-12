@@ -242,7 +242,7 @@ void imap_set(IMap* m, int k, double v) {
 
     for (IEntry* e = m->b[idx]; e; e = e->next) {
         if (e->key == k) {
-            e->val = v;
+            e->val += v;
             return;
         }
     }
@@ -259,6 +259,7 @@ void imap_set(IMap* m, int k, double v) {
     m->size++;
 }
 
+// Não acho que vai precisar
 void imap_add(IMap* m, int k, double dv) {
     double cur;
     if (imap_get(m, k, &cur)) {
@@ -375,6 +376,7 @@ void tf_hash_set(tf_hash* h, const char* word, int k, double v) {
     imap_set(&e->map, k, v);
 }
 
+// Não precisa eu acho
 void tf_hash_add(tf_hash* h, const char* word, int k, double dv) {
     OEntry* e = tf_hash_find(h, word, 1);
     imap_add(&e->map, k, dv);

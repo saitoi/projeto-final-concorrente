@@ -50,8 +50,9 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Tokenização.
     - [x] Remoção de Stopwords.
     - [x] Stemmer.
-- [ ] Montar a estrutura do TF-IDF com `hash_t`. 
-- Pré-computar:
+    - [ ] Popular hash local.
+- [ ] Mergir hashes e montar estrutura do TF-IDF com `hash_t`. 
+- [ ] Pré-computar:
     - [ ] IDF.
     - [ ] Vocabulário.
     - [ ] Vetores dos documentos.
