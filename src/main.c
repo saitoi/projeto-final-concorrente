@@ -1,5 +1,4 @@
 #include <pthread.h>
-#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,7 +6,11 @@
 
 #include "../include/preprocess.h"
 #include "../include/sqlite_helper.h"
+#include "../include/hash_t.h"
 
+pthread_mutex_t mutex;
+
+tf_hash *global_tf;
 int VERBOSE = 0;
 
 #define MAX_DOCS 97549
@@ -26,8 +29,6 @@ typedef struct {
   const char *filename_db;
   const char *tablename;
 } thread_args;
-
-sem_t mutex;
 
 void print_tf_hash(tf_hash *tf, long int thread_id) {
   if (!tf)
@@ -68,6 +69,12 @@ void *preprocess(void *arg) {
   long int count = t->end - t->start;
   char **article_texts;
   char ***article_vecs;
+
+  // Se a thread não tem artigos para processar, retorna
+  if (count <= 0) {
+    LOG(stdout, "Thread %ld sem artigos para processar", t->id);
+    pthread_exit(NULL);
+  }
 
   LOG(stdout,
       "Thread %ld iniciou:\n"
@@ -113,7 +120,7 @@ void *preprocess(void *arg) {
     pthread_exit(NULL);
   }
 
-  for (long int i = 0; i < count; ++i) {
+  for (long int i = 0; i < count && i < 20; ++i) {
     if (!article_vecs[i])
       continue;
     for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
@@ -122,9 +129,18 @@ void *preprocess(void *arg) {
     }
   }
 
-  // Imprimir o conteúdo do TF hash
-  print_tf_hash(tf, t->id);
+  // Imprimir o conteúdo do TF hash local
+  //print_tf_hash(tf, t->id);
 
+  // 7. Mergir hashes locais numa global
+  pthread_mutex_lock(&mutex);
+  tf_hash_merge(global_tf, tf);
+  pthread_mutex_unlock(&mutex);
+
+  // TODO: Imprimir o conteúdo do TF hash global (requer lock para leitura)
+  // LOG(stdout, "Thread %ld, TF Global", t->id);
+  // print_tf_hash(global_tf, t->id);
+  
   // Liberar memória
   for (long int i = 0; i < count; ++i) {
     if (article_texts[i])
@@ -204,10 +220,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  pthread_mutex_init(&mutex, NULL);
+  
   // Caso o arquivo não exista: Pré-processamento
   if (access(filename_tfidf, F_OK) == -1) {
     pthread_t *tids;
     const char *query_count = "select count(*) from \"%w\";";
+    global_tf = tf_hash_new();
 
     // Carregar stopwords uma vez (compartilhado por todas threads)
     load_stopwords("assets/stopwords.txt");
@@ -230,22 +249,33 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
+    thread_args **args = (thread_args **)malloc(nthreads * sizeof(thread_args *));
+    if (!args) {
+      fprintf(stderr, "Erro ao alocar memória para argumentos das threads\n");
+      free(tids);
+      return 1;
+    }
+
     long int base = entries / nthreads;
     long int rem = entries % nthreads;
     for (long int i = 0; i < nthreads; ++i) {
-      thread_args *arg = (thread_args *)malloc(sizeof(thread_args));
-      if (!arg) {
+      args[i] = (thread_args *)malloc(sizeof(thread_args));
+      if (!args[i]) {
         fprintf(stderr, "Erro ao alocar memória para argumentos da thread\n");
+        for (long int j = 0; j < i; ++j) free(args[j]);
+        free(args);
         free(tids);
         return 1;
       }
-      arg->id = i;
-      arg->filename_db = filename_db;
-      arg->tablename = tablename;
-      arg->start = i * base + (i < rem ? i : rem);
-      arg->end = arg->start + base + (i < rem);
-      if (pthread_create(&tids[i], NULL, preprocess, (void *)arg)) {
+      args[i]->id = i;
+      args[i]->filename_db = filename_db;
+      args[i]->tablename = tablename;
+      args[i]->start = i * base + (i < rem ? i : rem);
+      args[i]->end = args[i]->start + base + (i < rem);
+      if (pthread_create(&tids[i], NULL, preprocess, (void *)args[i])) {
         fprintf(stderr, "Erro ao criar thread %ld\n", i);
+        for (long int j = 0; j <= i; ++j) free(args[j]);
+        free(args);
         free(tids);
         return 1;
       }
@@ -254,24 +284,31 @@ int main(int argc, char *argv[]) {
     for (long int i = 0; i < nthreads; ++i) {
       if (pthread_join(tids[i], NULL)) {
         fprintf(stderr, "Erro ao esperar thread %ld\n", i);
+        for (long int j = 0; j < nthreads; ++j) free(args[j]);
+        free(args);
         free(tids);
         return 1;
       }
     }
 
+    for (long int i = 0; i < nthreads; ++i) free(args[i]);
+    free(args);
     free(tids);
 
-    // Liberar stopwords globais
+    // Imprimir TF hash global final
+    LOG(stdout, "=== TF Hash Global Final ===");
+    print_tf_hash(global_tf, -1);
+
+    // Liberar stopwords e tf hash globais
     free_stopwords();
+    tf_hash_free(global_tf);
 
   } else {
     // Carregar estrutura hash TF-IDF do arquivo
     printf("Arquivo binário encontrado: %s\n", filename_tfidf);
   }
 
-  sem_init(&mutex, 0, 1);
-
-  sem_destroy(&mutex);
+  pthread_mutex_destroy(&mutex);
 
   return 0;
 }

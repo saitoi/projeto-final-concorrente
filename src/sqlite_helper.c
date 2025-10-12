@@ -35,6 +35,7 @@ long int get_single_int(const char *filename_db, const char *query,
     result = sqlite3_column_int64(stmt, 0);
 
   sqlite3_finalize(stmt);
+  sqlite3_free(sql);
   sqlite3_close(db);
   return result;
 }
@@ -71,7 +72,8 @@ char **get_str_arr(const char *filename_db, const char *query, long int start,
   sqlite3_bind_int64(stmt, 1, start);
   sqlite3_bind_int64(stmt, 2, end);
 
-  result = malloc((end - start) * sizeof(char *));
+  long int array_size = end - start + 1;
+  result = calloc(array_size, sizeof(char *));
   if (!result) {
     fprintf(stderr, "Erro ao alocar memória\n");
     sqlite3_finalize(stmt);
@@ -79,13 +81,14 @@ char **get_str_arr(const char *filename_db, const char *query, long int start,
     return NULL;
   }
 
-  while (sqlite3_step(stmt) == SQLITE_ROW && i < (end - start)) {
+  while (sqlite3_step(stmt) == SQLITE_ROW && i < array_size) {
     const unsigned char *text = sqlite3_column_text(stmt, 0);
     if (text)
       result[i++] = strdup((const char *)text);
   }
 
   sqlite3_finalize(stmt);
+  sqlite3_free(sql);
   sqlite3_close(db);
   return result;
 }
