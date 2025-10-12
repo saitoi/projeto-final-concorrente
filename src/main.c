@@ -79,15 +79,14 @@ void *preprocess(void *arg) {
     pthread_exit(NULL);
   }
 
-  
-    for (long int i = 0; i < count; ++i) {
-      if (!article_vecs[i])
-        continue;
-      for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-        LOG(stdout, "Thread %ld, Article %ld, Token %ld: %s", t->id, i, j,
-            article_vecs[i][j]);
-      }
+  for (long int i = 0; i < count; ++i) {
+    if (!article_vecs[i])
+      continue;
+    for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
+      LOG(stdout, "Thread %ld, Article %ld, Token %ld: %s", t->id, i, j,
+          article_vecs[i][j]);
     }
+  }
 
   // Liberar memória
   for (long int i = 0; i < count; ++i) {
@@ -159,12 +158,14 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Número de threads inválido (%d)\n", nthreads);
     return 1;
   }
-  
+
   if (entries > MAX_DOCS) {
-    fprintf(stderr, "Número de entradas excede o limite máximo de documentos (%d)\n", MAX_DOCS);
+    fprintf(stderr,
+            "Número de entradas excede o limite máximo de documentos (%d)\n",
+            MAX_DOCS);
     return 1;
   }
-  
+
   // Caso o arquivo não exista: Pré-processamento
   if (access(filename_tfidf, F_OK) == -1) {
     pthread_t *tids;
