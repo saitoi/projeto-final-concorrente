@@ -40,8 +40,7 @@ Leia `instrucoes-projeto.pdf`.
 
 - [ ] Estrutura de Hash (`hash_t.h`).
 - [x] Separar funções auxiliares do SQLite (`sqlite_helper.h`).
-- [x] Makefile
-- [x] Parâmetros nomeados CLI.
+- [x] Makefil- [x] Parâmetros nomeados CLI.
 - [x] Criação e passagem de argumentos para as threads.
 - [x] Pré-processamento no DuckDB:
     - [x] Lower -> Remover acentos -> Restringir para ASCII (sem caracteres de controle)
@@ -49,7 +48,7 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Substituir os seguintes caracteres por espaço: '#', ':', '"', '()', '[]', '{}', '~', '=', '\_', '|', ';', '<>', '\*', '$', '\`', '\\\'
 - [ ] Pré-processamento em C:
     - [x] Tokenização.
-    - [ ] Remoção de Stopwords.
+    - [x] Remoção de Stopwords.
     - [ ] Stemmer.
 - [ ] Pré-processamento da consulta:
     - [ ] Processamento de texto (parecido com DuckDB).
@@ -59,3 +58,7 @@ Leia `instrucoes-projeto.pdf`.
     - [ ] IDF.
     - [ ] 
 - [ ] Adicionar macros LOG e variável VERBOSE em `sqlite_helper.c`.
+
+### Questionamentos
+
+- Considero palavras com uma única letra?

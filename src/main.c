@@ -4,11 +4,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <libstemmer.h>
 
 #include "../include/preprocess.h"
 #include "../include/sqlite_helper.h"
 
 int VERBOSE = 0;
+
+#define MAX_DOCS 97549
 
 #define LOG(output, fmt, ...)                                                  \
   do {                                                                         \
@@ -64,7 +67,9 @@ void *preprocess(void *arg) {
     pthread_exit(NULL);
   }
 
-  // Processar tokens (implementar aqui: TF-IDF, etc.)
+  // 4. Remoção de Stopwords
+  article_vecs = remove_stopwords(article_vecs, count);
+
   for (long int i = 0; i < count; ++i) {
     if (!article_vecs[i])
       continue;
@@ -140,10 +145,27 @@ int main(int argc, char *argv[]) {
       argc, nthreads, entries, filename_tfidf, filename_db, query_user,
       tablename);
 
+  if (nthreads <= 0) {
+    fprintf(stderr, "Número de threads inválido (%d)\n", nthreads);
+    return 1;
+  }
+  
+  if (entries > MAX_DOCS) {
+    fprintf(stderr, "Número de entradas excede o limite máximo de documentos (%d)\n", MAX_DOCS);
+    return 1;
+  }
+  
   // Caso o arquivo não exista: Pré-processamento
   if (access(filename_tfidf, F_OK) == -1) {
     pthread_t *tids;
     const char *query_count = "select count(*) from \"%w\";";
+
+    // Carregar stopwords uma vez (compartilhado por todas threads)
+    load_stopwords("assets/stopwords.txt");
+    if (!global_stopwords) {
+      fprintf(stderr, "Falha ao carregar stopwords\n");
+      return 1;
+    }
 
     // Sobreescreve count=0
     // Quantos registros na tabela 'sample_articles'
@@ -187,6 +209,11 @@ int main(int argc, char *argv[]) {
         return 1;
       }
     }
+
+    free(tids);
+
+    // Liberar stopwords globais
+    free_stopwords();
 
   } else {
     // Carregar estrutura hash TF-IDF do arquivo

@@ -1,6 +1,37 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../include/hash_t.h"
+
+generic_hash* global_stopwords = NULL;
+
+void load_stopwords(const char* filename) {
+  FILE* f = fopen(filename, "r");
+  if (!f) {
+    fprintf(stderr, "Erro ao abrir arquivo de stopwords: %s\n", filename);
+    return;
+  }
+
+  global_stopwords = generic_hash_new();
+
+  char line[256];
+  while (fgets(line, sizeof(line), f)) {
+    line[strcspn(line, "\n")] = '\0';
+
+    if (strlen(line) == 0) continue;
+
+    generic_hash_add(global_stopwords, line);
+  }
+
+  fclose(f);
+}
+
+void free_stopwords(void) {
+  if (global_stopwords) {
+    generic_hash_free(global_stopwords);
+    global_stopwords = NULL;
+  }
+}
 
 char ***tokenize_articles(char **article_texts, long int count) {
   char ***article_vecs;
@@ -41,6 +72,30 @@ char ***tokenize_articles(char **article_texts, long int count) {
     article_vecs[i][j] = NULL;
 
     free(text_copy);
+  }
+
+  return article_vecs;
+}
+
+char ***remove_stopwords(char ***article_vecs, long int count) {
+  if (!global_stopwords) {
+    fprintf(stderr, "Stopwords não carregadas. Chame load_stopwords() primeiro.\n");
+    return article_vecs;
+  }
+
+  for (long int i = 0; i < count; ++i) {
+    if (!article_vecs[i]) continue;
+
+    // Filtra stopwords 
+    long int write_idx = 0;
+    for (long int read_idx = 0; article_vecs[i][read_idx] != NULL; ++read_idx) {
+      if (!generic_hash_contains(global_stopwords, article_vecs[i][read_idx])) {
+        article_vecs[i][write_idx++] = article_vecs[i][read_idx];
+      } else {
+        free(article_vecs[i][read_idx]);
+      }
+    }
+    article_vecs[i][write_idx] = NULL;
   }
 
   return article_vecs;
