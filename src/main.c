@@ -29,6 +29,40 @@ typedef struct {
 
 sem_t mutex;
 
+void print_tf_hash(tf_hash *tf, long int thread_id) {
+  if (!tf)
+    return;
+
+  LOG(stdout, "Thread %ld - TF Hash Contents:", thread_id);
+  LOG(stdout, "  Hash capacity: %zu, size: %zu", tf->cap, tf->size);
+
+  size_t word_count = 0;
+  for (size_t i = 0; i < tf->cap; i++) {
+    for (OEntry *e = tf->b[i]; e; e = e->next) {
+      word_count++;
+      LOG(stdout, "  Word '%s' (len=%zu):", e->key, e->klen);
+
+      // Imprimir documentos e frequências
+      size_t doc_count = 0;
+      for (size_t j = 0; j < e->map.cap; j++) {
+        for (IEntry *ie = e->map.b[j]; ie; ie = ie->next) {
+          LOG(stdout, "    Doc %d: %.0f", ie->key, ie->val);
+          doc_count++;
+        }
+      }
+      LOG(stdout, "    Total docs for '%s': %zu", e->key, doc_count);
+
+      // Limitar a saída para não ficar muito grande
+      if (word_count >= 20) {
+        LOG(stdout, "  ... (mostrando apenas as primeiras 20 palavras)");
+        return;
+      }
+    }
+  }
+  LOG(stdout, "Thread %ld - Total de palavras únicas: %zu", thread_id,
+      word_count);
+}
+
 void *preprocess(void *arg) {
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
@@ -88,6 +122,9 @@ void *preprocess(void *arg) {
     }
   }
 
+  // Imprimir o conteúdo do TF hash
+  print_tf_hash(tf, t->id);
+
   // Liberar memória
   for (long int i = 0; i < count; ++i) {
     if (article_texts[i])
@@ -96,6 +133,7 @@ void *preprocess(void *arg) {
   free(article_texts);
 
   free_article_vecs(article_vecs, count);
+  tf_hash_free(tf);
 
   pthread_exit(NULL);
 }
