@@ -52,7 +52,8 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Remoção de Stopwords.
     - [x] Stemmer.
     - [x] Popular hash local.
-- [ ] Mergir hashes e montar estrutura do TF-IDF com `hash_t`. 
+- [x] Mergir hashes e montar estrutura do TF-IDF com `hash_t`. 
+- [ ] Unificar pipeline do SQlite.
 - [ ] Pré-computar:
     - [ ] IDF.
     - [ ] Vocabulário.
