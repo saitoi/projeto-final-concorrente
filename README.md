@@ -40,7 +40,8 @@ Leia `instrucoes-projeto.pdf`.
 
 - [x] Estrutura de Hash (`hash_t.h`).
 - [x] Separar funções auxiliares do SQLite (`sqlite_helper.h`).
-- [x] Makefil- [x] Parâmetros nomeados CLI.
+- [x] Makefile
+- [x] Parâmetros nomeados CLI.
 - [x] Criação e passagem de argumentos para as threads.
 - [x] Pré-processamento no DuckDB:
     - [x] Lower -> Remover acentos -> Restringir para ASCII (sem caracteres de controle)
@@ -50,7 +51,7 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Tokenização.
     - [x] Remoção de Stopwords.
     - [x] Stemmer.
-    - [ ] Popular hash local.
+    - [x] Popular hash local.
 - [ ] Mergir hashes e montar estrutura do TF-IDF com `hash_t`. 
 - [ ] Pré-computar:
     - [ ] IDF.
