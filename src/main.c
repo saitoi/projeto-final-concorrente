@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <libstemmer.h>
 
 #include "../include/preprocess.h"
 #include "../include/sqlite_helper.h"
@@ -70,14 +69,17 @@ void *preprocess(void *arg) {
   // 4. Remoção de Stopwords
   article_vecs = remove_stopwords(article_vecs, count);
 
-  for (long int i = 0; i < count; ++i) {
-    if (!article_vecs[i])
-      continue;
-    for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-      LOG(stdout, "Thread %ld, Article %ld, Token %ld: %s", t->id, i, j,
-          article_vecs[i][j]);
+  // 5. Stemming
+  article_vecs = stem_articles(article_vecs, count);
+
+    for (long int i = 0; i < count; ++i) {
+      if (!article_vecs[i])
+        continue;
+      for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
+        LOG(stdout, "Thread %ld, Article %ld, Token %ld: %s", t->id, i, j,
+            article_vecs[i][j]);
+      }
     }
-  }
 
   // Liberar memória
   for (long int i = 0; i < count; ++i) {

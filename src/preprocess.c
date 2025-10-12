@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <libstemmer.h>
 #include "../include/hash_t.h"
 
 generic_hash* global_stopwords = NULL;
@@ -31,6 +32,31 @@ void free_stopwords(void) {
     generic_hash_free(global_stopwords);
     global_stopwords = NULL;
   }
+}
+
+char ***stem_articles(char ***article_vecs, long int count) {
+  struct sb_stemmer *stemmer = sb_stemmer_new("english", NULL);
+  if (!stemmer) {
+      fprintf(stderr, "Erro ao criar o Stemmer.\n");
+      return NULL;
+  }
+  
+  for (long int i = 0; i < count; ++i) {
+      if (!article_vecs[i]) continue;
+      
+      for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
+        const char* stemmed = (const char*) sb_stemmer_stem(
+              stemmer,
+              (const sb_symbol*)article_vecs[i][j],
+              strlen(article_vecs[i][j])
+          );
+        free(article_vecs[i][j]);
+        article_vecs[i][j] = strdup(stemmed); // Não é seguro
+      }
+      
+  }
+  sb_stemmer_delete(stemmer);
+  return article_vecs;
 }
 
 char ***tokenize_articles(char **article_texts, long int count) {

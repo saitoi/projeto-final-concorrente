@@ -6,7 +6,7 @@ ifeq ($(OS),Windows_NT)
     TARGET = app.exe
     PATH_SEP = \\
     NULL_DEVICE = NUL
-    LDFLAGS = -lsqlite3 -lpthread
+    LDFLAGS = -lsqlite3 -lpthread -lstemmer
 else
     # Configurações para Linux/Unix
     RM = rm -f
@@ -14,7 +14,7 @@ else
     TARGET = app
     PATH_SEP = /
     NULL_DEVICE = /dev/null
-    LDFLAGS = -lsqlite3 -lpthread
+    LDFLAGS = -lsqlite3 -lpthread -lstemmer
 endif
 
 CC = cc

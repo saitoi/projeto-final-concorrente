@@ -38,7 +38,7 @@ Começar a processar 100 primeiros artigos somente para facilitar.
 
 Leia `instrucoes-projeto.pdf`.
 
-- [ ] Estrutura de Hash (`hash_t.h`).
+- [x] Estrutura de Hash (`hash_t.h`).
 - [x] Separar funções auxiliares do SQLite (`sqlite_helper.h`).
 - [x] Makefil- [x] Parâmetros nomeados CLI.
 - [x] Criação e passagem de argumentos para as threads.
@@ -46,17 +46,19 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Lower -> Remover acentos -> Restringir para ASCII (sem caracteres de controle)
     - [x] Tratamento especial de apóstrofes, vírgulas e dash.
     - [x] Substituir os seguintes caracteres por espaço: '#', ':', '"', '()', '[]', '{}', '~', '=', '\_', '|', ';', '<>', '\*', '$', '\`', '\\\'
-- [ ] Pré-processamento em C:
+- [x] Pré-processamento em C:
     - [x] Tokenização.
     - [x] Remoção de Stopwords.
-    - [ ] Stemmer.
-- [ ] Pré-processamento da consulta:
-    - [ ] Processamento de texto (parecido com DuckDB).
-    - [ ] Delimitadores.
+    - [x] Stemmer.
 - [ ] Montar a estrutura do TF-IDF com `hash_t`. 
 - Pré-computar:
     - [ ] IDF.
-    - [ ] 
+    - [ ] Vocabulário.
+    - [ ] Vetores dos documentos.
+    - [ ] Normas dos vetores.
+- [ ] Pré-processamento da consulta:
+    - [ ] Processamento de texto (parecido com DuckDB).
+    - [ ] Delimitadores.
 - [ ] Adicionar macros LOG e variável VERBOSE em `sqlite_helper.c`.
 
 ### Questionamentos
