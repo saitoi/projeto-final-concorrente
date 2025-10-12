@@ -21,6 +21,10 @@ CC = cc
 CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
+# Parâmetros do programa (podem ser sobrescritos: make run ENTRIES=50 VERBOSE=1)
+ENTRIES ?= 100
+VERBOSE ?= 0
+
 SRC = src$(PATH_SEP)main.c src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c
 OBJ = $(SRC:.c=.o)
 
@@ -38,7 +42,7 @@ format:
 check: lint format
 
 run: clean all
-	.$(PATH_SEP)$(TARGET) --entries 100 --verbose
+	.$(PATH_SEP)$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
