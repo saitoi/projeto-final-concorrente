@@ -9,12 +9,13 @@
 #include "../include/hash_t.h"
 
 pthread_mutex_t mutex;
-
-static pthread_once_t once = PTHREAD_ONCE_INIT;
+pthread_barrier_t barrier;
+pthread_once_t once = PTHREAD_ONCE_INIT;
 
 tf_hash *global_tf;
 generic_hash *global_idf;
 const char **global_vocab;
+long int global_entries = 0;
 int VERBOSE = 0;
 
 #define MAX_DOCS 97549
@@ -66,6 +67,23 @@ void print_tf_hash(tf_hash *tf, long int thread_id) {
   }
   LOG(stdout, "Thread %ld - Total de palavras únicas: %zu", thread_id,
       word_count);
+}
+
+// Função chamada uma única vez por pthread_once para computar IDF
+void compute_idf_once(void) {
+  LOG(stdout, "=== Computando IDF (executado uma única vez) ===");
+
+  // Converter hash para vetor (vocabulário ordenado)
+  global_vocab = generic_hash_to_vec(global_idf);
+  if (global_vocab) {
+    LOG(stdout, "Vocabulário convertido para vetor");
+  }
+
+  // Computar IDF para todas as palavras
+  set_idf(global_idf, global_tf, (double)global_entries);
+
+  fprintf(stdout, "IDF computado. Tamanho da Hash global: %zu\n",
+          generic_hash_size(global_idf));
 }
 
 void *preprocess(void *arg) {
@@ -145,10 +163,15 @@ void *preprocess(void *arg) {
   generic_hash_merge(global_idf, idf);
   pthread_mutex_unlock(&mutex);
 
-  // 9. IDF
-  // pthread_once(&once, );
+  // 9. Sincronizar todas as threads (esperar que todas terminem de mergir)
+  LOG(stdout, "Thread %ld esperando na barreira", t->id);
+  pthread_barrier_wait(&barrier);
 
-  
+  // 10. Computar IDF apenas uma vez (primeira thread que passar)
+  pthread_once(&once, compute_idf_once);
+
+  LOG(stdout, "Thread %ld passou da barreira e IDF já foi computado", t->id);
+
   // Liberar memória
   for (long int i = 0; i < count; ++i) {
     if (article_texts[i])
@@ -252,7 +275,16 @@ int main(int argc, char *argv[]) {
     if (!entries)
       entries = get_single_int(filename_db, query_count, tablename);
 
+    // Armazenar em variável global para uso em compute_idf_once
+    global_entries = entries;
+
     printf("Qtd. artigos: %ld\n", entries);
+
+    // Inicializar barreira para sincronizar threads
+    if (pthread_barrier_init(&barrier, NULL, nthreads)) {
+      fprintf(stderr, "Erro ao inicializar barreira\n");
+      return 1;
+    }
 
     tids = (pthread_t *)malloc(nthreads * sizeof(pthread_t));
     if (!tids) {
@@ -307,15 +339,12 @@ int main(int argc, char *argv[]) {
     free(args);
     free(tids);
 
+    // Destruir barreira após threads terminarem
+    pthread_barrier_destroy(&barrier);
+
     // Imprimir TF hash global final
     LOG(stdout, "=== TF Hash Global Final ===");
     print_tf_hash(global_tf, -1);
-
-    // Computar IDF para todas as palavras do vocabulário
-    if (global_idf) {
-      set_idf(global_idf, global_tf, (double) entries);
-      fprintf(stdout, "Tamanho da Hash global: %zu\n", generic_hash_size(global_idf));
-    }
 
     // Liberar stopwords e tf hash globais
     free_stopwords();

@@ -57,6 +57,7 @@ Leia `instrucoes-projeto.pdf`.
 - [ ] Pré-computar:
     - [x] Vocabulário.
     - [x] IDF.
+    - [x] Sincronizar set_idf e generic_hash_to_vec com barrier.
     - [ ] Vetores dos documentos.
     - [ ] Normas dos vetores.
 - [ ] Consulta:
@@ -66,6 +67,11 @@ Leia `instrucoes-projeto.pdf`.
     - [ ] Processamento de texto (parecido com DuckDB).
     - [ ] Delimitadores.
 - [ ] Adicionar macros LOG e variável VERBOSE em `sqlite_helper.c`.
+
+### Tarefas Futuras
+
+- [ ] Abordagem de chunks para pré-processamento.
+- [ ] 
 
 ### Questionamentos
 
