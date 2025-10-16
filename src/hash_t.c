@@ -430,7 +430,7 @@ void tf_hash_add(tf_hash *h, const char *word, int k, double dv) {
   imap_add(&e->map, k, dv);
 }
 
-int tf_hash_get(const tf_hash *h, const char *word, int k, double *out) {
+int tf_hash_get_freq(const tf_hash *h, const char *word, int k, double *out) {
   size_t klen = strlen(word);
   size_t idx = hash_str(word, klen) & (h->cap - 1);
 
@@ -443,7 +443,7 @@ int tf_hash_get(const tf_hash *h, const char *word, int k, double *out) {
   return 0;
 }
 
-int tf_hash_get_freq(const tf_hash *h, const char *word) {
+int tf_hash_get_ni(const tf_hash *h, const char *word) {
   size_t klen = strlen(word);
   size_t idx = hash_str(word, klen) & (h->cap - 1);
 
@@ -473,4 +473,41 @@ void tf_hash_merge(tf_hash *dst, const tf_hash *src) {
       }
     }
   }
+}
+
+void print_tf_hash(const tf_hash *tf, long int thread_id, int verbose) {
+  if (!tf)
+    return;
+
+  if (!verbose)
+    return;
+
+  fprintf(stdout, "[VERBOSE] Thread %ld - TF Hash Contents:\n", thread_id);
+  fprintf(stdout, "[VERBOSE]   Hash capacity: %zu, size: %zu\n", tf->cap, tf->size);
+
+  size_t word_count = 0;
+  for (size_t i = 0; i < tf->cap; i++) {
+    for (OEntry *e = tf->b[i]; e; e = e->next) {
+      word_count++;
+      fprintf(stdout, "[VERBOSE]   Word '%s' (len=%zu):\n", e->key, e->klen);
+
+      // Imprimir documentos e frequências
+      size_t doc_count = 0;
+      for (size_t j = 0; j < e->map.cap; j++) {
+        for (IEntry *ie = e->map.b[j]; ie; ie = ie->next) {
+          fprintf(stdout, "[VERBOSE]     Doc %d: %.0f\n", ie->key, ie->val);
+          doc_count++;
+        }
+      }
+      fprintf(stdout, "[VERBOSE]     Total docs for '%s': %zu\n", e->key, doc_count);
+
+      // Limitar a saída para não ficar muito grande
+      if (word_count >= 20) {
+        fprintf(stdout, "[VERBOSE]   ... (mostrando apenas as primeiras 20 palavras)\n");
+        return;
+      }
+    }
+  }
+  fprintf(stdout, "[VERBOSE] Thread %ld - Total de palavras únicas: %zu\n",
+          thread_id, word_count);
 }

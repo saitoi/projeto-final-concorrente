@@ -54,15 +54,19 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Popular hash local.
 - [x] Mergir hashes e montar estrutura do TF-IDF com `hash_t`. 
 - [ ] Unificar pipeline do SQlite.
+- [ ] Reorganizar funções e estrutura dos arquivos.
+- [ ] Remover prints de debug excessivos.
 - [ ] Pré-computar:
     - [x] Vocabulário.
     - [x] IDF.
     - [x] Sincronizar set_idf e generic_hash_to_vec com barrier.
-    - [ ] Vetores dos documentos.
-    - [ ] Normas dos vetores.
+    - [x] Vetores dos documentos.
+    - [x] Normas dos vetores.
+    - [ ] Salvamento em ordem em um binário.
 - [ ] Consulta:
     - [ ] Pré-processamento da consulta do usuário.
-    - [ ] 
+    - [ ] Passo adicionar de replicar scripts de regex do preprocess/**.py em C
+    - [ ] Cálculo da similaridade com os documentos.
 - [ ] Pré-processamento da consulta:
     - [ ] Processamento de texto (parecido com DuckDB).
     - [ ] Delimitadores.

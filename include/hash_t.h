@@ -9,7 +9,7 @@
 typedef struct GEntry {
   char *word;
   size_t wlen;
-  double value;
+  double idf;
   struct GEntry *next;
 } GEntry;
 
@@ -64,8 +64,9 @@ tf_hash *tf_hash_new(void);
 void tf_hash_free(tf_hash *h);
 void tf_hash_set(tf_hash *h, const char *word, int k, double v);
 void tf_hash_add(tf_hash *h, const char *word, int k, double dv);
-int tf_hash_get(const tf_hash *h, const char *word, int k, double *out);
-int tf_hash_get_freq(const tf_hash *h, const char *word);
+int tf_hash_get_freq(const tf_hash *h, const char *word, int k, double *out);
+int tf_hash_get_ni(const tf_hash *h, const char *word);
 void tf_hash_merge(tf_hash *dst, const tf_hash *src);
+void print_tf_hash(const tf_hash *tf, long int thread_id, int verbose);
 
 #endif

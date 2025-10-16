@@ -12,9 +12,14 @@ pthread_mutex_t mutex;
 pthread_barrier_t barrier;
 pthread_once_t once = PTHREAD_ONCE_INIT;
 
+// Variáveis globais
 tf_hash *global_tf;
 generic_hash *global_idf;
+
+double **global_doc_vec;
+double *global_doc_norms;
 const char **global_vocab;
+size_t global_vocab_size;
 long int global_entries = 0;
 int VERBOSE = 0;
 
@@ -30,44 +35,11 @@ int VERBOSE = 0;
 typedef struct {
   long int start;
   long int end;
+  long int nthreads;
   long int id;
   const char *filename_db;
   const char *tablename;
 } thread_args;
-
-void print_tf_hash(tf_hash *tf, long int thread_id) {
-  if (!tf)
-    return;
-
-  LOG(stdout, "Thread %ld - TF Hash Contents:", thread_id);
-  LOG(stdout, "  Hash capacity: %zu, size: %zu", tf->cap, tf->size);
-
-  size_t word_count = 0;
-  for (size_t i = 0; i < tf->cap; i++) {
-    for (OEntry *e = tf->b[i]; e; e = e->next) {
-      word_count++;
-      LOG(stdout, "  Word '%s' (len=%zu):", e->key, e->klen);
-
-      // Imprimir documentos e frequências
-      size_t doc_count = 0;
-      for (size_t j = 0; j < e->map.cap; j++) {
-        for (IEntry *ie = e->map.b[j]; ie; ie = ie->next) {
-          LOG(stdout, "    Doc %d: %.0f", ie->key, ie->val);
-          doc_count++;
-        }
-      }
-      LOG(stdout, "    Total docs for '%s': %zu", e->key, doc_count);
-
-      // Limitar a saída para não ficar muito grande
-      if (word_count >= 20) {
-        LOG(stdout, "  ... (mostrando apenas as primeiras 20 palavras)");
-        return;
-      }
-    }
-  }
-  LOG(stdout, "Thread %ld - Total de palavras únicas: %zu", thread_id,
-      word_count);
-}
 
 // Função chamada uma única vez por pthread_once para computar IDF
 void compute_idf_once(void) {
@@ -82,8 +54,36 @@ void compute_idf_once(void) {
   // Computar IDF para todas as palavras
   set_idf(global_idf, global_tf, (double)global_entries);
 
-  fprintf(stdout, "IDF computado. Tamanho da Hash global: %zu\n",
-          generic_hash_size(global_idf));
+  // Obter tamanho do vocabulário
+  global_vocab_size = generic_hash_size(global_idf);
+
+  // Alocar memória para o vetor de vetores de documentos
+  // Dimensão: [número_de_documentos][tamanho_vocabulário]
+  global_doc_vec = (double**) malloc(global_entries * sizeof(double*));
+  if (!global_doc_vec) {
+    LOG(stderr, "Erro ao alocar memória para global_doc_vecs");
+    exit(EXIT_FAILURE);
+  }
+
+  // Alocar cada vetor de documento
+  for (long int i = 0; i < global_entries; ++i) {
+    global_doc_vec[i] = (double*) calloc(global_vocab_size, sizeof(double));
+    if (!global_doc_vec[i]) {
+      LOG(stderr, "Erro ao alocar memória para vetor do documento %ld", i);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  global_doc_norms = (double*) malloc(global_entries * sizeof(double));
+  if (!global_doc_norms) {
+    LOG(stderr, "Erro ao alocar memória para global_doc_norms");
+    exit(EXIT_FAILURE);
+  }
+  
+  fprintf(stdout, "IDF computado. Tamanho da Hash global: %zu\n", global_vocab_size);
+  fprintf(stdout, "Vetores de documentos alocados: %ld documentos x %zu palavras\n",
+          global_entries, global_vocab_size);
+  fprintf(stdout, "Total de documentos para cálculo IDF: %ld\n", global_entries);
 }
 
 void *preprocess(void *arg) {
@@ -169,6 +169,36 @@ void *preprocess(void *arg) {
 
   // 10. Computar IDF apenas uma vez (primeira thread que passar)
   pthread_once(&once, compute_idf_once);
+
+  // 11. Computar vetores de documentos usando TF-IDF
+  compute_doc_vecs(global_doc_vec, global_tf, global_idf, count, t->start);
+
+  // 12. Computar normas dos documentos
+  compute_doc_norms(global_doc_norms, global_doc_vec, count, global_vocab_size, t->start);
+
+  // Imprimir alguns vetores para verificação
+  LOG(stdout, "=== Vetores de documentos da Thread %ld ===", t->id);
+  for (long int i = 0; i < count && i < 3; ++i) {
+    long int doc_id = t->start + i;
+    LOG(stdout, "Documento %ld:", doc_id);
+
+    // Mostrar valores do vetor (primeiros 30 valores não-zero)
+    size_t valores_mostrados = 0;
+    for (size_t j = 0; j < global_vocab_size && valores_mostrados < 30; ++j) {
+      if (global_doc_vec[doc_id][j] != 0.0) {
+        LOG(stdout, "  [%zu] = %.6f", j, global_doc_vec[doc_id][j]);
+        valores_mostrados++;
+      }
+    }
+
+    // Mostrar a norma após o vetor
+    LOG(stdout, "  Norma do documento %ld: %.6f", doc_id, global_doc_norms[doc_id]);
+    LOG(stdout, "");  // Linha em branco para separar documentos
+  }
+
+  // 12. Computar normas dos documentos
+  // compute_doc_norms(global_doc_vec, count);
+
 
   LOG(stdout, "Thread %ld passou da barreira e IDF já foi computado", t->id);
 
@@ -312,6 +342,7 @@ int main(int argc, char *argv[]) {
         return 1;
       }
       args[i]->id = i;
+      args[i]->nthreads = nthreads;
       args[i]->filename_db = filename_db;
       args[i]->tablename = tablename;
       args[i]->start = i * base + (i < rem ? i : rem);
@@ -344,7 +375,7 @@ int main(int argc, char *argv[]) {
 
     // Imprimir TF hash global final
     LOG(stdout, "=== TF Hash Global Final ===");
-    print_tf_hash(global_tf, -1);
+    print_tf_hash(global_tf, -1, VERBOSE);
 
     // Liberar stopwords e tf hash globais
     free_stopwords();
@@ -363,7 +394,7 @@ int main(int argc, char *argv[]) {
 
     for (size_t i = 0; i < global_idf->cap && count < limit; i++) {
       for (GEntry *e = global_idf->buckets[i]; e && count < limit; e = e->next) {
-        printf("Palavra: %-25s IDF: %.6f\n", e->word, e->value);
+        printf("Palavra: %-25s IDF: %.6f\n", e->word, e->idf);
         count++;
       }
     }
