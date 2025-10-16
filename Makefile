@@ -6,7 +6,7 @@ ifeq ($(OS),Windows_NT)
     TARGET = app.exe
     PATH_SEP = \\
     NULL_DEVICE = NUL
-    LDFLAGS = -lsqlite3 -lpthread -lstemmer
+    LDFLAGS = -lsqlite3 -lpthread -lstemmer -lm
 else
     # Configurações para Linux/Unix
     RM = rm -f
@@ -14,7 +14,7 @@ else
     TARGET = app
     PATH_SEP = /
     NULL_DEVICE = /dev/null
-    LDFLAGS = -lsqlite3 -lpthread -lstemmer
+    LDFLAGS = -lsqlite3 -lpthread -lstemmer -lm
 endif
 
 CC = cc
@@ -23,7 +23,7 @@ FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferH
 
 # Parâmetros do programa (podem ser sobrescritos: make run ENTRIES=50 VERBOSE=1)
 ENTRIES ?= 100
-VERBOSE ?= 0
+VERBOSE ?= 1
 
 SRC = src$(PATH_SEP)main.c src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c
 OBJ = $(SRC:.c=.o)

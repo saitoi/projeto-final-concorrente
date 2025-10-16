@@ -55,10 +55,13 @@ Leia `instrucoes-projeto.pdf`.
 - [x] Mergir hashes e montar estrutura do TF-IDF com `hash_t`. 
 - [ ] Unificar pipeline do SQlite.
 - [ ] Pré-computar:
-    - [ ] IDF.
-    - [ ] Vocabulário.
+    - [x] Vocabulário.
+    - [x] IDF.
     - [ ] Vetores dos documentos.
     - [ ] Normas dos vetores.
+- [ ] Consulta:
+    - [ ] Pré-processamento da consulta do usuário.
+    - [ ] 
 - [ ] Pré-processamento da consulta:
     - [ ] Processamento de texto (parecido com DuckDB).
     - [ ] Delimitadores.

@@ -5,8 +5,12 @@
 
 extern generic_hash *global_stopwords;
 
-tf_hash *populate_tf_hash(char ***article_vecs, long int count,
+generic_hash *generate_vocab(generic_hash *vocab, char ***article_vecs, long int count);
+
+tf_hash *populate_tf_hash(tf_hash *tf, char ***article_vecs, long int count,
                           long int offset);
+
+void set_idf(generic_hash *set, const tf_hash *tf, double doc_count);
 
 char ***stem_articles(char ***article_vecs, long int count);
 

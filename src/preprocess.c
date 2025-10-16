@@ -1,8 +1,10 @@
 #include "../include/hash_t.h"
 #include <libstemmer.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 generic_hash *global_stopwords = NULL;
 
@@ -35,11 +37,44 @@ void free_stopwords(void) {
   }
 }
 
-char ***stem_articles(char ***article_vecs, long int count) {
+void generate_vocab(generic_hash* vocab, char ***article_vecs, long int count) {
+  if (!article_vecs) {
+    fprintf(stderr, "Erro: article_vecs é nulo.\n");
+    pthread_exit(NULL);
+  }
+
+  for (long int i = 0; i < count; ++i) {
+    if (!article_vecs[i])
+      continue;
+
+    for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
+      generic_hash_add(vocab, article_vecs[i][j]);
+    }
+  }
+}
+
+void set_idf(generic_hash *set, const tf_hash *tf, double doc_count) {
+  if (!set || !tf) {
+      fprintf(stderr, "Erro: set ou tf é nulo.\n");
+      pthread_exit(NULL);
+  }
+
+  for (size_t i = 0; i < set->cap; i++) {
+    GEntry *e = set->buckets[i];
+    while (e) {
+      int freq = tf_hash_get_freq(tf, e->word);
+      if (freq > 0) e->value = log2(doc_count / freq);
+      else  e->value = 0.0;
+      e = e->next;
+    }
+  }
+}
+
+void stem_articles(char ***article_vecs, long int count) {
   struct sb_stemmer *stemmer = sb_stemmer_new("english", NULL);
   if (!stemmer) {
     fprintf(stderr, "Erro ao criar o Stemmer.\n");
-    return NULL;
+    pthread_exit(NULL);
   }
 
   for (long int i = 0; i < count; ++i) {
@@ -55,13 +90,10 @@ char ***stem_articles(char ***article_vecs, long int count) {
     }
   }
   sb_stemmer_delete(stemmer);
-  return article_vecs;
 }
 
-tf_hash *populate_tf_hash(char ***article_vecs, long int count,
+tf_hash *populate_tf_hash(tf_hash *tf, char ***article_vecs, long int count,
                           long int offset) {
-  tf_hash *tf = tf_hash_new(); // Já verifica a alocação
-
   for (long int i = 0; i < count; ++i) {
     if (!article_vecs[i])
       continue;
@@ -89,7 +121,7 @@ char ***tokenize_articles(char **article_texts, long int count) {
       continue;
     }
 
-    long int estimated_tokens = strlen(article_texts[i]) / 5 + 1;
+    long int estimated_tokens = strlen(article_texts[i]) / 2 + 10;
     article_vecs[i] = malloc(estimated_tokens * sizeof(char *));
     if (!article_vecs[i]) {
       article_vecs[i] = NULL;
@@ -101,7 +133,7 @@ char ***tokenize_articles(char **article_texts, long int count) {
       free(article_vecs[i]);
       article_vecs[i] = NULL;
       continue;
-    }
+}
 
     long int j = 0;
     char *token = strtok(text_copy, " \t\n\r");
@@ -118,11 +150,11 @@ char ***tokenize_articles(char **article_texts, long int count) {
   return article_vecs;
 }
 
-char ***remove_stopwords(char ***article_vecs, long int count) {
+void remove_stopwords(char ***article_vecs, long int count) {
   if (!global_stopwords) {
     fprintf(stderr,
             "Stopwords não carregadas. Chame load_stopwords() primeiro.\n");
-    return article_vecs;
+    pthread_exit(NULL);
   }
 
   for (long int i = 0; i < count; ++i) {
@@ -140,8 +172,6 @@ char ***remove_stopwords(char ***article_vecs, long int count) {
     }
     article_vecs[i][write_idx] = NULL;
   }
-
-  return article_vecs;
 }
 
 void free_article_vecs(char ***article_vecs, long int count) {

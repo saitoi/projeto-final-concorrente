@@ -10,7 +10,11 @@
 
 pthread_mutex_t mutex;
 
+static pthread_once_t once = PTHREAD_ONCE_INIT;
+
 tf_hash *global_tf;
+generic_hash *global_idf;
+const char **global_vocab;
 int VERBOSE = 0;
 
 #define MAX_DOCS 97549
@@ -65,8 +69,15 @@ void print_tf_hash(tf_hash *tf, long int thread_id) {
 }
 
 void *preprocess(void *arg) {
+  // Thread parameters
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
+
+  // Hashes locais
+  tf_hash *tf = tf_hash_new();
+  generic_hash* idf = generic_hash_new();
+
+  // String arrays
   char **article_texts;
   char ***article_vecs;
 
@@ -108,17 +119,13 @@ void *preprocess(void *arg) {
   }
 
   // 4. Remoção de Stopwords
-  article_vecs = remove_stopwords(article_vecs, count);
+  remove_stopwords(article_vecs, count);
 
   // 5. Stemming
-  article_vecs = stem_articles(article_vecs, count);
+  stem_articles(article_vecs, count);
 
   // 6. Popula o hash com os termos e suas frequências
-  tf_hash *tf = populate_tf_hash(article_vecs, count, t->start);
-  if (!tf) {
-    fprintf(stderr, "Erro ao popular hash de termos\n");
-    pthread_exit(NULL);
-  }
+  populate_tf_hash(tf, article_vecs, count, t->start);
 
   for (long int i = 0; i < count && i < 20; ++i) {
     if (!article_vecs[i])
@@ -129,27 +136,31 @@ void *preprocess(void *arg) {
     }
   }
 
-  // Imprimir o conteúdo do TF hash local
-  //print_tf_hash(tf, t->id);
+  // 7. Computar vocabulário local
+  generate_vocab(idf, article_vecs, count);
 
-  // 7. Mergir hashes locais numa global
+  // 8. Mergir hashes locais numa global
   pthread_mutex_lock(&mutex);
   tf_hash_merge(global_tf, tf);
+  generic_hash_merge(global_idf, idf);
   pthread_mutex_unlock(&mutex);
 
-  // TODO: Imprimir o conteúdo do TF hash global (requer lock para leitura)
-  // LOG(stdout, "Thread %ld, TF Global", t->id);
-  // print_tf_hash(global_tf, t->id);
+  // 9. IDF
+  // pthread_once(&once, );
+
   
   // Liberar memória
   for (long int i = 0; i < count; ++i) {
     if (article_texts[i])
       free(article_texts[i]);
   }
-  free(article_texts);
 
+  fprintf(stdout, "Tamanho da Hash local da thread %zu: %ld\n", t->id, generic_hash_size(idf));
+
+  free(article_texts);
   free_article_vecs(article_vecs, count);
   tf_hash_free(tf);
+  generic_hash_free(idf);
 
   pthread_exit(NULL);
 }
@@ -227,6 +238,7 @@ int main(int argc, char *argv[]) {
     pthread_t *tids;
     const char *query_count = "select count(*) from \"%w\";";
     global_tf = tf_hash_new();
+    global_idf = generic_hash_new();
 
     // Carregar stopwords uma vez (compartilhado por todas threads)
     load_stopwords("assets/stopwords.txt");
@@ -299,6 +311,12 @@ int main(int argc, char *argv[]) {
     LOG(stdout, "=== TF Hash Global Final ===");
     print_tf_hash(global_tf, -1);
 
+    // Computar IDF para todas as palavras do vocabulário
+    if (global_idf) {
+      set_idf(global_idf, global_tf, (double) entries);
+      fprintf(stdout, "Tamanho da Hash global: %zu\n", generic_hash_size(global_idf));
+    }
+
     // Liberar stopwords e tf hash globais
     free_stopwords();
     tf_hash_free(global_tf);
@@ -306,6 +324,22 @@ int main(int argc, char *argv[]) {
   } else {
     // Carregar estrutura hash TF-IDF do arquivo
     printf("Arquivo binário encontrado: %s\n", filename_tfidf);
+  }
+
+  // Impressão das palavras com IDF (primeiras 30 entradas)
+  if (global_idf) {
+    printf("\n=== Primeiras 30 palavras com IDF ===\n");
+    size_t count = 0;
+    size_t limit = 30;
+
+    for (size_t i = 0; i < global_idf->cap && count < limit; i++) {
+      for (GEntry *e = global_idf->buckets[i]; e && count < limit; e = e->next) {
+        printf("Palavra: %-25s IDF: %.6f\n", e->word, e->value);
+        count++;
+      }
+    }
+
+    generic_hash_free(global_idf);
   }
 
   pthread_mutex_destroy(&mutex);

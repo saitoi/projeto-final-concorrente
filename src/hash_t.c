@@ -47,18 +47,6 @@ static uint64_t hash_int(int k) {
 
 /* ------------- Hash Genérica (str -> double) ------------- */
 
-typedef struct GEntry {
-  char *word;
-  size_t wlen;
-  struct GEntry *next;
-} GEntry;
-
-struct generic_hash {
-  GEntry **buckets;
-  size_t cap;
-  size_t size;
-};
-
 generic_hash *generic_hash_new(void) {
   generic_hash *set = malloc(sizeof(*set));
   if (!set) {
@@ -161,6 +149,58 @@ int generic_hash_contains(const generic_hash *set, const char *word) {
   }
 
   return 0;
+}
+
+void generic_hash_merge(generic_hash *dst, const generic_hash *src) {
+  if (!dst || !src || !src->cap)
+    return;
+
+  for (size_t i = 0; i < src->cap; i++) {
+    GEntry *e = src->buckets[i];
+    while (e) {
+      generic_hash_add(dst, e->word);
+      e = e->next;
+    }
+  }
+}
+
+size_t generic_hash_size(const generic_hash *set) {
+  if (!set || !set->cap)
+    return 0;
+
+  long int size = 0;
+  for (size_t i = 0; i < set->cap; i++) {
+    GEntry *e = set->buckets[i];
+    while (e) {
+      size++;
+      e = e->next;
+    }
+  }
+
+  return size;
+}
+
+const char **generic_hash_to_vec(const generic_hash *set) {
+  if (!set || !set->cap)
+    return NULL;
+
+  size_t count = generic_hash_size(set);
+  const char **vec = (const char **) malloc(count * sizeof(const char *));
+  if (!vec) {
+    perror("malloc");
+    exit(1);
+  }
+
+  size_t idx = 0;
+  for (size_t i = 0; i < set->cap; i++) {
+    GEntry *e = set->buckets[i];
+    while (e) {
+      vec[idx++] = e->word;
+      e = e->next;
+    }
+  }
+
+  return vec;
 }
 
 /* ---------- IMap (int → double) ---------- */
@@ -397,6 +437,19 @@ int tf_hash_get(const tf_hash *h, const char *word, int k, double *out) {
   for (OEntry *e = h->b[idx]; e; e = e->next) {
     if (e->klen == klen && memcmp(e->key, word, klen) == 0) {
       return imap_get(&e->map, k, out);
+    }
+  }
+
+  return 0;
+}
+
+int tf_hash_get_freq(const tf_hash *h, const char *word) {
+  size_t klen = strlen(word);
+  size_t idx = hash_str(word, klen) & (h->cap - 1);
+
+  for (OEntry *e = h->b[idx]; e; e = e->next) {
+    if (e->klen == klen && memcmp(e->key, word, klen) == 0) {
+      return e->map.size;
     }
   }
 
