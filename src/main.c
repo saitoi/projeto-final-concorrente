@@ -1,3 +1,10 @@
+/*
+ * Nomes:
+ * Pedro Henrique Honorio Saito*
+ * Milton Salgado Leandro
+ * Marcos Henrique Junqueira Muniz Barbi Silva
+ */
+
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,31 +14,38 @@
 #include "../include/preprocess.h"
 #include "../include/sqlite_helper.h"
 #include "../include/hash_t.h"
+#include "../include/file_io.h"
 
+/* --------------- Variáveis globais --------------- */
+
+// Variáveis de sincronização
 pthread_mutex_t mutex;
 pthread_barrier_t barrier;
 pthread_once_t once = PTHREAD_ONCE_INIT;
 
-// Variáveis globais
+// Hashes globais
 tf_hash *global_tf;
 generic_hash *global_idf;
 
+// Vetores globais
 double **global_doc_vec;
 double *global_doc_norms;
 const char **global_vocab;
 size_t global_vocab_size;
+
+// Variáveis globais de controle
 long int global_entries = 0;
 int VERBOSE = 0;
 
-#define MAX_DOCS 97549
+/* --------------- Macros --------------- */
 
+#define MAX_DOCS 97549
 #define LOG(output, fmt, ...)                                                  \
   do {                                                                         \
     if (VERBOSE)                                                               \
       fprintf(output, "[VERBOSE] " fmt "\n", ##__VA_ARGS__);                   \
   } while (0)
-
-// Ordem decrescente de tam
+  
 typedef struct {
   long int start;
   long int end;
@@ -41,31 +55,33 @@ typedef struct {
   const char *tablename;
 } thread_args;
 
-// Função chamada uma única vez por pthread_once para computar IDF
-void compute_idf_once(void) {
-  LOG(stdout, "=== Computando IDF (executado uma única vez) ===");
+/* --------------- PTHREAD_ONCE_INIT --------------- */
+// Tarefas computadas uma única vez dentre todas as threads:
+// 1. Extrair vocabulário completo do IDF (chaves da generic_hash *global_idf)
+// 2. Computar o IDF de cada palavra no vocabulário
+// 3. Obter tamanho do vocabulário e alocar vetor de documentos
+// 4. Alocar vetor da norma de cada documento
 
-  // Converter hash para vetor (vocabulário ordenado)
+void compute_once(void) {
+  LOG(stdout, "Funções computadas uma única vez dentre todas as threads");
+  
+  // [1] Coleta as chaves da hash global_idf
   global_vocab = generic_hash_to_vec(global_idf);
   if (global_vocab) {
     LOG(stdout, "Vocabulário convertido para vetor");
   }
 
-  // Computar IDF para todas as palavras
-  set_idf(global_idf, global_tf, (double)global_entries);
+  // [2] Computa o IDF
+  set_idf_value(global_idf, global_tf, (double)global_entries);
 
-  // Obter tamanho do vocabulário
+  // [3]
   global_vocab_size = generic_hash_size(global_idf);
-
-  // Alocar memória para o vetor de vetores de documentos
-  // Dimensão: [número_de_documentos][tamanho_vocabulário]
   global_doc_vec = (double**) malloc(global_entries * sizeof(double*));
   if (!global_doc_vec) {
     LOG(stderr, "Erro ao alocar memória para global_doc_vecs");
     exit(EXIT_FAILURE);
   }
 
-  // Alocar cada vetor de documento
   for (long int i = 0; i < global_entries; ++i) {
     global_doc_vec[i] = (double*) calloc(global_vocab_size, sizeof(double));
     if (!global_doc_vec[i]) {
@@ -74,6 +90,7 @@ void compute_idf_once(void) {
     }
   }
 
+  // [4]
   global_doc_norms = (double*) malloc(global_entries * sizeof(double));
   if (!global_doc_norms) {
     LOG(stderr, "Erro ao alocar memória para global_doc_norms");
@@ -86,19 +103,35 @@ void compute_idf_once(void) {
   fprintf(stdout, "Total de documentos para cálculo IDF: %ld\n", global_entries);
 }
 
+/* --------------- Pré-processamento --------------- */
+// Pré-processamento computado uma única vez sobre todos os documentos:
+// 0.  Passo preliminar: Pré-processamento/tratamento do texto do wiki-small.db no DuckDB.
+// 1.  Captar os parâmetros das threads: struct thread_args e computar o intervalo de documentos (long int count).
+// 2.  Inicializar as hashes locais.
+// 3.  Validações do intervalo de documentos e debug.
+// 4.  Extrair a coluna de texto (`article_text`) do SQLite.
+// 5.  Tokenizar o texto recuperado usando separador de whitespace (texto já havia sido pré-processado).
+// 6.  Filtrar stopwords e redimensionar o vetor.
+// 7.  Stemming: Processo de remoção de afixos (prefixos e sufixos).
+// 8.  Populando a hash local de frequência dos termos (`tf_hash *global_tf`).
+// 9.  Popular vocabulário local (chaves do `generic_hash *global_idf`).
+// 10. Mergir TF e IDF hashes nas globais
+// 11. Uso do padrão barrreira (`pthread_barrier_t barrier`) para sincronizar as threads.
+// 11. 
+
 void *preprocess(void *arg) {
-  // Thread parameters
+  // [1] Parâmetros das threads
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
 
-  // Hashes locais
+  char **article_texts; // Textos dos artigos
+  char ***article_vecs; // Vetores de tokens dos artigos
+
+  // [2] Hashes locais: TF e IDF
   tf_hash *tf = tf_hash_new();
   generic_hash* idf = generic_hash_new();
 
-  // String arrays
-  char **article_texts;
-  char ***article_vecs;
-
+  // [3] Validações
   // Se a thread não tem artigos para processar, retorna
   if (count <= 0) {
     LOG(stdout, "Thread %ld sem artigos para processar", t->id);
@@ -112,12 +145,7 @@ void *preprocess(void *arg) {
       "\tfilename_db: %s\n",
       t->id, t->start, t->end, t->filename_db);
 
-  // Passo-a-passo
-  // 0. Pre-processamento no DuckDB (Converter para ASCII + remover caracteres
-  // especiais)
-  // 1. Inicializar conexão com o banco
-  // 2. Executar consulta para obter textos dos intervalos desejados
-
+  // [4] Recuperação dos textos dos artigos
   article_texts = get_str_arr(t->filename_db,
                               "select article_text from \"%w\" "
                               "where article_id between ? and ?",
@@ -129,20 +157,20 @@ void *preprocess(void *arg) {
 
   LOG(stdout, "Primeiro artigo da thread %ld: %s\n", t->id, article_texts[0]);
 
-  // 3. Tokenizar os textos recuperados
+  // [5] Tokenização
   article_vecs = tokenize_articles(article_texts, count);
   if (!article_vecs) {
     fprintf(stderr, "Erro ao tokenizar artigos\n");
     pthread_exit(NULL);
   }
 
-  // 4. Remoção de Stopwords
+  // [6] Remoção de Stopwords
   remove_stopwords(article_vecs, count);
 
-  // 5. Stemming
+  // [7] Stemming
   stem_articles(article_vecs, count);
 
-  // 6. Popula o hash com os termos e suas frequências
+  // [8] Populando hash com os termos e suas frequências
   populate_tf_hash(tf, article_vecs, count, t->start);
 
   for (long int i = 0; i < count && i < 20; ++i) {
@@ -154,21 +182,21 @@ void *preprocess(void *arg) {
     }
   }
 
-  // 7. Computar vocabulário local
-  generate_vocab(idf, article_vecs, count);
+  // [9] Computar vocabulário local
+  set_idf_words(idf, article_vecs, count);
 
-  // 8. Mergir hashes locais numa global
+  // [10] Mergir TF e IDF hashes
   pthread_mutex_lock(&mutex);
   tf_hash_merge(global_tf, tf);
   generic_hash_merge(global_idf, idf);
   pthread_mutex_unlock(&mutex);
 
-  // 9. Sincronizar todas as threads (esperar que todas terminem de mergir)
+  // [11] Sincronizar as threads antes de computar variáveis globais únicas
   LOG(stdout, "Thread %ld esperando na barreira", t->id);
   pthread_barrier_wait(&barrier);
 
   // 10. Computar IDF apenas uma vez (primeira thread que passar)
-  pthread_once(&once, compute_idf_once);
+  pthread_once(&once, compute_once);
 
   // 11. Computar vetores de documentos usando TF-IDF
   compute_doc_vecs(global_doc_vec, global_tf, global_idf, count, t->start);
@@ -176,6 +204,8 @@ void *preprocess(void *arg) {
   // 12. Computar normas dos documentos
   compute_doc_norms(global_doc_norms, global_doc_vec, count, global_vocab_size, t->start);
 
+  
+  
   // Imprimir alguns vetores para verificação
   LOG(stdout, "=== Vetores de documentos da Thread %ld ===", t->id);
   for (long int i = 0; i < count && i < 3; ++i) {
@@ -196,10 +226,6 @@ void *preprocess(void *arg) {
     LOG(stdout, "");  // Linha em branco para separar documentos
   }
 
-  // 12. Computar normas dos documentos
-  // compute_doc_norms(global_doc_vec, count);
-
-
   LOG(stdout, "Thread %ld passou da barreira e IDF já foi computado", t->id);
 
   // Liberar memória
@@ -218,11 +244,21 @@ void *preprocess(void *arg) {
   pthread_exit(NULL);
 }
 
+/* --------------- Fluxo Principal --------------- */
+// 
+// 
+
 int main(int argc, char *argv[]) {
-  const char *filename_tfidf = "tfidf.bin", *filename_db = "wiki-small.db",
+  const char *filename_db = "wiki-small.db",
+             *filename_tf = "models/tf.bin",
+             *filename_idf = "models/idf.bin",
+             *filename_doc_vec = "models/doc_vec.bin",
+             *filename_doc_norms = "models/doc_norms.bin",
+             *filename_vocab = "models/vocab.txt",
              *tablename = "sample_articles";
   const char *query_user = "exemplo";
   int nthreads = 4;
+  int save_bin = 0;
   long int entries = 0;
 
   // CLI com parâmetros nomeados
@@ -233,8 +269,6 @@ int main(int argc, char *argv[]) {
       entries = atol(argv[++i]);
     else if (strcmp(argv[i], "--filename_db") == 0 && i + 1 < argc)
       filename_db = argv[++i];
-    else if (strcmp(argv[i], "--filename_tfidf") == 0 && i + 1 < argc)
-      filename_tfidf = argv[++i];
     else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
       query_user = argv[++i];
     else if (strcmp(argv[i], "--tablename") == 0 && i + 1 < argc)
@@ -250,8 +284,6 @@ int main(int argc, char *argv[]) {
           "--entries: Quantidade de entradas para pré-processamento (default: "
           "Toda tabela 'sample_articles')\n"
           "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
-          "--filename_tfidf: Nome do arquivo com estrutura do TF-IDF (default: "
-          "'tfidf.bin')\n"
           "--query_user: Consulta do usuário (default: 'exemplo')\n"
           "--tablename: Nome da tabela consultada (default: "
           "'sample_articles')\n",
@@ -265,11 +297,10 @@ int main(int argc, char *argv[]) {
       "\targc: %d\n"
       "\tnthreads: %d\n"
       "\tentries: %ld\n"
-      "\tfilename_tfidf: %s\n"
       "\tfilename_db: %s\n"
       "\tquery_user: %s\n"
       "\ttablename: %s",
-      argc, nthreads, entries, filename_tfidf, filename_db, query_user,
+      argc, nthreads, entries, filename_db, query_user,
       tablename);
 
   if (nthreads <= 0) {
@@ -285,13 +316,18 @@ int main(int argc, char *argv[]) {
   }
 
   pthread_mutex_init(&mutex, NULL);
-  
+
   // Caso o arquivo não exista: Pré-processamento
-  if (access(filename_tfidf, F_OK) == -1) {
+  if (access(filename_tf, F_OK) == -1 ||
+      access(filename_idf, F_OK) == -1 ||
+      access(filename_doc_vec, F_OK) == -1 ||
+      access(filename_doc_norms, F_OK) == -1 ||
+      access(filename_vocab, F_OK) == -1) {
     pthread_t *tids;
     const char *query_count = "select count(*) from \"%w\";";
     global_tf = tf_hash_new();
     global_idf = generic_hash_new();
+    save_bin = 1;
 
     // Carregar stopwords uma vez (compartilhado por todas threads)
     load_stopwords("assets/stopwords.txt");
@@ -377,13 +413,72 @@ int main(int argc, char *argv[]) {
     LOG(stdout, "=== TF Hash Global Final ===");
     print_tf_hash(global_tf, -1, VERBOSE);
 
+    // Salvar estruturas globais em arquivos binários
+    if (save_bin) {
+        printf("\nSalvando estruturas em disco\n");
+        save_tf_hash(global_tf, filename_tf);
+        save_generic_hash(global_idf, filename_idf);
+        save_doc_vecs(global_doc_vec, global_entries, global_vocab_size, filename_doc_vec);
+        save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
+        save_vocab(global_vocab, global_vocab_size, filename_vocab);
+    }
+
     // Liberar stopwords e tf hash globais
     free_stopwords();
     tf_hash_free(global_tf);
 
   } else {
-    // Carregar estrutura hash TF-IDF do arquivo
-    printf("Arquivo binário encontrado: %s\n", filename_tfidf);
+    // Carregar estruturas pré-processadas do disco
+    printf("Arquivos binários encontrados, carregando estruturas...\n");
+
+    global_tf = load_tf_hash(filename_tf);
+    if (!global_tf) {
+      fprintf(stderr, "Erro ao carregar global_tf\n");
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    global_idf = load_generic_hash(filename_idf);
+    if (!global_idf) {
+      fprintf(stderr, "Erro ao carregar global_idf\n");
+      tf_hash_free(global_tf);
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    global_doc_vec = load_doc_vecs(filename_doc_vec, &global_entries, &global_vocab_size);
+    if (!global_doc_vec) {
+      fprintf(stderr, "Erro ao carregar global_doc_vec\n");
+      tf_hash_free(global_tf);
+      generic_hash_free(global_idf);
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    global_doc_norms = load_doc_norms(filename_doc_norms, NULL);
+    if (!global_doc_norms) {
+      fprintf(stderr, "Erro ao carregar global_doc_norms\n");
+      tf_hash_free(global_tf);
+      generic_hash_free(global_idf);
+      for (long int i = 0; i < global_entries; i++) free(global_doc_vec[i]);
+      free(global_doc_vec);
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    global_vocab = load_vocab(filename_vocab, NULL);
+    if (!global_vocab) {
+      fprintf(stderr, "Erro ao carregar global_vocab\n");
+      tf_hash_free(global_tf);
+      generic_hash_free(global_idf);
+      for (long int i = 0; i < global_entries; i++) free(global_doc_vec[i]);
+      free(global_doc_vec);
+      free(global_doc_norms);
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    printf("Todas as estruturas foram carregadas com sucesso!\n");
   }
 
   // Impressão das palavras com IDF (primeiras 30 entradas)

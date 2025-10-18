@@ -25,7 +25,7 @@ FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferH
 ENTRIES ?= 100
 VERBOSE ?= 1
 
-SRC = src$(PATH_SEP)main.c src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c
+SRC = src$(PATH_SEP)main.c src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c
 OBJ = $(SRC:.c=.o)
 
 all: $(TARGET)

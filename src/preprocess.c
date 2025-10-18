@@ -37,7 +37,7 @@ void free_stopwords(void) {
   }
 }
 
-void generate_vocab(generic_hash* vocab, char ***article_vecs, long int count) {
+void set_idf_words(generic_hash* vocab, char ***article_vecs, long int count) {
   if (!article_vecs) {
     fprintf(stderr, "Erro: article_vecs é nulo.\n");
     pthread_exit(NULL);
@@ -53,7 +53,7 @@ void generate_vocab(generic_hash* vocab, char ***article_vecs, long int count) {
   }
 }
 
-void set_idf(generic_hash *set, const tf_hash *tf, double doc_count) {
+void set_idf_value(generic_hash *set, const tf_hash *tf, double doc_count) {
   if (!set || !tf) {
       fprintf(stderr, "Erro: set ou tf é nulo.\n");
       pthread_exit(NULL);

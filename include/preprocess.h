@@ -5,12 +5,12 @@
 
 extern generic_hash *global_stopwords;
 
-generic_hash *generate_vocab(generic_hash *vocab, char ***article_vecs, long int count);
+generic_hash *set_idf_words(generic_hash *vocab, char ***article_vecs, long int count);
 
 tf_hash *populate_tf_hash(tf_hash *tf, char ***article_vecs, long int count,
                           long int offset);
 
-void set_idf(generic_hash *set, const tf_hash *tf, double doc_count);
+void set_idf_value(generic_hash *set, const tf_hash *tf, double doc_count);
 
 char ***stem_articles(char ***article_vecs, long int count);
 void compute_doc_vecs(double **global_doc_vec, const tf_hash *global_tf, generic_hash *global_idf, long int count, long int offset);
