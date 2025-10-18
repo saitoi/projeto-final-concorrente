@@ -53,16 +53,13 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Stemmer.
     - [x] Popular hash local.
 - [x] Mergir hashes e montar estrutura do TF-IDF com `hash_t`. 
-- [ ] Unificar pipeline do SQlite.
-- [ ] Reorganizar funções e estrutura dos arquivos.
-- [ ] Remover prints de debug excessivos.
-- [ ] Pré-computar:
+- [x] Pré-computar:
     - [x] Vocabulário.
     - [x] IDF.
     - [x] Sincronizar set_idf e generic_hash_to_vec com barrier.
     - [x] Vetores dos documentos.
     - [x] Normas dos vetores.
-    - [ ] Salvamento em ordem em um binário.
+    - [x] Salvamento em ordem em um binário.
 - [ ] Consulta:
     - [ ] Pré-processamento da consulta do usuário.
     - [ ] Passo adicionar de replicar scripts de regex do preprocess/**.py em C
@@ -71,6 +68,12 @@ Leia `instrucoes-projeto.pdf`.
     - [ ] Processamento de texto (parecido com DuckDB).
     - [ ] Delimitadores.
 - [ ] Adicionar macros LOG e variável VERBOSE em `sqlite_helper.c`.
+
+### Menos Relevantes
+
+- [ ] Unificar pipeline do SQlite.
+- [ ] Reorganizar funções e estrutura dos arquivos.
+- [ ] Remover prints de debug excessivos.
 
 ### Tarefas Futuras
 
