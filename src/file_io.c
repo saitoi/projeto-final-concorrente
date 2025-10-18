@@ -120,12 +120,13 @@ int save_doc_vecs(double **doc_vecs, long int num_docs, size_t vocab_size,
   }
 
   fclose(fp);
-  printf("global_doc_vec salvo em %s (%ld docs x %zu palavras)\n",
-         filename, num_docs, vocab_size);
+  printf("global_doc_vec salvo em %s (%ld docs x %zu palavras)\n", filename,
+         num_docs, vocab_size);
   return 0;
 }
 
-int save_doc_norms(const double *norms, long int num_docs, const char *filename) {
+int save_doc_norms(const double *norms, long int num_docs,
+                   const char *filename) {
   if (!norms || !filename) {
     fprintf(stderr, "Erro: norms ou filename é nulo\n");
     return -1;
@@ -190,7 +191,8 @@ tf_hash *load_tf_hash(const char *filename) {
     return NULL;
   }
 
-  // Ler capacidade, tamanho e total de entradas (não usaremos cap/size diretamente)
+  // Ler capacidade, tamanho e total de entradas (não usaremos cap/size
+  // diretamente)
   size_t cap, size, total_entries;
   fread(&cap, sizeof(size_t), 1, fp);
   fread(&size, sizeof(size_t), 1, fp);
@@ -262,7 +264,8 @@ generic_hash *load_generic_hash(const char *filename) {
   size_t entries_read = 0;
   while (!feof(fp)) {
     size_t wlen;
-    if (fread(&wlen, sizeof(size_t), 1, fp) != 1) break;
+    if (fread(&wlen, sizeof(size_t), 1, fp) != 1)
+      break;
 
     char *word = (char *)malloc(wlen + 1);
     if (!word) {
@@ -309,7 +312,8 @@ generic_hash *load_generic_hash(const char *filename) {
   return gh;
 }
 
-double **load_doc_vecs(const char *filename, long int *num_docs_out, size_t *vocab_size_out) {
+double **load_doc_vecs(const char *filename, long int *num_docs_out,
+                       size_t *vocab_size_out) {
   if (!filename) {
     fprintf(stderr, "Erro: filename é nulo\n");
     return NULL;
@@ -338,7 +342,8 @@ double **load_doc_vecs(const char *filename, long int *num_docs_out, size_t *voc
   for (long int i = 0; i < num_docs; i++) {
     doc_vecs[i] = (double *)malloc(vocab_size * sizeof(double));
     if (!doc_vecs[i]) {
-      for (long int j = 0; j < i; j++) free(doc_vecs[j]);
+      for (long int j = 0; j < i; j++)
+        free(doc_vecs[j]);
       free(doc_vecs);
       fclose(fp);
       return NULL;
@@ -347,11 +352,13 @@ double **load_doc_vecs(const char *filename, long int *num_docs_out, size_t *voc
   }
 
   fclose(fp);
-  printf("global_doc_vec carregado de %s (%ld docs x %zu palavras)\n",
-         filename, num_docs, vocab_size);
+  printf("global_doc_vec carregado de %s (%ld docs x %zu palavras)\n", filename,
+         num_docs, vocab_size);
 
-  if (num_docs_out) *num_docs_out = num_docs;
-  if (vocab_size_out) *vocab_size_out = vocab_size;
+  if (num_docs_out)
+    *num_docs_out = num_docs;
+  if (vocab_size_out)
+    *vocab_size_out = vocab_size;
 
   return doc_vecs;
 }
@@ -384,7 +391,8 @@ double *load_doc_norms(const char *filename, long int *num_docs_out) {
   fclose(fp);
   printf("global_doc_norms carregado de %s (%ld normas)\n", filename, num_docs);
 
-  if (num_docs_out) *num_docs_out = num_docs;
+  if (num_docs_out)
+    *num_docs_out = num_docs;
 
   return norms;
 }
@@ -422,7 +430,8 @@ const char **load_vocab(const char *filename, size_t *vocab_size_out) {
     line[strcspn(line, "\n")] = '\0';
     vocab[i] = strdup(line);
     if (!vocab[i]) {
-      for (size_t j = 0; j < i; j++) free((void *)vocab[j]);
+      for (size_t j = 0; j < i; j++)
+        free((void *)vocab[j]);
       free(vocab);
       fclose(fp);
       return NULL;
@@ -433,7 +442,8 @@ const char **load_vocab(const char *filename, size_t *vocab_size_out) {
   fclose(fp);
   printf("global_vocab carregado de %s (%zu palavras)\n", filename, count);
 
-  if (vocab_size_out) *vocab_size_out = count;
+  if (vocab_size_out)
+    *vocab_size_out = count;
 
   return vocab;
 }

@@ -1,10 +1,10 @@
 #include "../include/hash_t.h"
 #include <libstemmer.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 generic_hash *global_stopwords = NULL;
 
@@ -37,7 +37,7 @@ void free_stopwords(void) {
   }
 }
 
-void set_idf_words(generic_hash* vocab, char ***article_vecs, long int count) {
+void set_idf_words(generic_hash *vocab, char ***article_vecs, long int count) {
   if (!article_vecs) {
     fprintf(stderr, "Erro: article_vecs é nulo.\n");
     pthread_exit(NULL);
@@ -55,60 +55,67 @@ void set_idf_words(generic_hash* vocab, char ***article_vecs, long int count) {
 
 void set_idf_value(generic_hash *set, const tf_hash *tf, double doc_count) {
   if (!set || !tf) {
-      fprintf(stderr, "Erro: set ou tf é nulo.\n");
-      pthread_exit(NULL);
+    fprintf(stderr, "Erro: set ou tf é nulo.\n");
+    pthread_exit(NULL);
   }
 
   for (size_t i = 0; i < set->cap; i++) {
     GEntry *e = set->buckets[i];
     while (e) {
       int freq = tf_hash_get_ni(tf, e->word);
-      if (freq > 0) e->idf = log2(doc_count / freq);
-      else  e->idf = 0.0;
+      if (freq > 0)
+        e->idf = log2(doc_count / freq);
+      else
+        e->idf = 0.0;
       e = e->next;
     }
   }
 }
 
-void compute_doc_vecs(double **global_doc_vec, const tf_hash *global_tf, generic_hash *global_idf, long int count, long int offset) {
-    if (!global_doc_vec || !global_tf || !global_idf || count <= 0) {
-        fprintf(stderr, "Erro: global_doc_vec, global_vocab, global_tf, count ou offset é inválido.\n");
-        pthread_exit(NULL);
+void compute_doc_vecs(double **global_doc_vec, const tf_hash *global_tf,
+                      generic_hash *global_idf, long int count,
+                      long int offset) {
+  if (!global_doc_vec || !global_tf || !global_idf || count <= 0) {
+    fprintf(stderr, "Erro: global_doc_vec, global_vocab, global_tf, count ou "
+                    "offset é inválido.\n");
+    pthread_exit(NULL);
+  }
+
+  // Iterando sobre os documentos
+  for (long int i = offset; i < offset + count; ++i) {
+    // Índice da palavra no vetor de documentos
+    size_t word_idx = 0;
+
+    // Iterando sobre os buckets do vocabulário (global_idf)
+    for (size_t j = 0; j < global_idf->cap; j++) {
+      GEntry *e = global_idf->buckets[j];
+
+      // Iterando sobre todas as palavras no bucket
+      while (e) {
+        double freq = 0.0;
+        tf_hash_get_freq(global_tf, e->word, i, &freq);
+
+        double tfidf_value = (freq == 0) ? 0.0 : (1.0 + log2(freq)) * e->idf;
+        global_doc_vec[i][word_idx] = tfidf_value;
+
+        e = e->next;
+        word_idx++;
+      }
     }
-
-    // Iterando sobre os documentos
-    for (long int i = offset; i < offset + count; ++i) {
-        // Índice da palavra no vetor de documentos
-        size_t word_idx = 0;
-
-        // Iterando sobre os buckets do vocabulário (global_idf)
-        for (size_t j = 0; j < global_idf->cap; j++) {
-            GEntry *e = global_idf->buckets[j];
-
-            // Iterando sobre todas as palavras no bucket
-            while (e) {
-                double freq = 0.0;
-                tf_hash_get_freq(global_tf, e->word, i, &freq);
-
-                double tfidf_value = (freq == 0) ? 0.0 : (1.0 + log2(freq)) * e->idf;
-                global_doc_vec[i][word_idx] = tfidf_value;
-
-                e = e->next;
-                word_idx++;
-            }
-        }
-    }
+  }
 }
 
-void compute_doc_norms(double *global_doc_norms, double **global_doc_vecs, long int doc_count, long int vocab_size, long int offset) {
-    for (long int i = offset; i < offset + doc_count; ++i) {
-        double norm = 0.0;
-        for (long int j = 0; j < vocab_size; ++j) {
-            norm += global_doc_vecs[i][j] * global_doc_vecs[i][j];
-        }
-        norm = sqrt(norm);
-        global_doc_norms[i] = norm;
+void compute_doc_norms(double *global_doc_norms, double **global_doc_vecs,
+                       long int doc_count, long int vocab_size,
+                       long int offset) {
+  for (long int i = offset; i < offset + doc_count; ++i) {
+    double norm = 0.0;
+    for (long int j = 0; j < vocab_size; ++j) {
+      norm += global_doc_vecs[i][j] * global_doc_vecs[i][j];
     }
+    norm = sqrt(norm);
+    global_doc_norms[i] = norm;
+  }
 }
 
 void stem_articles(char ***article_vecs, long int count) {
@@ -175,7 +182,7 @@ char ***tokenize_articles(char **article_texts, long int count) {
       free(article_vecs[i]);
       article_vecs[i] = NULL;
       continue;
-}
+    }
 
     long int j = 0;
     char *token = strtok(text_copy, " \t\n\r");

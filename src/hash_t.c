@@ -185,7 +185,7 @@ const char **generic_hash_to_vec(const generic_hash *set) {
     return NULL;
 
   size_t count = generic_hash_size(set);
-  const char **vec = (const char **) malloc(count * sizeof(const char *));
+  const char **vec = (const char **)malloc(count * sizeof(const char *));
   if (!vec) {
     perror("malloc");
     exit(1);
@@ -483,7 +483,8 @@ void print_tf_hash(const tf_hash *tf, long int thread_id, int verbose) {
     return;
 
   fprintf(stdout, "[VERBOSE] Thread %ld - TF Hash Contents:\n", thread_id);
-  fprintf(stdout, "[VERBOSE]   Hash capacity: %zu, size: %zu\n", tf->cap, tf->size);
+  fprintf(stdout, "[VERBOSE]   Hash capacity: %zu, size: %zu\n", tf->cap,
+          tf->size);
 
   size_t word_count = 0;
   for (size_t i = 0; i < tf->cap; i++) {
@@ -499,11 +500,14 @@ void print_tf_hash(const tf_hash *tf, long int thread_id, int verbose) {
           doc_count++;
         }
       }
-      fprintf(stdout, "[VERBOSE]     Total docs for '%s': %zu\n", e->key, doc_count);
+      fprintf(stdout, "[VERBOSE]     Total docs for '%s': %zu\n", e->key,
+              doc_count);
 
       // Limitar a saída para não ficar muito grande
       if (word_count >= 20) {
-        fprintf(stdout, "[VERBOSE]   ... (mostrando apenas as primeiras 20 palavras)\n");
+        fprintf(
+            stdout,
+            "[VERBOSE]   ... (mostrando apenas as primeiras 20 palavras)\n");
         return;
       }
     }
