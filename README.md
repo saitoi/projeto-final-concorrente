@@ -16,6 +16,7 @@
     ```
 
 4. Verifique se sqlite3 os dev package está instalada.
+4. Verifique se a biblioteca libstemmer do SnowballStemmer está instalada.
 5. Compile e execute:
 
     ```bash
@@ -71,14 +72,14 @@ Leia `instrucoes-projeto.pdf`.
 
 ### Menos Relevantes
 
+- [ ] Executar `make check` e corrigir warnings.
 - [ ] Unificar pipeline do SQlite.
 - [ ] Reorganizar funções e estrutura dos arquivos.
 - [ ] Remover prints de debug excessivos.
 
 ### Tarefas Futuras
 
-- [ ] Abordagem de chunks para pré-processamento.
-- [ ] 
+- [ ] Abordagem de chunks para pré-processamento de coleções maiores.
 
 ### Questionamentos
 
