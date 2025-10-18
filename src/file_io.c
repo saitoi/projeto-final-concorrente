@@ -3,6 +3,39 @@
 #include <stdlib.h>
 #include <string.h>
 
+/* ==================== Stopwords ==================== */
+
+generic_hash *global_stopwords = NULL;
+
+void load_stopwords(const char *filename) {
+  FILE *f = fopen(filename, "r");
+  if (!f) {
+    fprintf(stderr, "Erro ao abrir arquivo de stopwords: %s\n", filename);
+    return;
+  }
+
+  global_stopwords = generic_hash_new();
+
+  char line[256];
+  while (fgets(line, sizeof(line), f)) {
+    line[strcspn(line, "\n")] = '\0';
+
+    if (strlen(line) == 0)
+      continue;
+
+    generic_hash_add(global_stopwords, line);
+  }
+
+  fclose(f);
+}
+
+void free_stopwords(void) {
+  if (global_stopwords) {
+    generic_hash_free(global_stopwords);
+    global_stopwords = NULL;
+  }
+}
+
 /* ==================== Funções de Serialização ==================== */
 
 int save_tf_hash(const tf_hash *tf, const char *filename) {

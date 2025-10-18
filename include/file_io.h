@@ -4,6 +4,13 @@
 #include "hash_t.h"
 #include <stddef.h>
 
+/* ==================== Stopwords ==================== */
+
+extern generic_hash *global_stopwords;
+
+void load_stopwords(const char *filename);
+void free_stopwords(void);
+
 /* ==================== Funções de Serialização ==================== */
 
 int save_tf_hash(const tf_hash *tf, const char *filename);

@@ -76,6 +76,7 @@ Leia `instrucoes-projeto.pdf`.
 - [ ] Unificar pipeline do SQlite.
 - [ ] Reorganizar funções e estrutura dos arquivos.
 - [ ] Remover prints de debug excessivos.
+- [ ] Possivelmente converter variável `VERBOSE` para uma flag de compilação
 
 ### Tarefas Futuras
 

@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../include/preprocess_query.h"
 #include "../include/file_io.h"
 #include "../include/hash_t.h"
 #include "../include/preprocess.h"
@@ -54,6 +55,316 @@ typedef struct {
   const char *filename_db;
   const char *tablename;
 } thread_args;
+
+void compute_once(void);
+void *preprocess(void *args);
+
+/* --------------- Fluxo Principal --------------- */
+//
+
+int main(int argc, char *argv[]) {
+  const char *filename_db = "wiki-small.db", *filename_tf = "models/tf.bin",
+             *filename_idf = "models/idf.bin",
+             *filename_doc_vec = "models/doc_vec.bin",
+             *filename_doc_norms = "models/doc_norms.bin",
+             *filename_vocab = "models/vocab.txt",
+             *tablename = "sample_articles";
+  const char *query_user = "shakespeare english literature";
+  int nthreads = 4;
+  long int entries = 0;
+
+  // CLI com parâmetros nomeados
+  for (int i = 1; i < argc; ++i) {
+    if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc)
+      nthreads = atoi(argv[++i]);
+    else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc)
+      entries = atol(argv[++i]);
+    else if (strcmp(argv[i], "--filename_db") == 0 && i + 1 < argc)
+      filename_db = argv[++i];
+    else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
+      query_user = argv[++i];
+    else if (strcmp(argv[i], "--tablename") == 0 && i + 1 < argc)
+      tablename = argv[++i];
+    else if (strcmp(argv[i], "--verbose") == 0)
+      VERBOSE = 1;
+    else {
+      fprintf(
+          stderr,
+          "Uso: %s <parametros nomeados>\n"
+          "--verbose: Verbosidade (default: 0)\n"
+          "--nthreads: Número de threads (default: 4)\n"
+          "--entries: Quantidade de entradas para pré-processamento (default: "
+          "Toda tabela 'sample_articles')\n"
+          "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
+          "--query_user: Consulta do usuário (default: 'exemplo')\n"
+          "--tablename: Nome da tabela consultada (default: "
+          "'sample_articles')\n",
+          argv[0]);
+      return 1;
+    }
+  }
+
+  LOG(stdout,
+      "Parâmetros nomeados:\n"
+      "\targc: %d\n"
+      "\tnthreads: %d\n"
+      "\tentries: %ld\n"
+      "\tfilename_db: %s\n"
+      "\tquery_user: %s\n"
+      "\ttablename: %s",
+      argc, nthreads, entries, filename_db, query_user, tablename);
+
+  if (nthreads <= 0) {
+    fprintf(stderr, "Número de threads inválido (%d)\n", nthreads);
+    return 1;
+  }
+
+  if (entries > MAX_DOCS) {
+    fprintf(stderr,
+            "Número de entradas excede o limite máximo de documentos (%d)\n",
+            MAX_DOCS);
+    return 1;
+  }
+
+  pthread_mutex_init(&mutex, NULL);
+
+  // Caso o arquivo não exista: Pré-processamento
+  if (access(filename_tf, F_OK) == -1 || access(filename_idf, F_OK) == -1 ||
+      access(filename_doc_vec, F_OK) == -1 ||
+      access(filename_doc_norms, F_OK) == -1 ||
+      access(filename_vocab, F_OK) == -1) {
+    pthread_t *tids;
+    const char *query_count = "select count(*) from \"%w\";";
+    global_tf = tf_hash_new();
+    global_idf = generic_hash_new();
+
+    // Carregar stopwords uma vez (compartilhado por todas threads)
+    load_stopwords("assets/stopwords.txt");
+    if (!global_stopwords) {
+      fprintf(stderr, "Falha ao carregar stopwords\n");
+      return 1;
+    }
+
+    // Sobreescreve count=0
+    // Quantos registros na tabela 'sample_articles'
+    if (!entries)
+      entries = get_single_int(filename_db, query_count, tablename);
+
+    // Armazenar em variável global para uso em compute_idf_once
+    global_entries = entries;
+
+    printf("Qtd. artigos: %ld\n", entries);
+
+    // Inicializar barreira para sincronizar threads
+    if (pthread_barrier_init(&barrier, NULL, nthreads)) {
+      fprintf(stderr, "Erro ao inicializar barreira\n");
+      return 1;
+    }
+
+    tids = (pthread_t *)malloc(nthreads * sizeof(pthread_t));
+    if (!tids) {
+      fprintf(stderr,
+              "Erro ao alocar memória para identificador das threads\n");
+      return 1;
+    }
+
+    thread_args *args = (thread_args *)malloc(nthreads * sizeof(thread_args));
+    if (!args) {
+      fprintf(stderr, "Erro ao alocar memória para argumentos das threads\n");
+      free(tids);
+      return 1;
+    }
+
+    long int base = entries / nthreads;
+    long int rem = entries % nthreads;
+    for (long int i = 0; i < nthreads; ++i) {
+      args[i].id = i;
+      args[i].nthreads = nthreads;
+      args[i].filename_db = filename_db;
+      args[i].tablename = tablename;
+      args[i].start = i * base + (i < rem ? i : rem);
+      args[i].end = args[i].start + base + (i < rem);
+      if (pthread_create(&tids[i], NULL, preprocess, (void *)&args[i])) {
+        fprintf(stderr, "Erro ao criar thread %ld\n", i);
+        free(args);
+        free(tids);
+        return 1;
+      }
+    }
+
+    for (long int i = 0; i < nthreads; ++i) {
+      if (pthread_join(tids[i], NULL)) {
+        fprintf(stderr, "Erro ao esperar thread %ld\n", i);
+        free(args);
+        free(tids);
+        return 1;
+      }
+    }
+
+    free(args);
+    free(tids);
+
+    // Destruir barreira após threads terminarem
+    pthread_barrier_destroy(&barrier);
+
+    // Imprimir TF hash global final
+    LOG(stdout, "=== TF Hash Global Final ===");
+    print_tf_hash(global_tf, -1, VERBOSE);
+
+    // [15]
+    // Salvar estruturas globais em arquivos binários
+    printf("\nSalvando estruturas em disco\n");
+    save_tf_hash(global_tf, filename_tf);
+    save_generic_hash(global_idf, filename_idf);
+    save_doc_vecs(global_doc_vec, global_entries, global_vocab_size,
+                filename_doc_vec);
+    save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
+    save_vocab(global_vocab, global_vocab_size, filename_vocab);
+
+    // Liberar stopwords e tf hash globais
+    free_stopwords();
+    tf_hash_free(global_tf);
+
+  } else {
+
+    /* --------------- Carregamento dos Binários --------------- */
+
+    printf("Arquivos binários encontrados, carregando estruturas...\n");
+
+    global_tf = load_tf_hash(filename_tf);
+    if (!global_tf) {
+      fprintf(stderr, "Erro ao carregar global_tf\n");
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    global_idf = load_generic_hash(filename_idf);
+    if (!global_idf) {
+      fprintf(stderr, "Erro ao carregar global_idf\n");
+      tf_hash_free(global_tf);
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    global_doc_vec =
+        load_doc_vecs(filename_doc_vec, &global_entries, &global_vocab_size);
+    if (!global_doc_vec) {
+      fprintf(stderr, "Erro ao carregar global_doc_vec\n");
+      tf_hash_free(global_tf);
+      generic_hash_free(global_idf);
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    global_doc_norms = load_doc_norms(filename_doc_norms, NULL);
+    if (!global_doc_norms) {
+      fprintf(stderr, "Erro ao carregar global_doc_norms\n");
+      tf_hash_free(global_tf);
+      generic_hash_free(global_idf);
+      for (long int i = 0; i < global_entries; i++)
+        free(global_doc_vec[i]);
+      free(global_doc_vec);
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    global_vocab = load_vocab(filename_vocab, NULL);
+    if (!global_vocab) {
+      fprintf(stderr, "Erro ao carregar global_vocab\n");
+      tf_hash_free(global_tf);
+      generic_hash_free(global_idf);
+      for (long int i = 0; i < global_entries; i++)
+        free(global_doc_vec[i]);
+      free(global_doc_vec);
+      free(global_doc_norms);
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
+
+    printf("Todas as estruturas foram carregadas com sucesso!\n");
+  }
+
+  /* --------------- Consulta do Usuário --------------- */
+  
+  if (query_user) {
+    printf("Consulta do usuário: %s\n", query_user);
+    pthread_t *tids_query;
+    
+    long int token_count = 0;
+    char **query_tokens;
+
+    query_tokens = tokenize_query(query_user, &token_count);
+
+    LOG(stdout, "Tokenização da consulta do usuário concluída.");
+    LOG(stdout, "Quantidade de tokens: %ld", token_count);
+
+    tids_query = (pthread_t *)malloc(nthreads * sizeof(pthread_t));
+    if (!tids_query) {
+      fprintf(stderr,
+              "Erro ao alocar memória para identificador das threads\n");
+      return 1;
+    }
+
+    thread_args *args = (thread_args *)malloc(nthreads * sizeof(thread_args));
+    if (!args) {
+      fprintf(stderr, "Erro ao alocar memória para argumentos das threads\n");
+      free(tids_query);
+      return 1;
+    }
+
+    long int base = token_count / nthreads;
+    long int rem = token_count % nthreads;
+    for (long int i = 0; i < nthreads; ++i) {
+      args[i].id = i;
+      args[i].nthreads = nthreads;
+      args[i].filename_db = filename_db;
+      args[i].tablename = tablename;
+      args[i].start = i * base + (i < rem ? i : rem);
+      args[i].end = args[i].start + base + (i < rem);
+    if (pthread_create(&tids_query[i], NULL, preprocess_query, (void *)&args[i])) {
+        fprintf(stderr, "Erro ao criar thread %ld\n", i);
+        free(args);
+        free(tids_query);
+        return 1;
+      }
+    }
+
+    for (long int i = 0; i < nthreads; ++i) {
+      if (pthread_join(tids_query[i], NULL)) {
+        fprintf(stderr, "Erro ao esperar thread %ld\n", i);
+        free(args);
+        free(tids_query);
+        return 1;
+      }
+    }
+
+    free(args);
+    free(tids_query);
+  } else {
+      printf("Nenhuma consulta fornecida\n");
+  } 
+  
+  // Impressão das palavras com IDF (primeiras 30 entradas)
+  if (global_idf && VERBOSE) {
+    printf("\n=== Primeiras 30 palavras com IDF ===\n");
+    size_t count = 0;
+    size_t limit = 30;
+
+    for (size_t i = 0; i < global_idf->cap && count < limit; i++) {
+      for (GEntry *e = global_idf->buckets[i]; e && count < limit;
+           e = e->next) {
+        printf("Palavra: %-25s IDF: %.6f\n", e->word, e->idf);
+        count++;
+      }
+    }
+
+    generic_hash_free(global_idf);
+  }
+
+  pthread_mutex_destroy(&mutex);
+
+  return 0;
+}
 
 /* --------------- PTHREAD_ONCE_INIT --------------- */
 // Tarefas computadas uma única vez dentre todas as threads:
@@ -122,8 +433,11 @@ void compute_once(void) {
 // 8.  Populando a hash local de frequência dos termos (`tf_hash *global_tf`).
 // 9.  Popular vocabulário local (chaves do `generic_hash *global_idf`).
 // 10. Mergir TF e IDF hashes nas globais
-// 11. Uso do padrão barrreira (`pthread_barrier_t barrier`) para sincronizar as
-// threads. 11.
+// 11. Uso do padrão barrreira (`pthread_barrier_t barrier`) para sincronizar as threads
+// 12. Executar `compute_once` descrito na seção anterior: PTHREAD_ONCE_INIT.
+// 13. Transformar os documentos em vetores usando esquema de ponderação TF-IDF.
+// 14. Computar as normas dos vetores gerados na etapa anterior.
+// 15. Salvar todas as estruturas em arquivos binários (./models/*.bin).
 
 void *preprocess(void *arg) {
   // [1] Parâmetros das threads
@@ -201,13 +515,13 @@ void *preprocess(void *arg) {
   LOG(stdout, "Thread %ld esperando na barreira", t->id);
   pthread_barrier_wait(&barrier);
 
-  // 10. Computar IDF apenas uma vez (primeira thread que passar)
+  // [12] Variáveis globais computadas uma vez entre todas as threads
   pthread_once(&once, compute_once);
 
-  // 11. Computar vetores de documentos usando TF-IDF
+  // [13] Computar vetores de documentos usando TF-IDF
   compute_doc_vecs(global_doc_vec, global_tf, global_idf, count, t->start);
 
-  // 12. Computar normas dos documentos
+  // [14] Computar normas dos documentos
   compute_doc_norms(global_doc_norms, global_doc_vec, count, global_vocab_size,
                     t->start);
 
@@ -243,275 +557,11 @@ void *preprocess(void *arg) {
   fprintf(stdout, "Tamanho da Hash local da thread %zu: %ld\n", t->id,
           generic_hash_size(idf));
 
+  // Liberar memória de estruturas locais
   free(article_texts);
   free_article_vecs(article_vecs, count);
   tf_hash_free(tf);
   generic_hash_free(idf);
 
   pthread_exit(NULL);
-}
-
-/* --------------- Fluxo Principal --------------- */
-//
-//
-
-int main(int argc, char *argv[]) {
-  const char *filename_db = "wiki-small.db", *filename_tf = "models/tf.bin",
-             *filename_idf = "models/idf.bin",
-             *filename_doc_vec = "models/doc_vec.bin",
-             *filename_doc_norms = "models/doc_norms.bin",
-             *filename_vocab = "models/vocab.txt",
-             *tablename = "sample_articles";
-  const char *query_user = "example";
-  int nthreads = 4;
-  int save_bin = 0;
-  long int entries = 0;
-
-  // CLI com parâmetros nomeados
-  for (int i = 1; i < argc; ++i) {
-    if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc)
-      nthreads = atoi(argv[++i]);
-    else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc)
-      entries = atol(argv[++i]);
-    else if (strcmp(argv[i], "--filename_db") == 0 && i + 1 < argc)
-      filename_db = argv[++i];
-    else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
-      query_user = argv[++i];
-    else if (strcmp(argv[i], "--tablename") == 0 && i + 1 < argc)
-      tablename = argv[++i];
-    else if (strcmp(argv[i], "--verbose") == 0)
-      VERBOSE = 1;
-    else {
-      fprintf(
-          stderr,
-          "Uso: %s <parametros nomeados>\n"
-          "--verbose: Verbosidade (default: 0)\n"
-          "--nthreads: Número de threads (default: 4)\n"
-          "--entries: Quantidade de entradas para pré-processamento (default: "
-          "Toda tabela 'sample_articles')\n"
-          "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
-          "--query_user: Consulta do usuário (default: 'exemplo')\n"
-          "--tablename: Nome da tabela consultada (default: "
-          "'sample_articles')\n",
-          argv[0]);
-      return 1;
-    }
-  }
-
-  LOG(stdout,
-      "Parâmetros nomeados:\n"
-      "\targc: %d\n"
-      "\tnthreads: %d\n"
-      "\tentries: %ld\n"
-      "\tfilename_db: %s\n"
-      "\tquery_user: %s\n"
-      "\ttablename: %s",
-      argc, nthreads, entries, filename_db, query_user, tablename);
-
-  if (nthreads <= 0) {
-    fprintf(stderr, "Número de threads inválido (%d)\n", nthreads);
-    return 1;
-  }
-
-  if (entries > MAX_DOCS) {
-    fprintf(stderr,
-            "Número de entradas excede o limite máximo de documentos (%d)\n",
-            MAX_DOCS);
-    return 1;
-  }
-
-  pthread_mutex_init(&mutex, NULL);
-
-  // Caso o arquivo não exista: Pré-processamento
-  if (access(filename_tf, F_OK) == -1 || access(filename_idf, F_OK) == -1 ||
-      access(filename_doc_vec, F_OK) == -1 ||
-      access(filename_doc_norms, F_OK) == -1 ||
-      access(filename_vocab, F_OK) == -1) {
-    pthread_t *tids;
-    const char *query_count = "select count(*) from \"%w\";";
-    global_tf = tf_hash_new();
-    global_idf = generic_hash_new();
-    save_bin = 1;
-
-    // Carregar stopwords uma vez (compartilhado por todas threads)
-    load_stopwords("assets/stopwords.txt");
-    if (!global_stopwords) {
-      fprintf(stderr, "Falha ao carregar stopwords\n");
-      return 1;
-    }
-
-    // Sobreescreve count=0
-    // Quantos registros na tabela 'sample_articles'
-    if (!entries)
-      entries = get_single_int(filename_db, query_count, tablename);
-
-    // Armazenar em variável global para uso em compute_idf_once
-    global_entries = entries;
-
-    printf("Qtd. artigos: %ld\n", entries);
-
-    // Inicializar barreira para sincronizar threads
-    if (pthread_barrier_init(&barrier, NULL, nthreads)) {
-      fprintf(stderr, "Erro ao inicializar barreira\n");
-      return 1;
-    }
-
-    tids = (pthread_t *)malloc(nthreads * sizeof(pthread_t));
-    if (!tids) {
-      fprintf(stderr,
-              "Erro ao alocar memória para identificador das threads\n");
-      return 1;
-    }
-
-    thread_args **args =
-        (thread_args **)malloc(nthreads * sizeof(thread_args *));
-    if (!args) {
-      fprintf(stderr, "Erro ao alocar memória para argumentos das threads\n");
-      free(tids);
-      return 1;
-    }
-
-    long int base = entries / nthreads;
-    long int rem = entries % nthreads;
-    for (long int i = 0; i < nthreads; ++i) {
-      args[i] = (thread_args *)malloc(sizeof(thread_args));
-      if (!args[i]) {
-        fprintf(stderr, "Erro ao alocar memória para argumentos da thread\n");
-        for (long int j = 0; j < i; ++j)
-          free(args[j]);
-        free(args);
-        free(tids);
-        return 1;
-      }
-      args[i]->id = i;
-      args[i]->nthreads = nthreads;
-      args[i]->filename_db = filename_db;
-      args[i]->tablename = tablename;
-      args[i]->start = i * base + (i < rem ? i : rem);
-      args[i]->end = args[i]->start + base + (i < rem);
-      if (pthread_create(&tids[i], NULL, preprocess, (void *)args[i])) {
-        fprintf(stderr, "Erro ao criar thread %ld\n", i);
-        for (long int j = 0; j <= i; ++j)
-          free(args[j]);
-        free(args);
-        free(tids);
-        return 1;
-      }
-    }
-
-    for (long int i = 0; i < nthreads; ++i) {
-      if (pthread_join(tids[i], NULL)) {
-        fprintf(stderr, "Erro ao esperar thread %ld\n", i);
-        for (long int j = 0; j < nthreads; ++j)
-          free(args[j]);
-        free(args);
-        free(tids);
-        return 1;
-      }
-    }
-
-    for (long int i = 0; i < nthreads; ++i)
-      free(args[i]);
-    free(args);
-    free(tids);
-
-    // Destruir barreira após threads terminarem
-    pthread_barrier_destroy(&barrier);
-
-    // Imprimir TF hash global final
-    LOG(stdout, "=== TF Hash Global Final ===");
-    print_tf_hash(global_tf, -1, VERBOSE);
-
-    // Salvar estruturas globais em arquivos binários
-    if (save_bin) {
-      printf("\nSalvando estruturas em disco\n");
-      save_tf_hash(global_tf, filename_tf);
-      save_generic_hash(global_idf, filename_idf);
-      save_doc_vecs(global_doc_vec, global_entries, global_vocab_size,
-                    filename_doc_vec);
-      save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
-      save_vocab(global_vocab, global_vocab_size, filename_vocab);
-    }
-
-    // Liberar stopwords e tf hash globais
-    free_stopwords();
-    tf_hash_free(global_tf);
-
-  } else {
-    // Carregar estruturas pré-processadas do disco
-    printf("Arquivos binários encontrados, carregando estruturas...\n");
-
-    global_tf = load_tf_hash(filename_tf);
-    if (!global_tf) {
-      fprintf(stderr, "Erro ao carregar global_tf\n");
-      pthread_mutex_destroy(&mutex);
-      return 1;
-    }
-
-    global_idf = load_generic_hash(filename_idf);
-    if (!global_idf) {
-      fprintf(stderr, "Erro ao carregar global_idf\n");
-      tf_hash_free(global_tf);
-      pthread_mutex_destroy(&mutex);
-      return 1;
-    }
-
-    global_doc_vec =
-        load_doc_vecs(filename_doc_vec, &global_entries, &global_vocab_size);
-    if (!global_doc_vec) {
-      fprintf(stderr, "Erro ao carregar global_doc_vec\n");
-      tf_hash_free(global_tf);
-      generic_hash_free(global_idf);
-      pthread_mutex_destroy(&mutex);
-      return 1;
-    }
-
-    global_doc_norms = load_doc_norms(filename_doc_norms, NULL);
-    if (!global_doc_norms) {
-      fprintf(stderr, "Erro ao carregar global_doc_norms\n");
-      tf_hash_free(global_tf);
-      generic_hash_free(global_idf);
-      for (long int i = 0; i < global_entries; i++)
-        free(global_doc_vec[i]);
-      free(global_doc_vec);
-      pthread_mutex_destroy(&mutex);
-      return 1;
-    }
-
-    global_vocab = load_vocab(filename_vocab, NULL);
-    if (!global_vocab) {
-      fprintf(stderr, "Erro ao carregar global_vocab\n");
-      tf_hash_free(global_tf);
-      generic_hash_free(global_idf);
-      for (long int i = 0; i < global_entries; i++)
-        free(global_doc_vec[i]);
-      free(global_doc_vec);
-      free(global_doc_norms);
-      pthread_mutex_destroy(&mutex);
-      return 1;
-    }
-
-    printf("Todas as estruturas foram carregadas com sucesso!\n");
-  }
-
-  // Impressão das palavras com IDF (primeiras 30 entradas)
-  if (global_idf) {
-    printf("\n=== Primeiras 30 palavras com IDF ===\n");
-    size_t count = 0;
-    size_t limit = 30;
-
-    for (size_t i = 0; i < global_idf->cap && count < limit; i++) {
-      for (GEntry *e = global_idf->buckets[i]; e && count < limit;
-           e = e->next) {
-        printf("Palavra: %-25s IDF: %.6f\n", e->word, e->idf);
-        count++;
-      }
-    }
-
-    generic_hash_free(global_idf);
-  }
-
-  pthread_mutex_destroy(&mutex);
-
-  return 0;
 }
