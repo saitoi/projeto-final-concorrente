@@ -16,14 +16,16 @@ else
 endif
 
 CC = cc
-CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include
+CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include -g
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 # Parâmetros configuráveis
+TBL_NAME ?= "sample_articles"
 ENTRIES ?= 100
 VERBOSE ?= 1
 MANUAL ?= 0
 NTHR ?= 4
+
 
 # Se MANUAL=1, usa includes e libs locais
 ifeq ($(MANUAL),1)
@@ -65,7 +67,7 @@ format:
 check: lint format
 
 run: clean all
-	./$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,) --nthreads $(NTHR)
+	./$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,) --nthreads $(NTHR) --tablename $(TBL_NAME)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@

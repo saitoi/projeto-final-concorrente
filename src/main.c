@@ -60,10 +60,7 @@ void *preprocess(void *args);
 int main(int argc, char *argv[]) {
   LOG(stderr, "DEBUG: main() iniciando");
   fflush(stderr);
-  const char *filename_db = "wiki-small.db", *filename_tf = "models/tf.bin",
-             *filename_idf = "models/idf.bin",
-             *filename_doc_norms = "models/doc_norms.bin",
-             *tablename = "sample_articles";
+  const char *filename_db = "wiki-small.db", *tablename = "sample_articles";
   const char *query_user = "shakespeare english literature";
   int nthreads = 4;
   long int entries = 0;
@@ -132,26 +129,30 @@ int main(int argc, char *argv[]) {
 
   pthread_mutex_init(&mutex, NULL);
 
+  // Determinar número de entradas primeiro (para criar nomes de arquivo)
+  const char *query_count = "select count(*) from \"%w\";";
+  long int total = get_single_int(filename_db, query_count, tablename);
+  if (!entries || entries > total)
+    entries = total;
+
+  // Criar nomes de arquivo com sufixo do número de entradas
+  char filename_idf_with_entries[256];
+  char filename_doc_norms_with_entries[256];
+  snprintf(filename_idf_with_entries, sizeof(filename_idf_with_entries),
+           "models/idf_%ld.bin", entries);
+  snprintf(filename_doc_norms_with_entries, sizeof(filename_doc_norms_with_entries),
+           "models/doc_norms_%ld.bin", entries);
+
   // Caso o arquivo não exista: Pré-processamento
-  if (access(filename_tf, F_OK) == -1 || access(filename_idf, F_OK) == -1 ||
-      access(filename_doc_norms, F_OK) == -1) {
+  if (access(filename_idf_with_entries, F_OK) == -1 ||
+      access(filename_doc_norms_with_entries, F_OK) == -1) {
     pthread_t tids[MAX_THREADS];
     thread_args args[MAX_THREADS];
-    const char *query_count = "select count(*) from \"%w\";";
     global_idf = hash_new();
     global_tf = (hash_t **)calloc(entries, sizeof(hash_t *));
     if (!global_tf) {
       fprintf(stderr, "Falha ao alocar memória para global_tf\n");
       return 1;
-    }
-
-    // Inicializar cada hash de documento
-    for (long int i = 0; i < entries; i++) {
-      global_tf[i] = hash_new();
-      if (!global_tf[i]) {
-        fprintf(stderr, "Falha ao alocar memória para global_tf[%ld]\n", i);
-        return 1;
-      }
     }
 
     // Carregar stopwords uma vez (compartilhado por todas threads)
@@ -160,11 +161,6 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "Falha ao carregar stopwords\n");
       return 1;
     }
-
-    // Sobreescreve count=0
-    // Quantos registros na tabela 'sample_articles'
-    if (!entries)
-      entries = get_single_int(filename_db, query_count, tablename);
 
     // Armazenar em variável global para uso em compute_idf_once
     global_entries = entries;
@@ -210,10 +206,11 @@ int main(int argc, char *argv[]) {
     // [15]
     // Salvar estruturas globais em arquivos binários
     printf("\nSalvando estruturas em disco\n");
+
     // TODO: Implementar save para hash_t**
     // save_tf_hash(global_tf, filename_tf);
-    save_hash(global_idf, filename_idf);
-    save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
+    save_hash(global_idf, filename_idf_with_entries);
+    save_doc_norms(global_doc_norms, global_entries, filename_doc_norms_with_entries);
 
     // Liberar stopwords (usado apenas no pré-processamento)
     free_stopwords();
@@ -227,14 +224,14 @@ int main(int argc, char *argv[]) {
     // TODO: Implementar load para hash_t**
     // global_tf = load_tf_hash(filename_tf);
 
-    global_idf = load_hash(filename_idf);
+    global_idf = load_hash(filename_idf_with_entries);
     if (!global_idf) {
-      fprintf(stderr, "Erro ao carregar global_idf\n");
+      fprintf(stderr, "Erro ao carregar global_idf de %s\n", filename_idf_with_entries);
       pthread_mutex_destroy(&mutex);
       return 1;
     }
 
-    global_doc_norms = load_doc_norms(filename_doc_norms, &global_entries);
+    global_doc_norms = load_doc_norms(filename_doc_norms_with_entries, &global_entries);
     if (!global_doc_norms) {
       fprintf(stderr, "Erro ao carregar global_doc_norms\n");
       hash_free(global_idf);
@@ -315,13 +312,16 @@ int main(int argc, char *argv[]) {
   }
 
   // Liberar todas as estruturas globais
+  LOG(stderr, "DEBUG: Liberando global_tf (%ld documentos)", global_entries);
   if (global_tf) {
     for (long int i = 0; i < global_entries; i++) {
-      if (global_tf[i])
+      if (global_tf[i]) {
         hash_free(global_tf[i]);
+      }
     }
     free(global_tf);
   }
+  LOG(stderr, "DEBUG: global_tf liberado");
   if (global_idf)
     hash_free(global_idf);
 
