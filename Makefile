@@ -1,6 +1,5 @@
 # Detecta o sistema operacional
 ifeq ($(OS),Windows_NT)
-    # Configurações para Windows
     RM = del /Q
     RM_DIR = rmdir /S /Q
     TARGET = app.exe
@@ -8,7 +7,6 @@ ifeq ($(OS),Windows_NT)
     NULL_DEVICE = NUL
     LDFLAGS = -lsqlite3 -lpthread -lstemmer -lm
 else
-    # Configurações para Linux/Unix
     RM = rm -f
     RM_DIR = rm -rf
     TARGET = app
@@ -21,9 +19,17 @@ CC = cc
 CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
-# Parâmetros do programa (podem ser sobrescritos: make run ENTRIES=50 VERBOSE=1)
+# Parâmetros configuráveis
 ENTRIES ?= 100
 VERBOSE ?= 1
+MANUAL ?= 0
+NTHR ?= 4
+
+# Se MANUAL=1, usa includes e libs locais
+ifeq ($(MANUAL),1)
+    CFLAGS += -I./libstemmer/usr/include -I./libsqlite3/usr/include
+    LDFLAGS = -L./libstemmer/usr/lib/x86_64-linux-gnu -L./libsqlite3/usr/lib/x86_64-linux-gnu -lstemmer -lsqlite3 -lpthread -lm
+endif
 
 SRC = src$(PATH_SEP)main.c src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c
 OBJ = $(SRC:.c=.o)
@@ -44,7 +50,7 @@ help:
 	@echo ""
 	@echo "Exemplos:"
 	@echo "  make run ENTRIES=50 VERBOSE=0"
-	@echo "  make run ENTRIES=1000 VERBOSE=1"
+	@echo "  make run MANUAL=1"
 
 $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS)
@@ -58,7 +64,7 @@ format:
 check: lint format
 
 run: clean all
-	.$(PATH_SEP)$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,)
+	./$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,) --nthreads $(NTHR)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -72,6 +78,6 @@ ifeq ($(OS),Windows_NT)
 else
 	@find models -type f ! -name '.gitkeep' -delete 2>$(NULL_DEVICE) || true
 endif
-	echo 'Models cleaned..'
+	@echo 'Models cleaned..'
 
 .PHONY: all clean clean_models lint format check run help
