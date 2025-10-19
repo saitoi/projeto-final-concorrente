@@ -70,6 +70,51 @@ int save_hash(const hash_t *gh, const char *filename) {
   return 0;
 }
 
+int save_hash_array(hash_t **hashes, long int num_hashes, const char *filename) {
+  if (!hashes || !filename) {
+    fprintf(stderr, "Erro: hashes ou filename é nulo\n");
+    return -1;
+  }
+
+  FILE *fp = fopen(filename, "wb");
+  if (!fp) {
+    fprintf(stderr, "Erro ao abrir arquivo %s para escrita\n", filename);
+    return -1;
+  }
+
+  // Salvar número de hashes
+  fwrite(&num_hashes, sizeof(long int), 1, fp);
+
+  // Salvar cada hash
+  for (long int i = 0; i < num_hashes; i++) {
+    hash_t *h = hashes[i];
+    if (!h) {
+      // Hash nulo - salvar apenas capacidade 0
+      size_t zero = 0;
+      fwrite(&zero, sizeof(size_t), 1, fp);
+      fwrite(&zero, sizeof(size_t), 1, fp);
+      continue;
+    }
+
+    // Salvar capacidade e tamanho
+    fwrite(&h->cap, sizeof(size_t), 1, fp);
+    fwrite(&h->size, sizeof(size_t), 1, fp);
+
+    // Salvar cada entrada
+    for (size_t j = 0; j < h->cap; j++) {
+      for (HashEntry *e = h->buckets[j]; e; e = e->next) {
+        fwrite(&e->wlen, sizeof(size_t), 1, fp);
+        fwrite(e->word, sizeof(char), e->wlen, fp);
+        fwrite(&e->value, sizeof(double), 1, fp);
+      }
+    }
+  }
+
+  fclose(fp);
+  printf("global_tf salvo em %s (%ld hashes)\n", filename, num_hashes);
+  return 0;
+}
+
 int save_doc_vecs(double **doc_vecs, long int num_docs, size_t vocab_size,
                   const char *filename) {
   if (!doc_vecs || !filename) {
@@ -219,6 +264,112 @@ hash_t *load_hash(const char *filename) {
   fclose(fp);
   printf("global_idf carregado de %s (%zu entradas)\n", filename, entries_read);
   return gh;
+}
+
+hash_t **load_hash_array(const char *filename, long int *num_hashes_out) {
+  if (!filename) {
+    fprintf(stderr, "Erro: filename é nulo\n");
+    return NULL;
+  }
+
+  FILE *fp = fopen(filename, "rb");
+  if (!fp) {
+    fprintf(stderr, "Erro ao abrir arquivo %s para leitura\n", filename);
+    return NULL;
+  }
+
+  // Ler número de hashes
+  long int num_hashes;
+  if (fread(&num_hashes, sizeof(long int), 1, fp) != 1) {
+    fclose(fp);
+    return NULL;
+  }
+
+  if (num_hashes_out)
+    *num_hashes_out = num_hashes;
+
+  // Alocar array de ponteiros
+  hash_t **hashes = (hash_t **)calloc(num_hashes, sizeof(hash_t *));
+  if (!hashes) {
+    fclose(fp);
+    return NULL;
+  }
+
+  // Carregar cada hash
+  for (long int i = 0; i < num_hashes; i++) {
+    size_t cap, size;
+    if (fread(&cap, sizeof(size_t), 1, fp) != 1) {
+      // Erro de leitura - liberar tudo
+      for (long int j = 0; j < i; j++) {
+        if (hashes[j])
+          hash_free(hashes[j]);
+      }
+      free(hashes);
+      fclose(fp);
+      return NULL;
+    }
+
+    fread(&size, sizeof(size_t), 1, fp);
+
+    // Se capacidade é 0, hash é nulo
+    if (cap == 0) {
+      hashes[i] = NULL;
+      continue;
+    }
+
+    // Criar novo hash
+    hashes[i] = hash_new();
+    if (!hashes[i]) {
+      for (long int j = 0; j < i; j++) {
+        if (hashes[j])
+          hash_free(hashes[j]);
+      }
+      free(hashes);
+      fclose(fp);
+      return NULL;
+    }
+
+    // Ler cada entrada
+    for (size_t j = 0; j < size; j++) {
+      size_t wlen;
+      if (fread(&wlen, sizeof(size_t), 1, fp) != 1)
+        break;
+
+      char *word = (char *)malloc(wlen + 1);
+      if (!word)
+        break;
+
+      if (fread(word, sizeof(char), wlen, fp) != wlen) {
+        free(word);
+        break;
+      }
+      word[wlen] = '\0';
+
+      double value;
+      if (fread(&value, sizeof(double), 1, fp) != 1) {
+        free(word);
+        break;
+      }
+
+      hash_add(hashes[i], word, 0.0);
+
+      // Encontrar a entrada recém-adicionada e setar o valor
+      size_t hash = hash_str(word, wlen);
+      size_t bucket = hash % hashes[i]->cap;
+      for (HashEntry *e = hashes[i]->buckets[bucket]; e; e = e->next) {
+        if (e->wlen == wlen && memcmp(e->word, word, wlen) == 0) {
+          e->value = value;
+          break;
+        }
+      }
+
+      free(word);
+    }
+  }
+
+  fclose(fp);
+  printf("global_tf carregado de %s (%ld hashes)\n", filename, num_hashes);
+  return hashes;
 }
 
 double **load_doc_vecs(const char *filename, long int *num_docs_out,

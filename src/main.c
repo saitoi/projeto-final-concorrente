@@ -136,15 +136,19 @@ int main(int argc, char *argv[]) {
     entries = total;
 
   // Criar nomes de arquivo com sufixo do número de entradas
+  char filename_tf_with_entries[256];
   char filename_idf_with_entries[256];
   char filename_doc_norms_with_entries[256];
+  snprintf(filename_tf_with_entries, sizeof(filename_tf_with_entries),
+           "models/tf_%ld.bin", entries);
   snprintf(filename_idf_with_entries, sizeof(filename_idf_with_entries),
            "models/idf_%ld.bin", entries);
   snprintf(filename_doc_norms_with_entries, sizeof(filename_doc_norms_with_entries),
            "models/doc_norms_%ld.bin", entries);
 
   // Caso o arquivo não exista: Pré-processamento
-  if (access(filename_idf_with_entries, F_OK) == -1 ||
+  if (access(filename_tf_with_entries, F_OK) == -1 ||
+      access(filename_idf_with_entries, F_OK) == -1 ||
       access(filename_doc_norms_with_entries, F_OK) == -1) {
     pthread_t tids[MAX_THREADS];
     thread_args args[MAX_THREADS];
@@ -207,8 +211,7 @@ int main(int argc, char *argv[]) {
     // Salvar estruturas globais em arquivos binários
     printf("\nSalvando estruturas em disco\n");
 
-    // TODO: Implementar save para hash_t**
-    // save_tf_hash(global_tf, filename_tf);
+    save_hash_array(global_tf, global_entries, filename_tf_with_entries);
     save_hash(global_idf, filename_idf_with_entries);
     save_doc_norms(global_doc_norms, global_entries, filename_doc_norms_with_entries);
 
@@ -221,12 +224,22 @@ int main(int argc, char *argv[]) {
 
     printf("Arquivos binários encontrados, carregando estruturas...\n");
 
-    // TODO: Implementar load para hash_t**
-    // global_tf = load_tf_hash(filename_tf);
+    global_tf = load_hash_array(filename_tf_with_entries, &global_entries);
+    if (!global_tf) {
+      fprintf(stderr, "Erro ao carregar global_tf de %s\n", filename_tf_with_entries);
+      pthread_mutex_destroy(&mutex);
+      return 1;
+    }
 
     global_idf = load_hash(filename_idf_with_entries);
     if (!global_idf) {
       fprintf(stderr, "Erro ao carregar global_idf de %s\n", filename_idf_with_entries);
+      // Liberar global_tf
+      for (long int i = 0; i < global_entries; i++) {
+        if (global_tf[i])
+          hash_free(global_tf[i]);
+      }
+      free(global_tf);
       pthread_mutex_destroy(&mutex);
       return 1;
     }
@@ -235,6 +248,11 @@ int main(int argc, char *argv[]) {
     if (!global_doc_norms) {
       fprintf(stderr, "Erro ao carregar global_doc_norms\n");
       hash_free(global_idf);
+      for (long int i = 0; i < global_entries; i++) {
+        if (global_tf[i])
+          hash_free(global_tf[i]);
+      }
+      free(global_tf);
       pthread_mutex_destroy(&mutex);
       return 1;
     }
@@ -248,50 +266,24 @@ int main(int argc, char *argv[]) {
 
   if (query_user) {
     printf("Consulta do usuário: %s\n", query_user);
-    pthread_t tids_query[MAX_THREADS];
-    thread_args args[MAX_THREADS];
 
-    long int token_count = 0;
-    char **query_tokens;
+    // Processar query (sem threads - é um vetor pequeno)
+    hash_t *query_tf;
+    double query_norm;
 
-    query_tokens = tokenize_query(query_user, &token_count);
-    if (!query_tokens) {
-      fprintf(stderr, "Erro ao tokenizar consulta do usuário\n");
-      return 1;
+    int result = preprocess_query_single(query_user, global_idf, &query_tf, &query_norm);
+    if (result != 0) {
+      fprintf(stderr, "Erro ao processar consulta do usuário\n");
+    } else {
+      printf("Consulta processada com sucesso!\n");
+      printf("Norma da query: %.6f\n", query_norm);
+      printf("Tamanho do vetor TF-IDF da query: %zu palavras\n", hash_size(query_tf));
+
+      // TODO: Calcular similaridade com documentos
+
+      // Liberar hash da query
+      hash_free(query_tf);
     }
-
-    LOG(stdout, "Tokenização da consulta do usuário concluída.");
-    LOG(stdout, "Quantidade de tokens: %ld", token_count);
-
-    long int base = token_count / nthreads;
-    long int rem = token_count % nthreads;
-    for (long int i = 0; i < nthreads; ++i) {
-      args[i].id = i;
-      args[i].nthreads = nthreads;
-      args[i].filename_db = filename_db;
-      args[i].tablename = tablename;
-      args[i].start = i * base + (i < rem ? i : rem);
-      args[i].end = args[i].start + base + (i < rem);
-      if (pthread_create(&tids_query[i], NULL, preprocess_query,
-                         (void *)&args[i])) {
-        fprintf(stderr, "Erro ao criar thread %ld\n", i);
-        return 1;
-      }
-    }
-
-    for (long int i = 0; i < nthreads; ++i) {
-      if (pthread_join(tids_query[i], NULL)) {
-        fprintf(stderr, "Erro ao esperar thread %ld\n", i);
-        return 1;
-      }
-    }
-
-    // Liberar memória dos tokens da query
-    for (long int i = 0; i < token_count; ++i) {
-      if (query_tokens[i])
-        free(query_tokens[i]);
-    }
-    free(query_tokens);
   } else {
     printf("Nenhuma consulta fornecida\n");
   }
