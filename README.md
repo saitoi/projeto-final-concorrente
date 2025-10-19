@@ -63,21 +63,22 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Salvamento em ordem em um binário.
 - [x] NÃO ALOCAR VETOR DO VOCABULÁRIO JAMAIS
 - [x] Global_doc_vec ABSURDAMENTE GRANDE
-- [ ] Substituir "'s" no pré-processamento.
+- [x] Substituir "'s" no pré-processamento.
 - [ ] Consulta:
     - [x] Pré-processamento da consulta do usuário.
-    - [ ] Passo adicionar de replicar scripts de regex do preprocess/**.py em C
-    - [ ] Cálculo da similaridade com os documentos.
+    - [ ] Replicar scripts de regex do preprocess/**.py em C
+    - [x] Cálculo da similaridade com os documentos.
 - [ ] Pré-processamento da consulta:
-    - [ ] Processamento de texto (parecido com DuckDB).
+    - [x] Processamento de texto (parecido com DuckDB).
+    - [x] Protótipo funcional da consulta com o corpus retornado.
     - [ ] Delimitadores.
 - [ ] Adicionar macros LOG e variável VERBOSE em `sqlite_helper.c`.
 
 ### Menos Relevantes
 
-- [ ] Inverter a TF (atual: word -> DocId, nova: DocId -> word).
-  - [ ] Substituir completamente tf_hash por generic_hash**.
-  - [ ] Adicionar campo double adicional no generic_hash para conter 
+- [x] Inverter a TF (atual: word -> DocId, nova: DocId -> word).
+  - [x] Substituir completamente tf_hash por generic_hash**.
+  - [x] Adicionar campo double adicional no generic_hash para conter 
 - [ ] Executar `make check` e corrigir warnings.
 - [ ] Unificar pipeline do SQlite.
 - [ ] Reorganizar funções e estrutura dos arquivos.
