@@ -33,6 +33,7 @@ endif
 
 SRC = src$(PATH_SEP)main.c src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c
 OBJ = $(SRC:.c=.o)
+HEADERS = include$(PATH_SEP)hash_t.h include$(PATH_SEP)file_io.h include$(PATH_SEP)preprocess.h include$(PATH_SEP)sqlite_helper.h include$(PATH_SEP)preprocess_query.h include$(PATH_SEP)log.h
 
 all: $(TARGET)
 
@@ -66,7 +67,7 @@ check: lint format
 run: clean all
 	./$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,) --nthreads $(NTHR)
 
-%.o: %.c
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:

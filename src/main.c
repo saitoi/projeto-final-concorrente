@@ -13,6 +13,7 @@
 
 #include "../include/file_io.h"
 #include "../include/hash_t.h"
+#include "../include/log.h"
 #include "../include/preprocess.h"
 #include "../include/preprocess_query.h"
 #include "../include/sqlite_helper.h"
@@ -40,11 +41,6 @@ int VERBOSE = 0;
 
 #define MAX_DOCS 97549
 #define MAX_THREADS 16
-#define LOG(output, fmt, ...)                                                  \
-  do {                                                                         \
-    if (VERBOSE)                                                               \
-      fprintf(output, "[VERBOSE] " fmt "\n", ##__VA_ARGS__);                   \
-  } while (0)
 
 typedef struct {
   long int start;
@@ -62,7 +58,7 @@ void *preprocess(void *args);
 //
 
 int main(int argc, char *argv[]) {
-  fprintf(stderr, "DEBUG: main() iniciando\n");
+  LOG(stderr, "DEBUG: main() iniciando");
   fflush(stderr);
   const char *filename_db = "wiki-small.db", *filename_tf = "models/tf.bin",
              *filename_idf = "models/idf.bin",
@@ -72,14 +68,14 @@ int main(int argc, char *argv[]) {
   int nthreads = 4;
   long int entries = 0;
 
-  fprintf(stderr, "DEBUG: Variáveis locais inicializadas\n");
+  LOG(stderr, "DEBUG: Variáveis locais inicializadas");
   fflush(stderr);
 
   // CLI com parâmetros nomeados
-  fprintf(stderr, "DEBUG: Processando %d argumentos\n", argc);
+  LOG(stderr, "DEBUG: Processando %d argumentos", argc);
   fflush(stderr);
   for (int i = 1; i < argc; ++i) {
-    fprintf(stderr, "DEBUG: argv[%d] = %s\n", i, argv[i]);
+    LOG(stderr, "DEBUG: argv[%d] = %s", i, argv[i]);
     fflush(stderr);
     if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc)
       nthreads = atoi(argv[++i]);
@@ -346,7 +342,7 @@ int main(int argc, char *argv[]) {
 // 4. Alocar vetor da norma de cada documento
 
 void compute_once(void) {
-  fprintf(stderr, "DEBUG: compute_once() iniciando\n");
+  LOG(stderr, "DEBUG: compute_once() iniciando");
   fflush(stderr);
   LOG(stdout, "Funções computadas uma única vez dentre todas as threads");
 
@@ -354,15 +350,15 @@ void compute_once(void) {
   // necessário
 
   // [2] Computa o IDF
-  fprintf(stderr, "DEBUG: Antes set_idf_value\n");
+  LOG(stderr, "DEBUG: Antes set_idf_value");
   fflush(stderr);
   set_idf_value(global_idf, global_tf, (double)global_entries, global_entries);
-  fprintf(stderr, "DEBUG: Depois set_idf_value\n");
+  LOG(stderr, "DEBUG: Depois set_idf_value");
   fflush(stderr);
 
   // [3] Vocabulário já está em global_idf
   global_vocab_size = hash_size(global_idf);
-  fprintf(stderr, "DEBUG: Tamanho do vocabulário: %zu palavras\n",
+  LOG(stderr, "DEBUG: Tamanho do vocabulário: %zu palavras",
           global_vocab_size);
   fflush(stderr);
 
@@ -405,14 +401,14 @@ void compute_once(void) {
 // 15. Salvar todas as estruturas em arquivos binários (./models/*.bin).
 
 void *preprocess(void *arg) {
-  fprintf(stderr, "DEBUG: preprocess() iniciando\n");
+  LOG(stderr, "DEBUG: preprocess() iniciando");
   fflush(stderr);
 
   // [1] Parâmetros das threads
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
 
-  fprintf(stderr, "DEBUG: Thread %ld - range: %ld to %ld (count=%ld)\n", t->id,
+  LOG(stderr, "DEBUG: Thread %ld - range: %ld to %ld (count=%ld)", t->id,
           t->start, t->end, count);
   fflush(stderr);
 
@@ -420,7 +416,7 @@ void *preprocess(void *arg) {
   char ***article_vecs; // Vetores de tokens dos artigos
 
   // [2] Hashes locais: TF e IDF
-  fprintf(stderr, "DEBUG: Thread %ld - Criando hashes locais\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Criando hashes locais", t->id);
   fflush(stderr);
   hash_t **tf = (hash_t **)calloc(count, sizeof(hash_t *));
   if (!tf) {
@@ -438,10 +434,10 @@ void *preprocess(void *arg) {
     }
   }
 
-  fprintf(stderr, "DEBUG: Thread %ld - tf_hash criado\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - tf_hash criado", t->id);
   fflush(stderr);
   hash_t *idf = hash_new();
-  fprintf(stderr, "DEBUG: Thread %ld - hash_t criado\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - hash_t criado", t->id);
   fflush(stderr);
 
   // [3] Validações
@@ -459,14 +455,14 @@ void *preprocess(void *arg) {
       t->id, t->start, t->end, t->filename_db);
 
   // [4] Recuperação dos textos dos artigos
-  fprintf(stderr, "DEBUG: Thread %ld - Antes get_str_arr\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes get_str_arr", t->id);
   fflush(stderr);
   article_texts = get_str_arr(t->filename_db,
                               "select article_text from \"%w\" "
                               "where article_id between ? and ?"
                               "order by article_id asc",
                               t->start, t->end - 1, t->tablename);
-  fprintf(stderr, "DEBUG: Thread %ld - Dvecepois get_str_arr\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Dvecepois get_str_arr", t->id);
   fflush(stderr);
   if (!article_texts) {
     fprintf(stderr, "Erro ao obter dados do banco\n");
@@ -476,10 +472,10 @@ void *preprocess(void *arg) {
   LOG(stdout, "Primeiro artigo da thread %ld: %s\n", t->id, article_texts[0]);
 
   // [5] Tokenização
-  fprintf(stderr, "DEBUG: Thread %ld - Antes tokenize_articles\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes tokenize_articles", t->id);
   fflush(stderr);
   article_vecs = tokenize_articles(article_texts, count);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois tokenize_articles\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Depois tokenize_articles", t->id);
   fflush(stderr);
   if (!article_vecs) {
     fprintf(stderr, "Erro ao tokenizar artigos\n");
@@ -487,24 +483,24 @@ void *preprocess(void *arg) {
   }
 
   // [6] Remoção de Stopwords
-  fprintf(stderr, "DEBUG: Thread %ld - Antes remove_stopwords\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes remove_stopwords", t->id);
   fflush(stderr);
   remove_stopwords(article_vecs, count);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois remove_stopwords\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Depois remove_stopwords", t->id);
   fflush(stderr);
 
   // [7] Stemming
-  fprintf(stderr, "DEBUG: Thread %ld - Antes stem_articles\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes stem_articles", t->id);
   fflush(stderr);
   stem_articles(article_vecs, count);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois stem_articles\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Depois stem_articles", t->id);
   fflush(stderr);
 
   // [8] Populando hash com os termos e suas frequências
-  fprintf(stderr, "DEBUG: Thread %ld - Antes populate_tf_hash\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes populate_tf_hash", t->id);
   fflush(stderr);
   populate_tf_hash(tf, article_vecs, count);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois populate_tf_hash\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Depois populate_tf_hash", t->id);
   fflush(stderr);
 
   for (long int i = 0; i < count && i < 20; ++i) {
@@ -517,56 +513,56 @@ void *preprocess(void *arg) {
   }
 
   // [9] Computar vocabulário local
-  fprintf(stderr, "DEBUG: Thread %ld - Antes set_idf_words\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes set_idf_words", t->id);
   fflush(stderr);
   set_idf_words(idf, article_vecs, count);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois set_idf_words\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Depois set_idf_words", t->id);
   fflush(stderr);
 
   // [10] Mergir TF e IDF hashes
-  fprintf(stderr, "DEBUG: Thread %ld - Antes merge (lock)\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes merge (lock)", t->id);
   fflush(stderr);
   pthread_mutex_lock(&mutex);
-  fprintf(stderr, "DEBUG: Thread %ld - Lock adquirido, merging\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Lock adquirido, merging", t->id);
   fflush(stderr);
   hashes_merge(global_tf, tf, count);
-  fprintf(stderr, "DEBUG: Thread %ld - tf_hash_merge OK\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - tf_hash_merge OK", t->id);
   fflush(stderr);
   hash_merge(global_idf, idf);
-  fprintf(stderr, "DEBUG: Thread %ld - hash_merge OK\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - hash_merge OK", t->id);
   fflush(stderr);
   pthread_mutex_unlock(&mutex);
-  fprintf(stderr, "DEBUG: Thread %ld - Lock liberado\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Lock liberado", t->id);
   fflush(stderr);
 
   // [11] Sincronizar as threads antes de computar variáveis globais únicas
   LOG(stdout, "Thread %ld esperando na barreira", t->id);
-  fprintf(stderr, "DEBUG: Thread %ld - Antes barrier_wait\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes barrier_wait", t->id);
   fflush(stderr);
   pthread_barrier_wait(&barrier);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois barrier_wait\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Depois barrier_wait", t->id);
   fflush(stderr);
 
   // [12] Variáveis globais computadas uma vez entre todas as threads
-  fprintf(stderr, "DEBUG: Thread %ld - Antes pthread_once\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes pthread_once", t->id);
   fflush(stderr);
   pthread_once(&once, compute_once);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois pthread_once\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Depois pthread_once", t->id);
   fflush(stderr);
 
   // [13] Computar vetores de documentos usando TF-IDF
-  fprintf(stderr, "DEBUG: Thread %ld - Antes compute_doc_vecs\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes compute_doc_vecs", t->id);
   fflush(stderr);
   compute_tf_idf(global_tf, global_idf, count, t->start);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois compute_doc_vecs\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Depois compute_doc_vecs", t->id);
   fflush(stderr);
 
   // [14] Computar normas dos documentos
-  fprintf(stderr, "DEBUG: Thread %ld - Antes compute_doc_norms\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Antes compute_doc_norms", t->id);
   fflush(stderr);
   compute_doc_norms(global_doc_norms, global_tf, count, global_vocab_size,
                     t->start);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois compute_doc_norms\n", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Depois compute_doc_norms", t->id);
   fflush(stderr);
 
   // Imprimir alguns vetores para verificação
