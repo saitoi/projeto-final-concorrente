@@ -16,14 +16,16 @@ else
 endif
 
 CC = cc
-CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include
+CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include -g
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 # Parâmetros configuráveis
+TBL_NAME ?= "sample_articles"
 ENTRIES ?= 100
 VERBOSE ?= 1
 MANUAL ?= 0
 NTHR ?= 4
+
 
 # Se MANUAL=1, usa includes e libs locais
 ifeq ($(MANUAL),1)
@@ -33,6 +35,7 @@ endif
 
 SRC = src$(PATH_SEP)main.c src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c
 OBJ = $(SRC:.c=.o)
+HEADERS = include$(PATH_SEP)hash_t.h include$(PATH_SEP)file_io.h include$(PATH_SEP)preprocess.h include$(PATH_SEP)sqlite_helper.h include$(PATH_SEP)preprocess_query.h include$(PATH_SEP)log.h
 
 all: $(TARGET)
 
@@ -64,9 +67,9 @@ format:
 check: lint format
 
 run: clean all
-	./$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,) --nthreads $(NTHR)
+	./$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,) --nthreads $(NTHR) --tablename $(TBL_NAME)
 
-%.o: %.c
+%.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
