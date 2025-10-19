@@ -25,9 +25,8 @@ pthread_barrier_t barrier;
 pthread_once_t once = PTHREAD_ONCE_INIT;
 
 // Hashes globais
-generic_hash **global_tf;
-generic_hash *global_idf;
-// generic_hash **global_doc_hash;
+hash_t **global_tf;
+hash_t *global_idf;
 double *global_doc_norms;
 
 // Vetores globais
@@ -141,11 +140,20 @@ int main(int argc, char *argv[]) {
     pthread_t tids[MAX_THREADS];
     thread_args args[MAX_THREADS];
     const char *query_count = "select count(*) from \"%w\";";
-    global_idf = generic_hash_new();
-    global_tf = (generic_hash**) malloc(sizeof(generic_hash*) * entries);
+    global_idf = hash_new();
+    global_tf = (hash_t**) calloc(entries, sizeof(hash_t*));
     if (!global_tf) {
       fprintf(stderr, "Falha ao alocar memória para global_tf\n");
       return 1;
+    }
+
+    // Inicializar cada hash de documento
+    for (long int i = 0; i < entries; i++) {
+      global_tf[i] = hash_new();
+      if (!global_tf[i]) {
+        fprintf(stderr, "Falha ao alocar memória para global_tf[%ld]\n", i);
+        return 1;
+      }
     }
 
     // Carregar stopwords uma vez (compartilhado por todas threads)
@@ -198,14 +206,15 @@ int main(int argc, char *argv[]) {
 
     // Imprimir TF hash global final
     LOG(stdout, "=== TF Hash Global Final ===");
-    print_tf_hash(global_tf, -1, VERBOSE); // trocar auqi tambem
+    // TODO: Implementar print para hash_t**
+    // print_tf_hash(global_tf, -1, VERBOSE);
 
     // [15]
     // Salvar estruturas globais em arquivos binários
     printf("\nSalvando estruturas em disco\n");
-    save_tf_hash(global_tf, filename_tf); // trocar aqui tambem
-    save_generic_hash(global_idf, filename_idf);
-    // TODO: Implementar salvação de global_doc_hash quando necessário
+    // TODO: Implementar save para hash_t**
+    // save_tf_hash(global_tf, filename_tf);
+    save_hash(global_idf, filename_idf);
     save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
 
     // Liberar stopwords (usado apenas no pré-processamento)
@@ -217,34 +226,25 @@ int main(int argc, char *argv[]) {
 
     printf("Arquivos binários encontrados, carregando estruturas...\n");
 
-    global_tf = load_tf_hash(filename_tf);
-    if (!global_tf) {
-      fprintf(stderr, "Erro ao carregar global_tf\n");
-      pthread_mutex_destroy(&mutex);
-      return 1;
-    }
+    // TODO: Implementar load para hash_t**
+    // global_tf = load_tf_hash(filename_tf);
 
-    global_idf = load_generic_hash(filename_idf);
+    global_idf = load_hash(filename_idf);
     if (!global_idf) {
       fprintf(stderr, "Erro ao carregar global_idf\n");
-      tf_hash_free(global_tf);
       pthread_mutex_destroy(&mutex);
       return 1;
     }
-
-    // TODO: Implementar carregamento de global_doc_hash quando necessário
-    // Por enquanto, vamos pular o carregamento dos vetores de documentos
 
     global_doc_norms = load_doc_norms(filename_doc_norms, &global_entries);
     if (!global_doc_norms) {
       fprintf(stderr, "Erro ao carregar global_doc_norms\n");
-      tf_hash_free(global_tf);
-      generic_hash_free(global_idf);
+      hash_free(global_idf);
       pthread_mutex_destroy(&mutex);
       return 1;
     }
 
-    global_vocab_size = generic_hash_size(global_idf);
+    global_vocab_size = hash_size(global_idf);
 
 
     printf("Todas as estruturas foram carregadas com sucesso!\n");
@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
     size_t limit = 30;
 
     for (size_t i = 0; i < global_idf->cap && count < limit; i++) {
-      for (GEntry *e = global_idf->buckets[i]; e && count < limit;
+      for (HashEntry *e = global_idf->buckets[i]; e && count < limit;
            e = e->next) {
         printf("Palavra: %-25s IDF: %.6f\n", e->word, e->value);
         count++;
@@ -317,19 +317,16 @@ int main(int argc, char *argv[]) {
   }
 
   // Liberar todas as estruturas globais
-  if (global_tf)
-    tf_hash_free(global_tf);
-  if (global_idf)
-    generic_hash_free(global_idf);
-
-  // Liberar hashes de documentos
-  if (global_doc_hash) {
+  if (global_tf) {
     for (long int i = 0; i < global_entries; i++) {
-      if (global_doc_hash[i])
-        generic_hash_free(global_doc_hash[i]);
+      if (global_tf[i])
+        hash_free(global_tf[i]);
     }
-    free(global_doc_hash);
+    free(global_tf);
   }
+  if (global_idf)
+    hash_free(global_idf);
+
 
   // Liberar normas
   if (global_doc_norms)
@@ -343,7 +340,7 @@ int main(int argc, char *argv[]) {
 
 /* --------------- PTHREAD_ONCE_INIT --------------- */
 // Tarefas computadas uma única vez dentre todas as threads:
-// 1. Extrair vocabulário completo do IDF (chaves da generic_hash *global_idf)
+// 1. Extrair vocabulário completo do IDF (chaves da hash_t *global_idf)
 // 2. Computar o IDF de cada palavra no vocabulário
 // 3. Obter tamanho do vocabulário e alocar vetor de documentos
 // 4. Alocar vetor da norma de cada documento
@@ -358,28 +355,14 @@ void compute_once(void) {
   // [2] Computa o IDF
   fprintf(stderr, "DEBUG: Antes set_idf_value\n");
   fflush(stderr);
-  set_idf_value(global_idf, global_tf, (double)global_entries);
+  set_idf_value(global_idf, global_tf, (double)global_entries, global_entries);
   fprintf(stderr, "DEBUG: Depois set_idf_value\n");
   fflush(stderr);
 
-  // [3] Alocar global_doc_hash (hash table para cada documento)
-  global_vocab_size = generic_hash_size(global_idf);
-  fprintf(stderr, "DEBUG: Alocando global_doc_hash: %ld docs\n", global_entries);
+  // [3] Vocabulário já está em global_idf
+  global_vocab_size = hash_size(global_idf);
+  fprintf(stderr, "DEBUG: Tamanho do vocabulário: %zu palavras\n", global_vocab_size);
   fflush(stderr);
-
-  // global_doc_hash = (generic_hash **)malloc(global_entries * sizeof(generic_hash *));
-  // if (!global_doc_hash) {
-  //   LOG(stderr, "Erro ao alocar memória para global_doc_hash");
-  //   exit(EXIT_FAILURE);
-  // }
-
-  // for (long int i = 0; i < global_entries; ++i) {
-  //     global_doc_hash[i] = generic_hash_new();
-  //     if (!global_doc_hash[i]) {
-  //       LOG(stderr, "Erro ao alocar memória para global_doc_hash[%ld]", i);
-  //       exit(EXIT_FAILURE);
-  //     }
-  // }
 
   // [4]
   global_doc_norms = (double *)calloc(global_entries, sizeof(double));
@@ -411,7 +394,7 @@ void compute_once(void) {
 // 6.  Filtrar stopwords e redimensionar o vetor.
 // 7.  Stemming: Processo de remoção de afixos (prefixos e sufixos).
 // 8.  Populando a hash local de frequência dos termos (`tf_hash *global_tf`).
-// 9.  Popular vocabulário local (chaves do `generic_hash *global_idf`).
+// 9.  Popular vocabulário local (chaves do `hash_t *global_idf`).
 // 10. Mergir TF e IDF hashes nas globais
 // 11. Uso do padrão barrreira (`pthread_barrier_t barrier`) para sincronizar as threads
 // 12. Executar `compute_once` descrito na seção anterior: PTHREAD_ONCE_INIT.
@@ -436,15 +419,25 @@ void *preprocess(void *arg) {
   // [2] Hashes locais: TF e IDF
   fprintf(stderr, "DEBUG: Thread %ld - Criando hashes locais\n", t->id);
   fflush(stderr);
-  generic_hash **tf = (generic_hash**) malloc(sizeof(generic_hash*) * count);
+  hash_t **tf = (hash_t**) calloc(count, sizeof(hash_t*));
   if (!tf) {
-    fprintf(stderr, "Falha ao alocar memória para global_tf\n");
+    fprintf(stderr, "Falha ao alocar memória para tf local\n");
     pthread_exit(NULL);
   }
+
+  // Inicializar cada hash de documento local
+  for (long int i = 0; i < count; i++) {
+    tf[i] = hash_new();
+    if (!tf[i]) {
+      fprintf(stderr, "Falha ao alocar memória para tf[%ld] na thread %ld\n", i, t->id);
+      pthread_exit(NULL);
+    }
+  }
+
   fprintf(stderr, "DEBUG: Thread %ld - tf_hash criado\n", t->id);
   fflush(stderr);
-  generic_hash *idf = generic_hash_new();
-  fprintf(stderr, "DEBUG: Thread %ld - generic_hash criado\n", t->id);
+  hash_t *idf = hash_new();
+  fprintf(stderr, "DEBUG: Thread %ld - hash_t criado\n", t->id);
   fflush(stderr);
 
   // [3] Validações
@@ -532,11 +525,11 @@ void *preprocess(void *arg) {
   pthread_mutex_lock(&mutex);
   fprintf(stderr, "DEBUG: Thread %ld - Lock adquirido, merging\n", t->id);
   fflush(stderr);
-  generic_hashes_merge(global_tf, tf, count);
+  hashes_merge(global_tf, tf, count);
   fprintf(stderr, "DEBUG: Thread %ld - tf_hash_merge OK\n", t->id);
   fflush(stderr);
-  generic_hash_merge(global_idf, idf);
-  fprintf(stderr, "DEBUG: Thread %ld - generic_hash_merge OK\n", t->id);
+  hash_merge(global_idf, idf);
+  fprintf(stderr, "DEBUG: Thread %ld - hash_merge OK\n", t->id);
   fflush(stderr);
   pthread_mutex_unlock(&mutex);
   fprintf(stderr, "DEBUG: Thread %ld - Lock liberado\n", t->id);
@@ -582,7 +575,7 @@ void *preprocess(void *arg) {
     // trocar isso daqui
     size_t valores_mostrados = 0;
     for (size_t j = 0; j < global_tf[doc_id]->cap && valores_mostrados < 30; ++j) {
-      for (GEntry *e = global_tf[doc_id]->buckets[j]; e && valores_mostrados < 30; e = e->next) {
+      for (HashEntry *e = global_tf[doc_id]->buckets[j]; e && valores_mostrados < 30; e = e->next) {
         if (e->value != 0.0) {
           LOG(stdout, "  %s = %.6f", e->word, e->value);
           valores_mostrados++;
@@ -605,13 +598,15 @@ void *preprocess(void *arg) {
   }
 
   fprintf(stdout, "Tamanho da Hash local da thread %zu: %ld\n", t->id,
-          generic_hash_size(idf));
+          hash_size(idf));
 
   // Liberar memória de estruturas locais
   free(article_texts);
   free_article_vecs(article_vecs, count);
-  tf_hash_free(tf);
-  generic_hash_free(idf);
+  // NOTA: Não liberamos tf[i] porque hashes_merge transferiu a propriedade
+  // dos ponteiros para global_tf. Apenas liberamos o array.
+  free(tf);
+  hash_free(idf);
 
   pthread_exit(NULL);
 }

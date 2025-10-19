@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void set_idf_words(generic_hash *vocab, char ***article_vecs, long int count) {
+void set_idf_words(hash_t *vocab, char ***article_vecs, long int count) {
   if (!article_vecs) {
     fprintf(stderr, "Erro: article_vecs é nulo.\n");
     pthread_exit(NULL);
@@ -18,21 +18,33 @@ void set_idf_words(generic_hash *vocab, char ***article_vecs, long int count) {
       continue;
 
     for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-      generic_hash_add(vocab, article_vecs[i][j], 0.0);
+      hash_add(vocab, article_vecs[i][j], 0.0);
     }
   }
 }
 
-void set_idf_value(generic_hash *set, const tf_hash *tf, double doc_count) {
+// Conta em quantos documentos uma palavra aparece
+static int count_docs_with_word(hash_t **tf, const char *word, long int num_docs) {
+  int count = 0;
+  for (long int i = 0; i < num_docs; i++) {
+    if (tf[i] && hash_contains(tf[i], word)) {
+      count++;
+    }
+  }
+  return count;
+}
+
+void set_idf_value(hash_t *set, hash_t **tf, double doc_count, long int num_docs) {
   if (!set || !tf) {
     fprintf(stderr, "Erro: set ou tf é nulo.\n");
     pthread_exit(NULL);
   }
 
   for (size_t i = 0; i < set->cap; i++) {
-    GEntry *e = set->buckets[i];
+    HashEntry *e = set->buckets[i];
     while (e) {
-      int freq = tf_hash_get_ni(tf, e->word);
+      // Conta em quantos documentos a palavra aparece
+      int freq = count_docs_with_word(tf, e->word, num_docs);
       if (freq > 0)
         e->value = log2(doc_count / freq);
       else
@@ -42,68 +54,40 @@ void set_idf_value(generic_hash *set, const tf_hash *tf, double doc_count) {
   }
 }
 
-void compute_tf_idf(generic_hash **global_tf, generic_hash *global_idf, long int count,
+void compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count,
                       long int offset) {
   if (!global_tf || !global_idf || count <= 0) {
-    fprintf(stderr, "Erro: global_doc_vec, global_vocab, global_tf, count ou "
-                    "offset é inválido.\n");
+    fprintf(stderr, "Erro: global_tf, global_idf, ou count inválido.\n");
     pthread_exit(NULL);
   }
 
+  // Para cada documento
   for (long int i = offset; i < offset + count; ++i) {
-      size_t word_idx = 0;
-      generic_hash *doc_tf = global_tf[i];
-      for (long int j = 0; j < doc_tf->cap; ++j) {
-          GEntry *e = doc_tf->buckets[j];
-          while (e) {
-              double freq = 0.0;
-              
-              // tf_hash_get_freq(global_tf, e->word, i, &freq);
+    hash_t *doc_tf = global_tf[i];
+    if (!doc_tf) continue;
 
-              // Apenas adicionar palavras que aparecem no documento (freq > 0)
-              if (e->value && e->value > 0) {
-                  double idf = generic_hash_find(global_idf, e->word);
-                  double tfidf_value = (1.0 + log2(e->value)) * e->value * idf;
-                  doc_tf->value = (double*) malloc(sizeof(double));
-                  if (!(doc_tf->value)) {
-                      fprintf(stderr, "Erro: falha ao alocar memória para tf-idf.\n");
-                      pthread_exit(NULL);
-                  }
-                  *(double*)doc_tf->value = tfidf_value;
-              }
+    // Para cada palavra no documento (iterar sobre buckets da hash)
+    for (size_t j = 0; j < doc_tf->cap; ++j) {
+      HashEntry *e = doc_tf->buckets[j];
+      while (e) {
+        // e->value contém a frequência (TF) da palavra no documento
+        if (e->value > 0) {
+          // Buscar o IDF da palavra
+          double idf = hash_find(global_idf, e->word);
 
-              e = e->next;
-              word_idx++;
-          }
+          // Calcular TF-IDF: (1 + log2(freq)) * IDF
+          double tfidf_value = (1.0 + log2(e->value)) * idf;
+
+          // Atualizar o valor para TF-IDF
+          e->value = tfidf_value;
+        }
+        e = e->next;
       }
+    }
   }
-
-  //   // Índice da palavra no vetor de documentos
-  //   size_t word_idx = 0;
-
-  //   // Iterando sobre os buckets do vocabulário (global_idf)
-  //   for (size_t j = 0; j < global_idf->cap; j++) {
-  //     GEntry *e = global_idf->buckets[j];
-
-  //     // Iterando sobre todas as palavras no bucket
-  //     while (e) {
-  //       double freq = 0.0;
-  //       tf_hash_get_freq(global_tf, e->word, i, &freq);
-
-  //       // Apenas adicionar palavras que aparecem no documento (freq > 0)
-  //       if (freq > 0) {
-  //         double tfidf_value = (1.0 + log2(freq)) * e->value;
-  //         generic_hash_add(global_doc_vec[i], e->word, tfidf_value);
-  //       }
-
-  //       e = e->next;
-  //       word_idx++;
-  //     }
-  //   }
-  // }
 }
 
-void compute_doc_norms(double *global_doc_norms, generic_hash **global_tf, long int doc_count, long int vocab_size,
+void compute_doc_norms(double *global_doc_norms, hash_t **global_tf, long int doc_count, long int vocab_size,
                        long int offset) {
   if (!global_doc_norms || doc_count <= 0 || vocab_size <= 0 || offset < 0) {
     fprintf(stderr, "Erro nos argumentos de entrada.\n");
@@ -112,12 +96,18 @@ void compute_doc_norms(double *global_doc_norms, generic_hash **global_tf, long 
 
   for (long int i = 0; i < doc_count; i++) {
     long int doc_id = offset + i;
-    generic_hash *doc_vec = global_tf[doc_id];
+    hash_t *doc_vec = global_tf[doc_id];
+
+    if (!doc_vec) {
+      global_doc_norms[doc_id] = 0.0;
+      continue;
+    }
+
     double norm = 0.0;
 
     // Calcular a soma dos quadrados de todos os valores TF-IDF do documento
     for (size_t j = 0; j < doc_vec->cap; j++) {
-      GEntry *e = doc_vec->buckets[j];
+      HashEntry *e = doc_vec->buckets[j];
       while (e) {
         norm += e->value * e->value;
         e = e->next;
@@ -151,17 +141,35 @@ void stem_articles(char ***article_vecs, long int count) {
   sb_stemmer_delete(stemmer);
 }
 
-void populate_tf_hash(generic_hash **tf, char ***article_vecs, long int count,
+void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count,
                           long int offset) {
   for (long int i = 0; i < count; ++i) {
     if (!tf[i])
       continue;
 
     for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-      // Passa 1.0 para contar cada ocorrência da palavra no documento
-      // tf_hash_set(tf[i], (const char *)article_vecs[i][j], i + offset, 1.0);
-      if (article_vecs[i][j])
-        generic_hash_add(tf[i], article_vecs[i][j], 1.0);
+      if (!article_vecs[i][j])
+        continue;
+
+      // Buscar se a palavra já existe
+      const char *word = article_vecs[i][j];
+      size_t wlen = strlen(word);
+      size_t idx = hash_str(word, wlen) & (tf[i]->cap - 1);
+
+      int found = 0;
+      for (HashEntry *e = tf[i]->buckets[idx]; e; e = e->next) {
+        if (e->wlen == wlen && memcmp(e->word, word, wlen) == 0) {
+          // Palavra já existe, incrementar frequência
+          e->value += 1.0;
+          found = 1;
+          break;
+        }
+      }
+
+      if (!found) {
+        // Palavra não existe, adicionar com frequência 1.0
+        hash_add(tf[i], word, 1.0);
+      }
     }
   }
 }
@@ -248,7 +256,7 @@ void remove_stopwords(char ***article_vecs, long int count) {
     // Filtra stopwords
     long int write_idx = 0;
     for (long int read_idx = 0; article_vecs[i][read_idx] != NULL; ++read_idx) {
-      if (!generic_hash_contains(global_stopwords, article_vecs[i][read_idx])) {
+      if (!hash_contains(global_stopwords, article_vecs[i][read_idx])) {
         article_vecs[i][write_idx++] = article_vecs[i][read_idx];
       } else {
         free(article_vecs[i][read_idx]);
