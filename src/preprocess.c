@@ -258,10 +258,12 @@ void remove_stopwords(char ***article_vecs, long int count) {
     if (!article_vecs[i])
       continue;
 
-    // Filtra stopwords
+    // Filtra stopwords e palavras com apenas uma letra
     long int write_idx = 0;
     for (long int read_idx = 0; article_vecs[i][read_idx] != NULL; ++read_idx) {
-      if (!hash_contains(global_stopwords, article_vecs[i][read_idx])) {
+      const char *word = article_vecs[i][read_idx];
+      // Mantém a palavra se NÃO for stopword E tiver mais de 1 letra
+      if (!hash_contains(global_stopwords, word) && strlen(word) > 1) {
         article_vecs[i][write_idx++] = article_vecs[i][read_idx];
       } else {
         free(article_vecs[i][read_idx]);
