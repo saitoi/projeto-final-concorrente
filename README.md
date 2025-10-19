@@ -61,6 +61,8 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Vetores dos documentos.
     - [x] Normas dos vetores.
     - [x] Salvamento em ordem em um binário.
+- [x] NÃO ALOCAR VETOR DO VOCABULÁRIO JAMAIS
+- [x] Global_doc_vec ABSURDAMENTE GRANDE
 - [ ] Consulta:
     - [ ] Pré-processamento da consulta do usuário.
     - [ ] Passo adicionar de replicar scripts de regex do preprocess/**.py em C
@@ -72,6 +74,9 @@ Leia `instrucoes-projeto.pdf`.
 
 ### Menos Relevantes
 
+- [ ] Inverter a TF (atual: word -> DocId, nova: DocId -> word).
+  - [ ] Substituir completamente tf_hash por generic_hash**.
+  - [ ] Adicionar campo double adicional no generic_hash para conter 
 - [ ] Executar `make check` e corrigir warnings.
 - [ ] Unificar pipeline do SQlite.
 - [ ] Reorganizar funções e estrutura dos arquivos.

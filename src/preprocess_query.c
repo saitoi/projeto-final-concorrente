@@ -58,6 +58,7 @@ char **tokenize_query(const char *query_user, long int *token_count) {
 }
 
 void *preprocess_query(void *arg) {
-  fprintf(stdout, "Working on it..");
+  (void)arg; // Unused parameter
+  fprintf(stdout, "WIP..\n");
   return NULL;
 }

@@ -5,7 +5,7 @@
 
 /* ==================== Stopwords ==================== */
 
-generic_hash *global_stopwords = NULL;
+hash_t *global_stopwords = NULL;
 
 void load_stopwords(const char *filename) {
   FILE *f = fopen(filename, "r");
@@ -14,7 +14,7 @@ void load_stopwords(const char *filename) {
     return;
   }
 
-  global_stopwords = generic_hash_new();
+  global_stopwords = hash_new();
 
   char line[256];
   while (fgets(line, sizeof(line), f)) {
@@ -23,7 +23,7 @@ void load_stopwords(const char *filename) {
     if (strlen(line) == 0)
       continue;
 
-    generic_hash_add(global_stopwords, line);
+    hash_add(global_stopwords, line, 0.0);
   }
 
   fclose(f);
@@ -31,76 +31,16 @@ void load_stopwords(const char *filename) {
 
 void free_stopwords(void) {
   if (global_stopwords) {
-    generic_hash_free(global_stopwords);
+    hash_free(global_stopwords);
     global_stopwords = NULL;
   }
 }
 
 /* ==================== Funções de Serialização ==================== */
 
-int save_tf_hash(const tf_hash *tf, const char *filename) {
-  if (!tf || !filename) {
-    fprintf(stderr, "Erro: tf_hash ou filename é nulo\n");
-    return -1;
-  }
-
-  FILE *fp = fopen(filename, "wb");
-  if (!fp) {
-    fprintf(stderr, "Erro ao abrir arquivo %s para escrita\n", filename);
-    return -1;
-  }
-
-  // Salvar capacidade e tamanho
-  fwrite(&tf->cap, sizeof(size_t), 1, fp);
-  fwrite(&tf->size, sizeof(size_t), 1, fp);
-
-  // Contar total de entradas para escrever
-  size_t total_entries = 0;
-  for (size_t i = 0; i < tf->cap; i++) {
-    for (OEntry *e = tf->b[i]; e; e = e->next) {
-      total_entries++;
-    }
-  }
-  fwrite(&total_entries, sizeof(size_t), 1, fp);
-
-  // Salvar cada entrada
-  for (size_t i = 0; i < tf->cap; i++) {
-    for (OEntry *e = tf->b[i]; e; e = e->next) {
-      // Salvar palavra
-      fwrite(&e->klen, sizeof(size_t), 1, fp);
-      fwrite(e->key, sizeof(char), e->klen, fp);
-
-      // Salvar IMap
-      fwrite(&e->map.cap, sizeof(size_t), 1, fp);
-      fwrite(&e->map.size, sizeof(size_t), 1, fp);
-
-      // Contar entradas do IMap
-      size_t imap_entries = 0;
-      for (size_t j = 0; j < e->map.cap; j++) {
-        for (IEntry *ie = e->map.b[j]; ie; ie = ie->next) {
-          imap_entries++;
-        }
-      }
-      fwrite(&imap_entries, sizeof(size_t), 1, fp);
-
-      // Salvar pares chave-valor do IMap
-      for (size_t j = 0; j < e->map.cap; j++) {
-        for (IEntry *ie = e->map.b[j]; ie; ie = ie->next) {
-          fwrite(&ie->key, sizeof(int), 1, fp);
-          fwrite(&ie->val, sizeof(double), 1, fp);
-        }
-      }
-    }
-  }
-
-  fclose(fp);
-  printf("global_tf salvo em %s (%zu entradas)\n", filename, total_entries);
-  return 0;
-}
-
-int save_generic_hash(const generic_hash *gh, const char *filename) {
+int save_hash(const hash_t *gh, const char *filename) {
   if (!gh || !filename) {
-    fprintf(stderr, "Erro: generic_hash ou filename é nulo\n");
+    fprintf(stderr, "Erro: hash_t ou filename é nulo\n");
     return -1;
   }
 
@@ -117,10 +57,10 @@ int save_generic_hash(const generic_hash *gh, const char *filename) {
   // Salvar cada entrada
   size_t entries_written = 0;
   for (size_t i = 0; i < gh->cap; i++) {
-    for (GEntry *e = gh->buckets[i]; e; e = e->next) {
+    for (HashEntry *e = gh->buckets[i]; e; e = e->next) {
       fwrite(&e->wlen, sizeof(size_t), 1, fp);
       fwrite(e->word, sizeof(char), e->wlen, fp);
-      fwrite(&e->idf, sizeof(double), 1, fp);
+      fwrite(&e->value, sizeof(double), 1, fp);
       entries_written++;
     }
   }
@@ -206,7 +146,7 @@ int save_vocab(const char **vocab, size_t vocab_size, const char *filename) {
 
 /* ==================== Funções de Carregamento ==================== */
 
-tf_hash *load_tf_hash(const char *filename) {
+hash_t *load_hash(const char *filename) {
   if (!filename) {
     fprintf(stderr, "Erro: filename é nulo\n");
     return NULL;
@@ -218,71 +158,7 @@ tf_hash *load_tf_hash(const char *filename) {
     return NULL;
   }
 
-  tf_hash *tf = tf_hash_new();
-  if (!tf) {
-    fclose(fp);
-    return NULL;
-  }
-
-  // Ler capacidade, tamanho e total de entradas (não usaremos cap/size
-  // diretamente)
-  size_t cap, size, total_entries;
-  fread(&cap, sizeof(size_t), 1, fp);
-  fread(&size, sizeof(size_t), 1, fp);
-  fread(&total_entries, sizeof(size_t), 1, fp);
-
-  // Ler cada entrada
-  for (size_t i = 0; i < total_entries; i++) {
-    // Ler palavra
-    size_t klen;
-    fread(&klen, sizeof(size_t), 1, fp);
-
-    char *word = (char *)malloc(klen + 1);
-    if (!word) {
-      tf_hash_free(tf);
-      fclose(fp);
-      return NULL;
-    }
-    fread(word, sizeof(char), klen, fp);
-    word[klen] = '\0';
-
-    // Ler IMap (cap, size, entries)
-    size_t map_cap, map_size, imap_entries;
-    fread(&map_cap, sizeof(size_t), 1, fp);
-    fread(&map_size, sizeof(size_t), 1, fp);
-    fread(&imap_entries, sizeof(size_t), 1, fp);
-
-    // Ler pares chave-valor do IMap
-    for (size_t j = 0; j < imap_entries; j++) {
-      int doc_id;
-      double freq;
-      fread(&doc_id, sizeof(int), 1, fp);
-      fread(&freq, sizeof(double), 1, fp);
-
-      tf_hash_set(tf, word, doc_id, freq);
-    }
-
-    free(word);
-  }
-
-  fclose(fp);
-  printf("global_tf carregado de %s (%zu entradas)\n", filename, total_entries);
-  return tf;
-}
-
-generic_hash *load_generic_hash(const char *filename) {
-  if (!filename) {
-    fprintf(stderr, "Erro: filename é nulo\n");
-    return NULL;
-  }
-
-  FILE *fp = fopen(filename, "rb");
-  if (!fp) {
-    fprintf(stderr, "Erro ao abrir arquivo %s para leitura\n", filename);
-    return NULL;
-  }
-
-  generic_hash *gh = generic_hash_new();
+  hash_t *gh = hash_new();
   if (!gh) {
     fclose(fp);
     return NULL;
@@ -302,7 +178,7 @@ generic_hash *load_generic_hash(const char *filename) {
 
     char *word = (char *)malloc(wlen + 1);
     if (!word) {
-      generic_hash_free(gh);
+      hash_free(gh);
       fclose(fp);
       return NULL;
     }
@@ -319,7 +195,7 @@ generic_hash *load_generic_hash(const char *filename) {
       break;
     }
 
-    generic_hash_add(gh, word);
+    hash_add(gh, word, 0.0);
 
     // Encontrar a entrada recém-adicionada e setar o IDF
     // Precisamos fazer hash da palavra para encontrá-la
@@ -329,9 +205,9 @@ generic_hash *load_generic_hash(const char *filename) {
     }
     size_t bucket = hash % gh->cap;
 
-    for (GEntry *e = gh->buckets[bucket]; e; e = e->next) {
+    for (HashEntry *e = gh->buckets[bucket]; e; e = e->next) {
       if (e->wlen == wlen && memcmp(e->word, word, wlen) == 0) {
-        e->idf = idf;
+        e->value = idf;
         break;
       }
     }

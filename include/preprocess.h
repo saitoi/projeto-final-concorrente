@@ -3,18 +3,17 @@
 
 #include "hash_t.h"
 
-void set_idf_words(generic_hash *vocab, char ***article_vecs, long int count);
+void set_idf_words(hash_t *vocab, char ***article_vecs, long int count);
 
-tf_hash *populate_tf_hash(tf_hash *tf, char ***article_vecs, long int count,
-                          long int offset);
+void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count);
 
-void set_idf_value(generic_hash *set, const tf_hash *tf, double doc_count);
+void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
+                   long int num_docs);
 
 void stem_articles(char ***article_vecs, long int count);
-void compute_doc_vecs(double **global_doc_vec, const tf_hash *global_tf,
-                      generic_hash *global_idf, long int count,
-                      long int offset);
-void compute_doc_norms(double *global_doc_norms, double **global_doc_vecs,
+void compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count,
+                    long int offset);
+void compute_doc_norms(double *global_doc_norms, hash_t **global_tf,
                        long int doc_count, long int vocab_size,
                        long int offset);
 
