@@ -5,8 +5,7 @@
 
 void set_idf_words(hash_t *vocab, char ***article_vecs, long int count);
 
-void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count,
-                      long int offset);
+void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count);
 
 void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
                    long int num_docs);

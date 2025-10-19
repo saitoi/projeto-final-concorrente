@@ -37,13 +37,6 @@ uint64_t hash_str(const char *str, size_t len) {
 }
 
 // integer hash
-static uint64_t hash_int(int k) {
-  uint64_t x = (uint64_t)k;
-  x = ((x >> 16) ^ x) * 0x45d9f3b;
-  x = ((x >> 16) ^ x) * 0x45d9f3b;
-  x = (x >> 16) ^ x;
-  return x;
-}
 
 /* ------------- Hash Genérica (str -> double) ------------- */
 

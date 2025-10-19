@@ -145,8 +145,7 @@ void stem_articles(char ***article_vecs, long int count) {
   sb_stemmer_delete(stemmer);
 }
 
-void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count,
-                      long int offset) {
+void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count) {
   for (long int i = 0; i < count; ++i) {
     if (!tf[i])
       continue;

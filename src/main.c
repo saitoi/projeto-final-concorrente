@@ -503,7 +503,7 @@ void *preprocess(void *arg) {
   // [8] Populando hash com os termos e suas frequências
   fprintf(stderr, "DEBUG: Thread %ld - Antes populate_tf_hash\n", t->id);
   fflush(stderr);
-  populate_tf_hash(tf, article_vecs, count, t->start);
+  populate_tf_hash(tf, article_vecs, count);
   fprintf(stderr, "DEBUG: Thread %ld - Depois populate_tf_hash\n", t->id);
   fflush(stderr);
 
