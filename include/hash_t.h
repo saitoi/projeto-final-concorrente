@@ -9,7 +9,7 @@
 typedef struct GEntry {
   char *word;
   size_t wlen;
-  double idf;
+  double value;
   struct GEntry *next;
 } GEntry;
 
@@ -21,7 +21,7 @@ typedef struct generic_hash {
 
 generic_hash *generic_hash_new(void);
 void generic_hash_free(generic_hash *set);
-void generic_hash_add(generic_hash *set, const char *word);
+void generic_hash_add(generic_hash *set, const char *word, double value);
 int generic_hash_contains(const generic_hash *set, const char *word);
 void generic_hash_merge(generic_hash *dst, const generic_hash *src);
 size_t generic_hash_size(const generic_hash *set);

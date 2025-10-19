@@ -106,7 +106,7 @@ static void generic_hash_rehash(generic_hash *set, size_t ncap) {
   set->cap = ncap;
 }
 
-void generic_hash_add(generic_hash *set, const char *word) {
+void generic_hash_add(generic_hash *set, const char *word, double value) {
   size_t wlen = strlen(word);
 
   if ((set->size + 1) > (size_t)(set->cap * MAX_LOAD)) {
@@ -130,6 +130,7 @@ void generic_hash_add(generic_hash *set, const char *word) {
 
   e->word = safe_strdup(word);
   e->wlen = wlen;
+  e->value = value;
   e->next = set->buckets[idx];
   set->buckets[idx] = e;
   set->size++;
@@ -158,7 +159,7 @@ void generic_hash_merge(generic_hash *dst, const generic_hash *src) {
   for (size_t i = 0; i < src->cap; i++) {
     GEntry *e = src->buckets[i];
     while (e) {
-      generic_hash_add(dst, e->word);
+      generic_hash_add(dst, e->word, e->value);
       e = e->next;
     }
   }

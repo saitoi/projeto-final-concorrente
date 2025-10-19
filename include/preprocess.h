@@ -11,10 +11,10 @@ tf_hash *populate_tf_hash(tf_hash *tf, char ***article_vecs, long int count,
 void set_idf_value(generic_hash *set, const tf_hash *tf, double doc_count);
 
 void stem_articles(char ***article_vecs, long int count);
-void compute_doc_vecs(double **global_doc_vec, const tf_hash *global_tf,
+void compute_doc_hash(generic_hash **global_doc_vec, const tf_hash *global_tf,
                       generic_hash *global_idf, long int count,
                       long int offset);
-void compute_doc_norms(double *global_doc_norms, double **global_doc_vecs,
+void compute_doc_norms(double *global_doc_norms, generic_hash **global_doc_vecs,
                        long int doc_count, long int vocab_size,
                        long int offset);
 

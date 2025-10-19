@@ -23,7 +23,7 @@ void load_stopwords(const char *filename) {
     if (strlen(line) == 0)
       continue;
 
-    generic_hash_add(global_stopwords, line);
+    generic_hash_add(global_stopwords, line, 0.0);
   }
 
   fclose(f);
@@ -120,7 +120,7 @@ int save_generic_hash(const generic_hash *gh, const char *filename) {
     for (GEntry *e = gh->buckets[i]; e; e = e->next) {
       fwrite(&e->wlen, sizeof(size_t), 1, fp);
       fwrite(e->word, sizeof(char), e->wlen, fp);
-      fwrite(&e->idf, sizeof(double), 1, fp);
+      fwrite(&e->value, sizeof(double), 1, fp);
       entries_written++;
     }
   }
@@ -319,7 +319,7 @@ generic_hash *load_generic_hash(const char *filename) {
       break;
     }
 
-    generic_hash_add(gh, word);
+    generic_hash_add(gh, word, 0.0);
 
     // Encontrar a entrada recém-adicionada e setar o IDF
     // Precisamos fazer hash da palavra para encontrá-la
@@ -331,7 +331,7 @@ generic_hash *load_generic_hash(const char *filename) {
 
     for (GEntry *e = gh->buckets[bucket]; e; e = e->next) {
       if (e->wlen == wlen && memcmp(e->word, word, wlen) == 0) {
-        e->idf = idf;
+        e->value = idf;
         break;
       }
     }

@@ -18,7 +18,7 @@ void set_idf_words(generic_hash *vocab, char ***article_vecs, long int count) {
       continue;
 
     for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-      generic_hash_add(vocab, article_vecs[i][j]);
+      generic_hash_add(vocab, article_vecs[i][j], 0.0);
     }
   }
 }
@@ -34,15 +34,15 @@ void set_idf_value(generic_hash *set, const tf_hash *tf, double doc_count) {
     while (e) {
       int freq = tf_hash_get_ni(tf, e->word);
       if (freq > 0)
-        e->idf = log2(doc_count / freq);
+        e->value = log2(doc_count / freq);
       else
-        e->idf = 0.0;
+        e->value = 0.0;
       e = e->next;
     }
   }
 }
 
-void compute_doc_vecs(double **global_doc_vec, const tf_hash *global_tf,
+void compute_doc_hash(generic_hash **global_doc_vec, const tf_hash *global_tf,
                       generic_hash *global_idf, long int count,
                       long int offset) {
   if (!global_doc_vec || !global_tf || !global_idf || count <= 0) {
@@ -65,8 +65,11 @@ void compute_doc_vecs(double **global_doc_vec, const tf_hash *global_tf,
         double freq = 0.0;
         tf_hash_get_freq(global_tf, e->word, i, &freq);
 
-        double tfidf_value = (freq == 0) ? 0.0 : (1.0 + log2(freq)) * e->idf;
-        global_doc_vec[i][word_idx] = tfidf_value;
+        // Apenas adicionar palavras que aparecem no documento (freq > 0)
+        if (freq > 0) {
+          double tfidf_value = (1.0 + log2(freq)) * e->value;
+          generic_hash_add(global_doc_vec[i], e->word, tfidf_value);
+        }
 
         e = e->next;
         word_idx++;
@@ -75,16 +78,30 @@ void compute_doc_vecs(double **global_doc_vec, const tf_hash *global_tf,
   }
 }
 
-void compute_doc_norms(double *global_doc_norms, double **global_doc_vecs,
+void compute_doc_norms(double *global_doc_norms, generic_hash **global_doc_vecs,
                        long int doc_count, long int vocab_size,
                        long int offset) {
-  for (long int i = offset; i < offset + doc_count; ++i) {
+  if (!global_doc_norms || !global_doc_vecs || doc_count <= 0 || vocab_size <= 0 || offset < 0) {
+    fprintf(stderr, "Erro nos argumentos de entrada.\n");
+    return;
+  }
+
+  for (long int i = 0; i < doc_count; i++) {
+    long int doc_id = offset + i;
+    generic_hash *doc_vec = global_doc_vecs[doc_id];
     double norm = 0.0;
-    for (long int j = 0; j < vocab_size; ++j) {
-      norm += global_doc_vecs[i][j] * global_doc_vecs[i][j];
+
+    // Calcular a soma dos quadrados de todos os valores TF-IDF do documento
+    for (size_t j = 0; j < doc_vec->cap; j++) {
+      GEntry *e = doc_vec->buckets[j];
+      while (e) {
+        norm += e->value * e->value;
+        e = e->next;
+      }
     }
-    norm = sqrt(norm);
-    global_doc_norms[i] = norm;
+
+    // Tomar a raiz quadrada para obter a norma Euclidiana
+    global_doc_norms[doc_id] = sqrt(norm);
   }
 }
 

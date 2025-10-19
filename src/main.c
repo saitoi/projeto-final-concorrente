@@ -27,11 +27,10 @@ pthread_once_t once = PTHREAD_ONCE_INIT;
 // Hashes globais
 tf_hash *global_tf;
 generic_hash *global_idf;
+generic_hash **global_doc_hash;
+double *global_doc_norms;
 
 // Vetores globais
-double **global_doc_vec;
-double *global_doc_norms;
-const char **global_vocab;
 size_t global_vocab_size;
 
 // Variáveis globais de controle
@@ -68,9 +67,7 @@ int main(int argc, char *argv[]) {
   fflush(stderr);
   const char *filename_db = "wiki-small.db", *filename_tf = "models/tf.bin",
              *filename_idf = "models/idf.bin",
-             *filename_doc_vec = "models/doc_vec.bin",
              *filename_doc_norms = "models/doc_norms.bin",
-             *filename_vocab = "models/vocab.txt",
              *tablename = "sample_articles";
   const char *query_user = "shakespeare english literature";
   int nthreads = 4;
@@ -140,9 +137,7 @@ int main(int argc, char *argv[]) {
 
   // Caso o arquivo não exista: Pré-processamento
   if (access(filename_tf, F_OK) == -1 || access(filename_idf, F_OK) == -1 ||
-      access(filename_doc_vec, F_OK) == -1 ||
-      access(filename_doc_norms, F_OK) == -1 ||
-      access(filename_vocab, F_OK) == -1) {
+      access(filename_doc_norms, F_OK) == -1) {
     pthread_t tids[MAX_THREADS];
     thread_args args[MAX_THREADS];
     const char *query_count = "select count(*) from \"%w\";";
@@ -206,10 +201,8 @@ int main(int argc, char *argv[]) {
     printf("\nSalvando estruturas em disco\n");
     save_tf_hash(global_tf, filename_tf);
     save_generic_hash(global_idf, filename_idf);
-    save_doc_vecs(global_doc_vec, global_entries, global_vocab_size,
-                filename_doc_vec);
+    // TODO: Implementar salvação de global_doc_hash quando necessário
     save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
-    save_vocab(global_vocab, global_vocab_size, filename_vocab);
 
     // Liberar stopwords (usado apenas no pré-processamento)
     free_stopwords();
@@ -235,40 +228,20 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    global_doc_vec =
-        load_doc_vecs(filename_doc_vec, &global_entries, &global_vocab_size);
-    if (!global_doc_vec) {
-      fprintf(stderr, "Erro ao carregar global_doc_vec\n");
-      tf_hash_free(global_tf);
-      generic_hash_free(global_idf);
-      pthread_mutex_destroy(&mutex);
-      return 1;
-    }
+    // TODO: Implementar carregamento de global_doc_hash quando necessário
+    // Por enquanto, vamos pular o carregamento dos vetores de documentos
 
-    global_doc_norms = load_doc_norms(filename_doc_norms, NULL);
+    global_doc_norms = load_doc_norms(filename_doc_norms, &global_entries);
     if (!global_doc_norms) {
       fprintf(stderr, "Erro ao carregar global_doc_norms\n");
       tf_hash_free(global_tf);
       generic_hash_free(global_idf);
-      for (long int i = 0; i < global_entries; i++)
-        free(global_doc_vec[i]);
-      free(global_doc_vec);
       pthread_mutex_destroy(&mutex);
       return 1;
     }
 
-    global_vocab = load_vocab(filename_vocab, NULL);
-    if (!global_vocab) {
-      fprintf(stderr, "Erro ao carregar global_vocab\n");
-      tf_hash_free(global_tf);
-      generic_hash_free(global_idf);
-      for (long int i = 0; i < global_entries; i++)
-        free(global_doc_vec[i]);
-      free(global_doc_vec);
-      free(global_doc_norms);
-      pthread_mutex_destroy(&mutex);
-      return 1;
-    }
+    global_vocab_size = generic_hash_size(global_idf);
+
 
     printf("Todas as estruturas foram carregadas com sucesso!\n");
   }
@@ -333,7 +306,7 @@ int main(int argc, char *argv[]) {
     for (size_t i = 0; i < global_idf->cap && count < limit; i++) {
       for (GEntry *e = global_idf->buckets[i]; e && count < limit;
            e = e->next) {
-        printf("Palavra: %-25s IDF: %.6f\n", e->word, e->idf);
+        printf("Palavra: %-25s IDF: %.6f\n", e->word, e->value);
         count++;
       }
     }
@@ -345,23 +318,19 @@ int main(int argc, char *argv[]) {
   if (global_idf)
     generic_hash_free(global_idf);
 
-  // Liberar vetores de documentos
-  if (global_doc_vec) {
+  // Liberar hashes de documentos
+  if (global_doc_hash) {
     for (long int i = 0; i < global_entries; i++) {
-      if (global_doc_vec[i])
-        free(global_doc_vec[i]);
+      if (global_doc_hash[i])
+        generic_hash_free(global_doc_hash[i]);
     }
-    free(global_doc_vec);
+    free(global_doc_hash);
   }
 
   // Liberar normas
   if (global_doc_norms)
     free(global_doc_norms);
 
-  // Liberar vocabulário (apenas o array, não as strings que pertencem ao hash)
-  if (global_vocab) {
-    free((void *)global_vocab);
-  }
 
   pthread_mutex_destroy(&mutex);
 
@@ -380,15 +349,7 @@ void compute_once(void) {
   fflush(stderr);
   LOG(stdout, "Funções computadas uma única vez dentre todas as threads");
 
-  // [1] Coleta as chaves da hash global_idf
-  fprintf(stderr, "DEBUG: Antes generic_hash_to_vec\n");
-  fflush(stderr);
-  global_vocab = generic_hash_to_vec(global_idf);
-  fprintf(stderr, "DEBUG: Depois generic_hash_to_vec\n");
-  fflush(stderr);
-  if (global_vocab) {
-    LOG(stdout, "Vocabulário convertido para vetor");
-  }
+  // [1] Vocabulário: usar as chaves da hash global_idf diretamente quando necessário
 
   // [2] Computa o IDF
   fprintf(stderr, "DEBUG: Antes set_idf_value\n");
@@ -397,45 +358,37 @@ void compute_once(void) {
   fprintf(stderr, "DEBUG: Depois set_idf_value\n");
   fflush(stderr);
 
-  // [3]
+  // [3] Alocar global_doc_hash (hash table para cada documento)
   global_vocab_size = generic_hash_size(global_idf);
-  fprintf(stderr, "DEBUG: Alocando global_doc_vec: %ld docs x %zu words = %.2f GB\n",
-          global_entries, global_vocab_size,
-          (global_entries * global_vocab_size * sizeof(double)) / (1024.0 * 1024.0 * 1024.0));
+  fprintf(stderr, "DEBUG: Alocando global_doc_hash: %ld docs\n", global_entries);
   fflush(stderr);
 
-  global_doc_vec = (double **)malloc(global_entries * sizeof(double *));
-  if (!global_doc_vec) {
-    LOG(stderr, "Erro ao alocar memória para global_doc_vecs");
+  global_doc_hash = (generic_hash **)malloc(global_entries * sizeof(generic_hash *));
+  if (!global_doc_hash) {
+    LOG(stderr, "Erro ao alocar memória para global_doc_hash");
     exit(EXIT_FAILURE);
   }
 
   for (long int i = 0; i < global_entries; ++i) {
-    if (i % 10000 == 0) {
-      fprintf(stderr, "DEBUG: Alocando vetor %ld/%ld\n", i, global_entries);
-      fflush(stderr);
-    }
-    global_doc_vec[i] = (double *)calloc(global_vocab_size, sizeof(double));
-    if (!global_doc_vec[i]) {
-      LOG(stderr, "Erro ao alocar memória para vetor do documento %ld", i);
-      exit(EXIT_FAILURE);
-    }
+      global_doc_hash[i] = generic_hash_new();
+      if (!global_doc_hash[i]) {
+        LOG(stderr, "Erro ao alocar memória para global_doc_hash[%ld]", i);
+        exit(EXIT_FAILURE);
+      }
   }
-  fprintf(stderr, "DEBUG: global_doc_vec alocado com sucesso\n");
-  fflush(stderr);
 
   // [4]
-  global_doc_norms = (double *)malloc(global_entries * sizeof(double));
+  global_doc_norms = (double *)calloc(global_entries, sizeof(double));
   if (!global_doc_norms) {
     LOG(stderr, "Erro ao alocar memória para global_doc_norms");
     exit(EXIT_FAILURE);
   }
 
-  fprintf(stdout, "IDF computado. Tamanho da Hash global: %zu\n",
+  fprintf(stdout, "IDF computado. Tamanho do vocabulário: %zu palavras\n",
           global_vocab_size);
   fprintf(stdout,
-          "Vetores de documentos alocados: %ld documentos x %zu palavras\n",
-          global_entries, global_vocab_size);
+          "Hashes de documentos alocados: %ld documentos\n",
+          global_entries);
   fprintf(stdout, "Total de documentos para cálculo IDF: %ld\n",
           global_entries);
 }
@@ -505,9 +458,10 @@ void *preprocess(void *arg) {
   fflush(stderr);
   article_texts = get_str_arr(t->filename_db,
                               "select article_text from \"%w\" "
-                              "where article_id between ? and ?",
+                              "where article_id between ? and ?"
+                              "order by article_id asc",
                               t->start, t->end - 1, t->tablename);
-  fprintf(stderr, "DEBUG: Thread %ld - Depois get_str_arr\n", t->id);
+  fprintf(stderr, "DEBUG: Thread %ld - Dvecepois get_str_arr\n", t->id);
   fflush(stderr);
   if (!article_texts) {
     fprintf(stderr, "Erro ao obter dados do banco\n");
@@ -598,14 +552,14 @@ void *preprocess(void *arg) {
   // [13] Computar vetores de documentos usando TF-IDF
   fprintf(stderr, "DEBUG: Thread %ld - Antes compute_doc_vecs\n", t->id);
   fflush(stderr);
-  compute_doc_vecs(global_doc_vec, global_tf, global_idf, count, t->start);
+  compute_doc_hash(global_doc_hash, global_tf, global_idf, count, t->start);
   fprintf(stderr, "DEBUG: Thread %ld - Depois compute_doc_vecs\n", t->id);
   fflush(stderr);
 
   // [14] Computar normas dos documentos
   fprintf(stderr, "DEBUG: Thread %ld - Antes compute_doc_norms\n", t->id);
   fflush(stderr);
-  compute_doc_norms(global_doc_norms, global_doc_vec, count, global_vocab_size,
+  compute_doc_norms(global_doc_norms, global_doc_hash, count, global_vocab_size,
                     t->start);
   fprintf(stderr, "DEBUG: Thread %ld - Depois compute_doc_norms\n", t->id);
   fflush(stderr);
@@ -616,12 +570,14 @@ void *preprocess(void *arg) {
     long int doc_id = t->start + i;
     LOG(stdout, "Documento %ld:", doc_id);
 
-    // Mostrar valores do vetor (primeiros 30 valores não-zero)
+    // Mostrar valores do hash (primeiros 30 valores não-zero)
     size_t valores_mostrados = 0;
-    for (size_t j = 0; j < global_vocab_size && valores_mostrados < 30; ++j) {
-      if (global_doc_vec[doc_id][j] != 0.0) {
-        LOG(stdout, "  [%zu] = %.6f", j, global_doc_vec[doc_id][j]);
-        valores_mostrados++;
+    for (size_t j = 0; j < global_doc_hash[doc_id]->cap && valores_mostrados < 30; ++j) {
+      for (GEntry *e = global_doc_hash[doc_id]->buckets[j]; e && valores_mostrados < 30; e = e->next) {
+        if (e->value != 0.0) {
+          LOG(stdout, "  %s = %.6f", e->word, e->value);
+          valores_mostrados++;
+        }
       }
     }
 
