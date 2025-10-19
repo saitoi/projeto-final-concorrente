@@ -5,5 +5,7 @@ long int get_single_int(const char *filename_db, const char *query,
                         const char *tablename);
 char **get_str_arr(const char *filename_db, const char *query, long int start,
                    long int count, const char *tablename);
+char **get_documents_by_ids(const char *filename_db, const char *tablename,
+                            const long int *doc_ids, long int k);
 
 #endif

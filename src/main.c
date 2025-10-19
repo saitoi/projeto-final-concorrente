@@ -64,6 +64,7 @@ int main(int argc, char *argv[]) {
   const char *query_user = "shakespeare english literature";
   int nthreads = 4;
   long int entries = 0;
+  int k = 10; // Top-k documentos mais similares
 
   LOG(stderr, "DEBUG: Variáveis locais inicializadas");
   fflush(stderr);
@@ -84,6 +85,8 @@ int main(int argc, char *argv[]) {
       query_user = argv[++i];
     else if (strcmp(argv[i], "--tablename") == 0 && i + 1 < argc)
       tablename = argv[++i];
+    else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
+      k = atoi(argv[++i]);
     else if (strcmp(argv[i], "--verbose") == 0)
       VERBOSE = 1;
     else {
@@ -97,7 +100,8 @@ int main(int argc, char *argv[]) {
           "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
           "--query_user: Consulta do usuário (default: 'exemplo')\n"
           "--tablename: Nome da tabela consultada (default: "
-          "'sample_articles')\n",
+          "'sample_articles')\n"
+          "--k: Top-k documentos mais similares (default: 10)\n",
           argv[0]);
       return 1;
     }
@@ -279,7 +283,87 @@ int main(int argc, char *argv[]) {
       printf("Norma da query: %.6f\n", query_norm);
       printf("Tamanho do vetor TF-IDF da query: %zu palavras\n", hash_size(query_tf));
 
-      // TODO: Calcular similaridade com documentos
+      // DEBUG: Exibir palavras da query
+      printf("Palavras na query (após processamento):\n");
+      for (size_t i = 0; i < query_tf->cap; i++) {
+        for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
+          printf("  '%s': TF-IDF=%.6f\n", e->word, e->value);
+        }
+      }
+
+      // Calcular similaridade com todos os documentos
+      double *similarities = compute_similarities(query_tf, query_norm, global_tf,
+                                                   global_doc_norms, global_entries);
+      if (!similarities) {
+        fprintf(stderr, "Erro ao calcular similaridades\n");
+      } else {
+        printf("\n=== Similaridades (Top 10) ===\n");
+
+        // Encontrar os top-k documentos mais similares
+        // Criar array de índices
+        typedef struct {
+          long int doc_id;
+          double similarity;
+        } DocScore;
+
+        DocScore *scores = (DocScore *)malloc(global_entries * sizeof(DocScore));
+        if (scores) {
+          for (long int i = 0; i < global_entries; i++) {
+            scores[i].doc_id = i;
+            scores[i].similarity = similarities[i];
+          }
+
+          // Ordenar por similaridade (bubble sort simples - OK para poucos docs)
+          for (long int i = 0; i < global_entries - 1; i++) {
+            for (long int j = 0; j < global_entries - i - 1; j++) {
+              if (scores[j].similarity < scores[j + 1].similarity) {
+                DocScore temp = scores[j];
+                scores[j] = scores[j + 1];
+                scores[j + 1] = temp;
+              }
+            }
+          }
+
+          // Exibir top-k
+          long int top_k = global_entries < k ? global_entries : k;
+          printf("Exibindo top %ld documentos:\n", top_k);
+          for (long int i = 0; i < top_k; i++) {
+            printf("Doc %ld: %.6f\n", scores[i].doc_id, scores[i].similarity);
+          }
+
+          // Buscar o corpus dos top-k documentos
+          printf("\n=== Corpus dos Top-%ld Documentos ===\n", top_k);
+          long int *top_ids = (long int *)malloc(top_k * sizeof(long int));
+          if (top_ids) {
+            for (long int i = 0; i < top_k; i++) {
+              top_ids[i] = scores[i].doc_id;
+            }
+
+            char **documents = get_documents_by_ids(filename_db, tablename, top_ids, top_k);
+            if (documents) {
+              for (long int i = 0; i < top_k; i++) {
+                if (documents[i]) {
+                  printf("\n--- Documento %ld (similaridade: %.6f) ---\n",
+                         top_ids[i], scores[i].similarity);
+                  // Limitar a exibição a 200 caracteres
+                  if (strlen(documents[i]) > 200) {
+                    printf("%.200s...\n", documents[i]);
+                  } else {
+                    printf("%s\n", documents[i]);
+                  }
+                  free(documents[i]);
+                }
+              }
+              free(documents);
+            }
+            free(top_ids);
+          }
+
+          free(scores);
+        }
+
+        free(similarities);
+      }
 
       // Liberar hash da query
       hash_free(query_tf);

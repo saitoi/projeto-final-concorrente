@@ -92,3 +92,78 @@ char **get_str_arr(const char *filename_db, const char *query, long int start,
   sqlite3_close(db);
   return result;
 }
+char **get_documents_by_ids(const char *filename_db, const char *tablename,
+                            const long int *doc_ids, long int k) {
+  if (!filename_db || !tablename || !doc_ids || k <= 0) {
+    return NULL;
+  }
+
+  int rc;
+  sqlite3 *db;
+  sqlite3_stmt *stmt;
+  char **result = NULL;
+
+  rc = sqlite3_open(filename_db, &db);
+  if (rc) {
+    fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
+    return NULL;
+  }
+
+  // Alocar array de resultados
+  result = (char **)calloc(k, sizeof(char *));
+  if (!result) {
+    fprintf(stderr, "Erro ao alocar memória para resultados\n");
+    sqlite3_close(db);
+    return NULL;
+  }
+
+  // Para cada ID, buscar o documento
+  for (long int i = 0; i < k; i++) {
+    // Query: SELECT article_text FROM tablename WHERE article_id = ?
+    char *sql = sqlite3_mprintf("SELECT article_text FROM \"%w\" WHERE article_id = ?", tablename);
+    if (!sql) {
+      fprintf(stderr, "Erro ao formatar statement\n");
+      // Liberar resultados já alocados
+      for (long int j = 0; j < i; j++) {
+        free(result[j]);
+      }
+      free(result);
+      sqlite3_close(db);
+      return NULL;
+    }
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+    if (rc != SQLITE_OK) {
+      fprintf(stderr, "Erro ao preparar statement: %s\n", sqlite3_errmsg(db));
+      sqlite3_free(sql);
+      // Liberar resultados já alocados
+      for (long int j = 0; j < i; j++) {
+        free(result[j]);
+      }
+      free(result);
+      sqlite3_close(db);
+      return NULL;
+    }
+
+    // Bind do article_id (doc_ids[i] + 1 porque IDs começam em 1)
+    sqlite3_bind_int64(stmt, 1, doc_ids[i]);
+
+    rc = sqlite3_step(stmt);
+    if (rc == SQLITE_ROW) {
+      const unsigned char *text = sqlite3_column_text(stmt, 0);
+      if (text) {
+        result[i] = strdup((const char *)text);
+      } else {
+        result[i] = NULL;
+      }
+    } else {
+      result[i] = NULL;
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_free(sql);
+  }
+
+  sqlite3_close(db);
+  return result;
+}

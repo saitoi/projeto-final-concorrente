@@ -63,8 +63,9 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Salvamento em ordem em um binário.
 - [x] NÃO ALOCAR VETOR DO VOCABULÁRIO JAMAIS
 - [x] Global_doc_vec ABSURDAMENTE GRANDE
+- [ ] Substituir "'s" no pré-processamento.
 - [ ] Consulta:
-    - [ ] Pré-processamento da consulta do usuário.
+    - [x] Pré-processamento da consulta do usuário.
     - [ ] Passo adicionar de replicar scripts de regex do preprocess/**.py em C
     - [ ] Cálculo da similaridade com os documentos.
 - [ ] Pré-processamento da consulta:

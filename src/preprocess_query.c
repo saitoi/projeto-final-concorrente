@@ -168,3 +168,55 @@ int preprocess_query_single(const char *query_user, const hash_t *global_idf,
   *query_norm_out = norm;
   return 0;
 }
+
+double *compute_similarities(const hash_t *query_tf, double query_norm,
+                             hash_t **global_tf, const double *global_doc_norms,
+                             long int num_docs) {
+  if (!query_tf || !global_tf || !global_doc_norms || num_docs <= 0) {
+    return NULL;
+  }
+
+  // Alocar vetor de similaridades
+  double *similarities = (double *)calloc(num_docs, sizeof(double));
+  if (!similarities) {
+    fprintf(stderr, "Erro ao alocar vetor de similaridades\n");
+    return NULL;
+  }
+
+  // Para cada documento
+  for (long int doc_id = 0; doc_id < num_docs; doc_id++) {
+    hash_t *doc_tf = global_tf[doc_id];
+    if (!doc_tf) {
+      similarities[doc_id] = 0.0;
+      continue;
+    }
+
+    double dot_product = 0.0;
+
+    // Para cada palavra na query, buscar no documento e calcular produto interno
+    for (size_t i = 0; i < query_tf->cap; i++) {
+      for (HashEntry *query_entry = query_tf->buckets[i]; query_entry;
+           query_entry = query_entry->next) {
+
+        // Buscar a mesma palavra no documento
+        double doc_tfidf = hash_find(doc_tf, query_entry->word);
+
+        // Se a palavra existe no documento, contribui para o produto interno
+        if (doc_tfidf > 0.0) {
+          double query_tfidf = query_entry->value;
+          dot_product += query_tfidf * doc_tfidf;
+        }
+      }
+    }
+
+    // Similaridade cosseno = (query · doc) / (||query|| * ||doc||)
+    double doc_norm = global_doc_norms[doc_id];
+    if (query_norm > 0.0 && doc_norm > 0.0) {
+      similarities[doc_id] = dot_product / (query_norm * doc_norm);
+    } else {
+      similarities[doc_id] = 0.0;
+    }
+  }
+
+  return similarities;
+}
