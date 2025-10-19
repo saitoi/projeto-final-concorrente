@@ -15,15 +15,18 @@ typedef struct GEntry {
 
 typedef struct generic_hash {
   GEntry **buckets;
+  double *value; // TF-IDF
   size_t cap;
   size_t size;
 } generic_hash;
 
 generic_hash *generic_hash_new(void);
 void generic_hash_free(generic_hash *set);
+double generic_hash_find(const generic_hash *set, const char *word);
 void generic_hash_add(generic_hash *set, const char *word, double value);
 int generic_hash_contains(const generic_hash *set, const char *word);
 void generic_hash_merge(generic_hash *dst, const generic_hash *src);
+void generic_hashes_merge(generic_hash **dst, generic_hash **src, long int count);
 size_t generic_hash_size(const generic_hash *set);
 const char **generic_hash_to_vec(const generic_hash *set);
 

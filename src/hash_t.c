@@ -152,6 +152,16 @@ int generic_hash_contains(const generic_hash *set, const char *word) {
   return 0;
 }
 
+void generic_hashes_merge(generic_hash **dst, generic_hash **src, long int count) {
+    static long int offset = 0;
+    if (!dst || !src) return;
+
+    for (long int i = 0; i < count; i++)
+        dst[offset + i] = src[i];
+
+    offset += count;
+}
+
 void generic_hash_merge(generic_hash *dst, const generic_hash *src) {
   if (!dst || !src || !src->cap)
     return;
@@ -179,6 +189,22 @@ size_t generic_hash_size(const generic_hash *set) {
   }
 
   return size;
+}
+
+double generic_hash_find(const generic_hash *set, const char *word) {
+  if (!set || !word)
+    return 0.0;
+
+  size_t wlen = strlen(word);
+  size_t idx = hash_str(word, wlen) % set->cap;
+  GEntry *e = set->buckets[idx];
+  while (e) {
+    if (!strcmp(e->word, word))
+      return e->value;
+    e = e->next;
+  }
+
+  return 0.0;
 }
 
 const char **generic_hash_to_vec(const generic_hash *set) {
