@@ -11,10 +11,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../include/preprocess_query.h"
 #include "../include/file_io.h"
 #include "../include/hash_t.h"
 #include "../include/preprocess.h"
+#include "../include/preprocess_query.h"
 #include "../include/sqlite_helper.h"
 
 /* --------------- Variáveis globais --------------- */
@@ -121,7 +121,9 @@ int main(int argc, char *argv[]) {
       argc, nthreads, entries, filename_db, query_user, tablename);
 
   if (nthreads <= 0 || nthreads > MAX_THREADS) {
-    fprintf(stderr, "Número de threads inválido (%d). Deve estar entre 1 e %d\n", nthreads, MAX_THREADS);
+    fprintf(stderr,
+            "Número de threads inválido (%d). Deve estar entre 1 e %d\n",
+            nthreads, MAX_THREADS);
     return 1;
   }
 
@@ -141,7 +143,7 @@ int main(int argc, char *argv[]) {
     thread_args args[MAX_THREADS];
     const char *query_count = "select count(*) from \"%w\";";
     global_idf = hash_new();
-    global_tf = (hash_t**) calloc(entries, sizeof(hash_t*));
+    global_tf = (hash_t **)calloc(entries, sizeof(hash_t *));
     if (!global_tf) {
       fprintf(stderr, "Falha ao alocar memória para global_tf\n");
       return 1;
@@ -246,12 +248,11 @@ int main(int argc, char *argv[]) {
 
     global_vocab_size = hash_size(global_idf);
 
-
     printf("Todas as estruturas foram carregadas com sucesso!\n");
   }
 
   /* --------------- Consulta do Usuário --------------- */
-  
+
   if (query_user) {
     printf("Consulta do usuário: %s\n", query_user);
     pthread_t tids_query[MAX_THREADS];
@@ -278,7 +279,8 @@ int main(int argc, char *argv[]) {
       args[i].tablename = tablename;
       args[i].start = i * base + (i < rem ? i : rem);
       args[i].end = args[i].start + base + (i < rem);
-      if (pthread_create(&tids_query[i], NULL, preprocess_query, (void *)&args[i])) {
+      if (pthread_create(&tids_query[i], NULL, preprocess_query,
+                         (void *)&args[i])) {
         fprintf(stderr, "Erro ao criar thread %ld\n", i);
         return 1;
       }
@@ -298,9 +300,9 @@ int main(int argc, char *argv[]) {
     }
     free(query_tokens);
   } else {
-      printf("Nenhuma consulta fornecida\n");
-  } 
-  
+    printf("Nenhuma consulta fornecida\n");
+  }
+
   // Impressão das palavras com IDF (primeiras 30 entradas)
   if (VERBOSE) {
     printf("\n=== Primeiras 30 palavras com IDF ===\n");
@@ -327,11 +329,9 @@ int main(int argc, char *argv[]) {
   if (global_idf)
     hash_free(global_idf);
 
-
   // Liberar normas
   if (global_doc_norms)
     free(global_doc_norms);
-
 
   pthread_mutex_destroy(&mutex);
 
@@ -350,7 +350,8 @@ void compute_once(void) {
   fflush(stderr);
   LOG(stdout, "Funções computadas uma única vez dentre todas as threads");
 
-  // [1] Vocabulário: usar as chaves da hash global_idf diretamente quando necessário
+  // [1] Vocabulário: usar as chaves da hash global_idf diretamente quando
+  // necessário
 
   // [2] Computa o IDF
   fprintf(stderr, "DEBUG: Antes set_idf_value\n");
@@ -361,7 +362,8 @@ void compute_once(void) {
 
   // [3] Vocabulário já está em global_idf
   global_vocab_size = hash_size(global_idf);
-  fprintf(stderr, "DEBUG: Tamanho do vocabulário: %zu palavras\n", global_vocab_size);
+  fprintf(stderr, "DEBUG: Tamanho do vocabulário: %zu palavras\n",
+          global_vocab_size);
   fflush(stderr);
 
   // [4]
@@ -373,8 +375,7 @@ void compute_once(void) {
 
   fprintf(stdout, "IDF computado. Tamanho do vocabulário: %zu palavras\n",
           global_vocab_size);
-  fprintf(stdout,
-          "Hashes de documentos alocados: %ld documentos\n",
+  fprintf(stdout, "Hashes de documentos alocados: %ld documentos\n",
           global_entries);
   fprintf(stdout, "Total de documentos para cálculo IDF: %ld\n",
           global_entries);
@@ -396,7 +397,8 @@ void compute_once(void) {
 // 8.  Populando a hash local de frequência dos termos (`tf_hash *global_tf`).
 // 9.  Popular vocabulário local (chaves do `hash_t *global_idf`).
 // 10. Mergir TF e IDF hashes nas globais
-// 11. Uso do padrão barrreira (`pthread_barrier_t barrier`) para sincronizar as threads
+// 11. Uso do padrão barrreira (`pthread_barrier_t barrier`) para sincronizar as
+// threads
 // 12. Executar `compute_once` descrito na seção anterior: PTHREAD_ONCE_INIT.
 // 13. Transformar os documentos em vetores usando esquema de ponderação TF-IDF.
 // 14. Computar as normas dos vetores gerados na etapa anterior.
@@ -410,7 +412,8 @@ void *preprocess(void *arg) {
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
 
-  fprintf(stderr, "DEBUG: Thread %ld - range: %ld to %ld (count=%ld)\n", t->id, t->start, t->end, count);
+  fprintf(stderr, "DEBUG: Thread %ld - range: %ld to %ld (count=%ld)\n", t->id,
+          t->start, t->end, count);
   fflush(stderr);
 
   char **article_texts; // Textos dos artigos
@@ -419,7 +422,7 @@ void *preprocess(void *arg) {
   // [2] Hashes locais: TF e IDF
   fprintf(stderr, "DEBUG: Thread %ld - Criando hashes locais\n", t->id);
   fflush(stderr);
-  hash_t **tf = (hash_t**) calloc(count, sizeof(hash_t*));
+  hash_t **tf = (hash_t **)calloc(count, sizeof(hash_t *));
   if (!tf) {
     fprintf(stderr, "Falha ao alocar memória para tf local\n");
     pthread_exit(NULL);
@@ -429,7 +432,8 @@ void *preprocess(void *arg) {
   for (long int i = 0; i < count; i++) {
     tf[i] = hash_new();
     if (!tf[i]) {
-      fprintf(stderr, "Falha ao alocar memória para tf[%ld] na thread %ld\n", i, t->id);
+      fprintf(stderr, "Falha ao alocar memória para tf[%ld] na thread %ld\n", i,
+              t->id);
       pthread_exit(NULL);
     }
   }
@@ -574,8 +578,10 @@ void *preprocess(void *arg) {
     // Mostrar valores do hash (primeiros 30 valores não-zero)
     // trocar isso daqui
     size_t valores_mostrados = 0;
-    for (size_t j = 0; j < global_tf[doc_id]->cap && valores_mostrados < 30; ++j) {
-      for (HashEntry *e = global_tf[doc_id]->buckets[j]; e && valores_mostrados < 30; e = e->next) {
+    for (size_t j = 0; j < global_tf[doc_id]->cap && valores_mostrados < 30;
+         ++j) {
+      for (HashEntry *e = global_tf[doc_id]->buckets[j];
+           e && valores_mostrados < 30; e = e->next) {
         if (e->value != 0.0) {
           LOG(stdout, "  %s = %.6f", e->word, e->value);
           valores_mostrados++;

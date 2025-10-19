@@ -38,7 +38,6 @@ void free_stopwords(void) {
 
 /* ==================== Funções de Serialização ==================== */
 
-
 int save_hash(const hash_t *gh, const char *filename) {
   if (!gh || !filename) {
     fprintf(stderr, "Erro: hash_t ou filename é nulo\n");
@@ -146,7 +145,6 @@ int save_vocab(const char **vocab, size_t vocab_size, const char *filename) {
 }
 
 /* ==================== Funções de Carregamento ==================== */
-
 
 hash_t *load_hash(const char *filename) {
   if (!filename) {

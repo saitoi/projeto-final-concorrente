@@ -153,13 +153,14 @@ int hash_contains(const hash_t *set, const char *word) {
 }
 
 void hashes_merge(hash_t **dst, hash_t **src, long int count) {
-    static long int offset = 0;
-    if (!dst || !src) return;
+  static long int offset = 0;
+  if (!dst || !src)
+    return;
 
-    for (long int i = 0; i < count; i++)
-        dst[offset + i] = src[i];
+  for (long int i = 0; i < count; i++)
+    dst[offset + i] = src[i];
 
-    offset += count;
+  offset += count;
 }
 
 void hash_merge(hash_t *dst, const hash_t *src) {
@@ -229,4 +230,3 @@ const char **hash_to_vec(const hash_t *set) {
 
   return vec;
 }
-

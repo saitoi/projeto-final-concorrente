@@ -1,5 +1,5 @@
-#include "../include/hash_t.h"
 #include "../include/file_io.h"
+#include "../include/hash_t.h"
 #include <libstemmer.h>
 #include <math.h>
 #include <pthread.h>
@@ -24,7 +24,8 @@ void set_idf_words(hash_t *vocab, char ***article_vecs, long int count) {
 }
 
 // Conta em quantos documentos uma palavra aparece
-static int count_docs_with_word(hash_t **tf, const char *word, long int num_docs) {
+static int count_docs_with_word(hash_t **tf, const char *word,
+                                long int num_docs) {
   int count = 0;
   for (long int i = 0; i < num_docs; i++) {
     if (tf[i] && hash_contains(tf[i], word)) {
@@ -34,7 +35,8 @@ static int count_docs_with_word(hash_t **tf, const char *word, long int num_docs
   return count;
 }
 
-void set_idf_value(hash_t *set, hash_t **tf, double doc_count, long int num_docs) {
+void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
+                   long int num_docs) {
   if (!set || !tf) {
     fprintf(stderr, "Erro: set ou tf é nulo.\n");
     pthread_exit(NULL);
@@ -55,7 +57,7 @@ void set_idf_value(hash_t *set, hash_t **tf, double doc_count, long int num_docs
 }
 
 void compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count,
-                      long int offset) {
+                    long int offset) {
   if (!global_tf || !global_idf || count <= 0) {
     fprintf(stderr, "Erro: global_tf, global_idf, ou count inválido.\n");
     pthread_exit(NULL);
@@ -64,7 +66,8 @@ void compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count,
   // Para cada documento
   for (long int i = offset; i < offset + count; ++i) {
     hash_t *doc_tf = global_tf[i];
-    if (!doc_tf) continue;
+    if (!doc_tf)
+      continue;
 
     // Para cada palavra no documento (iterar sobre buckets da hash)
     for (size_t j = 0; j < doc_tf->cap; ++j) {
@@ -87,7 +90,8 @@ void compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count,
   }
 }
 
-void compute_doc_norms(double *global_doc_norms, hash_t **global_tf, long int doc_count, long int vocab_size,
+void compute_doc_norms(double *global_doc_norms, hash_t **global_tf,
+                       long int doc_count, long int vocab_size,
                        long int offset) {
   if (!global_doc_norms || doc_count <= 0 || vocab_size <= 0 || offset < 0) {
     fprintf(stderr, "Erro nos argumentos de entrada.\n");
@@ -142,7 +146,7 @@ void stem_articles(char ***article_vecs, long int count) {
 }
 
 void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count,
-                          long int offset) {
+                      long int offset) {
   for (long int i = 0; i < count; ++i) {
     if (!tf[i])
       continue;
@@ -191,7 +195,8 @@ char ***tokenize_articles(char **article_texts, long int count) {
 
   for (long int i = 0; i < count; ++i) {
     if (i % 1000 == 0) {
-      fprintf(stderr, "DEBUG: tokenize_articles - processando artigo %ld/%ld\n", i, count);
+      fprintf(stderr, "DEBUG: tokenize_articles - processando artigo %ld/%ld\n",
+              i, count);
       fflush(stderr);
     }
     if (!article_texts[i]) {
@@ -199,8 +204,8 @@ char ***tokenize_articles(char **article_texts, long int count) {
       continue;
     }
 
-    // Estimativa mais conservadora: assume palavras curtas (média 3 chars + espaço)
-    // Adiciona margem de segurança de 100 tokens
+    // Estimativa mais conservadora: assume palavras curtas (média 3 chars +
+    // espaço) Adiciona margem de segurança de 100 tokens
     long int estimated_tokens = strlen(article_texts[i]) / 3 + 100;
     article_vecs[i] = malloc(estimated_tokens * sizeof(char *));
     if (!article_vecs[i]) {
@@ -216,7 +221,7 @@ char ***tokenize_articles(char **article_texts, long int count) {
     }
 
     long int j = 0;
-    char *saveptr;  // Para strtok_r (thread-safe)
+    char *saveptr; // Para strtok_r (thread-safe)
     char *token = strtok_r(text_copy, " \t\n\r", &saveptr);
     while (token != NULL) {
       if (j >= estimated_tokens - 1) {
