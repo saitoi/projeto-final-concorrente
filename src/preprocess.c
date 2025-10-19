@@ -128,19 +128,31 @@ tf_hash *populate_tf_hash(tf_hash *tf, char ***article_vecs, long int count,
 char ***tokenize_articles(char **article_texts, long int count) {
   char ***article_vecs;
 
+  fprintf(stderr, "DEBUG: tokenize_articles - count=%ld\n", count);
+  fflush(stderr);
+
   article_vecs = malloc(count * sizeof(char **));
   if (!article_vecs) {
     fprintf(stderr, "Erro ao alocar article_vecs\n");
     return NULL;
   }
 
+  fprintf(stderr, "DEBUG: tokenize_articles - article_vecs alocado\n");
+  fflush(stderr);
+
   for (long int i = 0; i < count; ++i) {
+    if (i % 1000 == 0) {
+      fprintf(stderr, "DEBUG: tokenize_articles - processando artigo %ld/%ld\n", i, count);
+      fflush(stderr);
+    }
     if (!article_texts[i]) {
       article_vecs[i] = NULL;
       continue;
     }
 
-    long int estimated_tokens = strlen(article_texts[i]) / 2 + 10;
+    // Estimativa mais conservadora: assume palavras curtas (média 3 chars + espaço)
+    // Adiciona margem de segurança de 100 tokens
+    long int estimated_tokens = strlen(article_texts[i]) / 3 + 100;
     article_vecs[i] = malloc(estimated_tokens * sizeof(char *));
     if (!article_vecs[i]) {
       article_vecs[i] = NULL;
@@ -155,11 +167,23 @@ char ***tokenize_articles(char **article_texts, long int count) {
     }
 
     long int j = 0;
-    char *token = strtok(text_copy, " \t\n\r");
-    while (token != NULL && j < estimated_tokens - 1) {
+    char *saveptr;  // Para strtok_r (thread-safe)
+    char *token = strtok_r(text_copy, " \t\n\r", &saveptr);
+    while (token != NULL) {
+      if (j >= estimated_tokens - 1) {
+        // Buffer cheio, aumentar tamanho
+        long int new_size = estimated_tokens * 2;
+        char **new_vec = realloc(article_vecs[i], new_size * sizeof(char *));
+        if (!new_vec) {
+          // Falha no realloc, truncar tokens restantes
+          break;
+        }
+        article_vecs[i] = new_vec;
+        estimated_tokens = new_size;
+      }
       article_vecs[i][j] = strdup(token);
       j++;
-      token = strtok(NULL, " \t\n\r");
+      token = strtok_r(NULL, " \t\n\r", &saveptr);
     }
     article_vecs[i][j] = NULL;
 
