@@ -24,18 +24,6 @@ void set_idf_words(hash_t *vocab, char ***article_vecs, long int count) {
   }
 }
 
-// Conta em quantos documentos uma palavra aparece
-static int count_docs_with_word(hash_t **tf, const char *word,
-                                long int num_docs) {
-  int count = 0;
-  for (long int i = 0; i < num_docs; i++) {
-    if (tf[i] && hash_contains(tf[i], word)) {
-      count++;
-    }
-  }
-  return count;
-}
-
 void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
                    long int num_docs) {
   if (!set || !tf) {
@@ -43,13 +31,46 @@ void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
     pthread_exit(NULL);
   }
 
+  // Primeiro, zerar todos os valores (vamos usar como contador)
   for (size_t i = 0; i < set->cap; i++) {
     HashEntry *e = set->buckets[i];
     while (e) {
-      // Conta em quantos documentos a palavra aparece
-      int freq = count_docs_with_word(tf, e->word, num_docs);
-      if (freq > 0)
-        e->value = log2(doc_count / freq);
+      e->value = 0.0;
+      e = e->next;
+    }
+  }
+
+  // Percorrer cada documento uma única vez e incrementar contador para cada palavra
+  for (long int doc_id = 0; doc_id < num_docs; doc_id++) {
+    if (!tf[doc_id])
+      continue;
+
+    // Para cada palavra neste documento
+    for (size_t i = 0; i < tf[doc_id]->cap; i++) {
+      HashEntry *doc_entry = tf[doc_id]->buckets[i];
+      while (doc_entry) {
+        // Buscar essa palavra no vocabulário global e incrementar seu contador
+        size_t wlen = doc_entry->wlen;
+        size_t idx = hash_str(doc_entry->word, wlen) & (set->cap - 1);
+
+        for (HashEntry *vocab_entry = set->buckets[idx]; vocab_entry; vocab_entry = vocab_entry->next) {
+          if (vocab_entry->wlen == wlen && memcmp(vocab_entry->word, doc_entry->word, wlen) == 0) {
+            vocab_entry->value += 1.0;
+            break;
+          }
+        }
+
+        doc_entry = doc_entry->next;
+      }
+    }
+  }
+
+  // Agora calcular o IDF com base nos contadores
+  for (size_t i = 0; i < set->cap; i++) {
+    HashEntry *e = set->buckets[i];
+    while (e) {
+      if (e->value > 0)
+        e->value = log2(doc_count / e->value);
       else
         e->value = 0.0;
       e = e->next;
