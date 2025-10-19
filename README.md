@@ -61,6 +61,8 @@ Leia `instrucoes-projeto.pdf`.
     - [x] Vetores dos documentos.
     - [x] Normas dos vetores.
     - [x] Salvamento em ordem em um binário.
+- [ ] NÃO ALOCAR VETOR DO VOCABULÁRIO JAMAIS
+- [ ] Global_doc_vec ABSURDAMENTE GRANDE
 - [ ] Consulta:
     - [ ] Pré-processamento da consulta do usuário.
     - [ ] Passo adicionar de replicar scripts de regex do preprocess/**.py em C
