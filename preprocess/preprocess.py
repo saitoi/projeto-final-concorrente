@@ -4,11 +4,13 @@ Script de preprocessamento de texto
 Uso:
     python preprocess.py "texto para processar"
     python preprocess.py -f arquivo.txt
+    python preprocess.py -d database.db [-t tabela]
 """
 import re
 import sys
 import argparse
 import unicodedata
+import sqlite3
 
 # Padrões regex do arquivo original
 LETTER = r"[^\W\d_]"
@@ -78,6 +80,13 @@ def clean_symbols(text: str) -> str:
     return t
 
 
+def remove_question_exclamation(text: str) -> str:
+    """Remove ?, ! e / do texto"""
+    t = text.replace("?", " ").replace("!", " ").replace("/", " ")
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
 def remove_apostrophe_s(text: str) -> str:
     """Remove apóstrofo + s (possessivos)"""
     t = text.replace("'s ", " ")
@@ -97,39 +106,73 @@ def preprocess(text: str) -> str:
     7. Limpeza de traços
     8. Limpeza de pontos
     9. Limpeza de símbolos
-    10. Remoção de apóstrofo + s (possessivos)
+    10. Remoção de ? e !
+    11. Remoção de apóstrofo + s (possessivos)
     """
-    # Etapa 1: lowercase
     text = text.lower()
 
-    # Etapa 2: remover acentos
     text = remove_accents(text)
 
-    # Etapa 3: remover caracteres não-ASCII
     text = remove_non_ascii(text)
 
-    # Etapa 4: unescape quotes
     text = unescape_quotes(text)
 
-    # Etapa 5: limpar aspas
     text = clean_quotes(text)
 
-    # Etapa 6: limpar vírgulas
     text = clean_commas(text)
 
-    # Etapa 7: limpar traços
     text = clean_dashes(text)
 
-    # Etapa 8: limpar pontos
     text = clean_dots(text)
 
-    # Etapa 9: limpar símbolos
     text = clean_symbols(text)
 
-    # Etapa 10: remover apóstrofo + s
+    text = remove_question_exclamation(text)
+
     text = remove_apostrophe_s(text)
 
     return text
+
+
+def process_database(db_path: str, table: str = 'test_tbl_1'):
+    """
+    Processa os textos de um banco de dados SQLite
+    Atualiza a coluna article_text com os textos preprocessados
+    """
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Verificar se a tabela existe
+        cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table}'")
+        if not cursor.fetchone():
+            print(f"Erro: Tabela '{table}' não encontrada no banco de dados", file=sys.stderr)
+            conn.close()
+            sys.exit(1)
+
+        # Processar cada linha
+        cursor.execute(f"SELECT article_id, article_text FROM {table}")
+        rows = cursor.fetchall()
+
+        print(f"Processando {len(rows)} registros da tabela '{table}'...", file=sys.stderr)
+
+        for art_id, article_text in rows:
+            if article_text:
+                processed_text = preprocess(article_text)
+                cursor.execute(f"UPDATE {table} SET article_text = ? WHERE article_id = ?",
+                             (processed_text, art_id))
+
+        conn.commit()
+        conn.close()
+
+        print(f"Processamento concluído! {len(rows)} registros atualizados.", file=sys.stderr)
+
+    except sqlite3.Error as e:
+        print(f"Erro ao processar banco de dados: {e}", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Erro inesperado: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
@@ -139,8 +182,17 @@ def main():
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('text', nargs='?', help='Texto para preprocessar')
     group.add_argument('-f', '--file', help='Arquivo de texto para preprocessar')
+    group.add_argument('-d', '--database', help='Arquivo SQLite (.db) para preprocessar')
+
+    parser.add_argument('-t', '--table', default='sample_articles',
+                       help='Nome da tabela no banco de dados (padrão: sample_articles)')
 
     args = parser.parse_args()
+
+    # Processar banco de dados SQLite
+    if args.database:
+        process_database(args.database, args.table)
+        return
 
     # Ler texto de arquivo ou argumento
     if args.file:
