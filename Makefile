@@ -20,11 +20,21 @@ CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include -g
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 # Parâmetros configuráveis
-TBL_NAME ?= "sample_articles"
+QUERY ?= Oscar 2020
+TEST ?= -1
 ENTRIES ?= 100
 VERBOSE ?= 1
 MANUAL ?= 0
 NTHR ?= 4
+
+# Mapeamento TEST para TBL_NAME
+ifeq ($(TEST),1)
+    TBL_NAME = test_tbl_1
+else ifeq ($(TEST),2)
+    TBL_NAME = test_tbl_2
+else
+    TBL_NAME = sample_articles
+endif
 
 
 # Se MANUAL=1, usa includes e libs locais
@@ -67,7 +77,7 @@ format:
 check: lint format
 
 run: clean all
-	./$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,) --nthreads $(NTHR) --tablename $(TBL_NAME)
+	./$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,) --nthreads $(NTHR) --tablename $(TBL_NAME) --query_user "$(QUERY)"
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
