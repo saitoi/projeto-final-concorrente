@@ -62,6 +62,8 @@ int main(int argc, char *argv[]) {
   fflush(stderr);
   const char *filename_db = "wiki-small.db", *tablename = "sample_articles";
   const char *query_user = "shakespeare english literature";
+  const char *query_filename = NULL;
+  char *query_from_file = NULL;  // Para armazenar conteúdo lido do arquivo
   int nthreads = 4;
   long int entries = 0;
   int k = 10; // Top-k documentos mais similares
@@ -83,6 +85,8 @@ int main(int argc, char *argv[]) {
       filename_db = argv[++i];
     else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
       query_user = argv[++i];
+    else if (strcmp(argv[i], "--query_filename") == 0 && i + 1 < argc)
+      query_filename = argv[++i];
     else if (strcmp(argv[i], "--tablename") == 0 && i + 1 < argc)
       tablename = argv[++i];
     else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
@@ -99,6 +103,7 @@ int main(int argc, char *argv[]) {
           "Toda tabela 'sample_articles')\n"
           "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
           "--query_user: Consulta do usuário (default: 'exemplo')\n"
+          "--query_filename: Arquivo com a consulta do usuário\n"
           "--tablename: Nome da tabela consultada (default: "
           "'sample_articles')\n"
           "--k: Top-k documentos mais similares (default: 10)\n",
@@ -106,6 +111,10 @@ int main(int argc, char *argv[]) {
       return 1;
     }
   }
+
+  // Ler query de arquivo se fornecido
+  if (query_filename)
+    query_user = get_filecontent(query_filename);
 
   LOG(stdout,
       "Parâmetros nomeados:\n"
@@ -140,20 +149,20 @@ int main(int argc, char *argv[]) {
     entries = total;
 
   // Criar nomes de arquivo com sufixo do número de entradas
-  char filename_tf_with_entries[256];
-  char filename_idf_with_entries[256];
-  char filename_doc_norms_with_entries[256];
-  snprintf(filename_tf_with_entries, sizeof(filename_tf_with_entries),
+  char filename_tf[256];
+  char filename_idf[256];
+  char filename_doc_norms[256];
+  snprintf(filename_tf, sizeof(filename_tf),
            "models/tf_%ld.bin", entries);
-  snprintf(filename_idf_with_entries, sizeof(filename_idf_with_entries),
+  snprintf(filename_idf, sizeof(filename_idf),
            "models/idf_%ld.bin", entries);
-  snprintf(filename_doc_norms_with_entries, sizeof(filename_doc_norms_with_entries),
+  snprintf(filename_doc_norms, sizeof(filename_doc_norms),
            "models/doc_norms_%ld.bin", entries);
 
   // Caso o arquivo não exista: Pré-processamento
-  if (access(filename_tf_with_entries, F_OK) == -1 ||
-      access(filename_idf_with_entries, F_OK) == -1 ||
-      access(filename_doc_norms_with_entries, F_OK) == -1) {
+  if (access(filename_tf, F_OK) == -1 ||
+      access(filename_idf, F_OK) == -1 ||
+      access(filename_doc_norms, F_OK) == -1) {
     pthread_t tids[MAX_THREADS];
     thread_args args[MAX_THREADS];
     global_idf = hash_new();
@@ -215,9 +224,9 @@ int main(int argc, char *argv[]) {
     // Salvar estruturas globais em arquivos binários
     printf("\nSalvando estruturas em disco\n");
 
-    save_hash_array(global_tf, global_entries, filename_tf_with_entries);
-    save_hash(global_idf, filename_idf_with_entries);
-    save_doc_norms(global_doc_norms, global_entries, filename_doc_norms_with_entries);
+    save_hash_array(global_tf, global_entries, filename_tf);
+    save_hash(global_idf, filename_idf);
+    save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
 
     // Liberar stopwords (usado apenas no pré-processamento)
     free_stopwords();
@@ -228,16 +237,16 @@ int main(int argc, char *argv[]) {
 
     printf("Arquivos binários encontrados, carregando estruturas...\n");
 
-    global_tf = load_hash_array(filename_tf_with_entries, &global_entries);
+    global_tf = load_hash_array(filename_tf, &global_entries);
     if (!global_tf) {
-      fprintf(stderr, "Erro ao carregar global_tf de %s\n", filename_tf_with_entries);
+      fprintf(stderr, "Erro ao carregar global_tf de %s\n", filename_tf);
       pthread_mutex_destroy(&mutex);
       return 1;
     }
 
-    global_idf = load_hash(filename_idf_with_entries);
+    global_idf = load_hash(filename_idf);
     if (!global_idf) {
-      fprintf(stderr, "Erro ao carregar global_idf de %s\n", filename_idf_with_entries);
+      fprintf(stderr, "Erro ao carregar global_idf de %s\n", filename_idf);
       // Liberar global_tf
       for (long int i = 0; i < global_entries; i++) {
         if (global_tf[i])
@@ -248,7 +257,7 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    global_doc_norms = load_doc_norms(filename_doc_norms_with_entries, &global_entries);
+    global_doc_norms = load_doc_norms(filename_doc_norms, &global_entries);
     if (!global_doc_norms) {
       fprintf(stderr, "Erro ao carregar global_doc_norms\n");
       hash_free(global_idf);
@@ -404,6 +413,10 @@ int main(int argc, char *argv[]) {
   // Liberar normas
   if (global_doc_norms)
     free(global_doc_norms);
+
+  // Liberar query lida de arquivo
+  if (query_from_file)
+    free(query_from_file);
 
   pthread_mutex_destroy(&mutex);
 
@@ -601,7 +614,7 @@ void *preprocess(void *arg) {
   pthread_mutex_lock(&mutex);
   LOG(stderr, "DEBUG: Thread %ld - Lock adquirido, merging", t->id);
   fflush(stderr);
-  hashes_merge(global_tf, tf, count);
+  hashes_merge(global_tf, tf, count, t->start);
   LOG(stderr, "DEBUG: Thread %ld - tf_hash_merge OK", t->id);
   fflush(stderr);
   hash_merge(global_idf, idf);

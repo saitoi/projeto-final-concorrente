@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ==================== Stopwords ==================== */
+/* -------------------- Stopwords -------------------- */
 
 hash_t *global_stopwords = NULL;
 
@@ -36,7 +36,7 @@ void free_stopwords(void) {
   }
 }
 
-/* ==================== Funções de Serialização ==================== */
+/* -------------------- Funções de Serialização -------------------- */
 
 int save_hash(const hash_t *gh, const char *filename) {
   if (!gh || !filename) {
@@ -189,7 +189,53 @@ int save_vocab(const char **vocab, size_t vocab_size, const char *filename) {
   return 0;
 }
 
-/* ==================== Funções de Carregamento ==================== */
+/* -------------------- Funções de Carregamento -------------------- */
+
+char *get_filecontent(const char *filename_txt) {
+  if (!filename_txt) {
+    fprintf(stderr, "Erro: filename é nulo\n");
+    return NULL;
+  }
+
+  // Capturando ponteiro para o arquivo
+  FILE *fp = fopen(filename_txt, "r");
+  if (!fp) {
+    fprintf(stderr, "Erro ao abrir arquivo %s para leitura\n", filename_txt);
+    return NULL;
+  }
+
+  // Tamanho do arquivo
+  fseek(fp, 0, SEEK_END);
+  long int size = ftell(fp);
+  rewind(fp);
+
+  if (size <= 0) {
+      fprintf(stderr, "Erro: arquivo vazio ou inválido\n");
+      fclose(fp);
+      return NULL;
+  } 
+
+  // Ler conteúdo do arquivo
+  char *content = (char *)malloc(size + 1);
+  if (!content) {
+    fprintf(stderr, "Erro ao alocar memória para ler arquivo\n");
+    fclose(fp);
+    return NULL;
+  }
+
+  size_t read_size = fread(content, 1, size, fp);
+  if ((long int)read_size != size) {
+    fprintf(stderr, "Erro ao ler arquivo %s\n", filename_txt);
+    free(content);
+    fclose(fp);
+    return NULL;
+  }
+
+  content[size] = '\0';
+  fclose(fp);
+
+  return content;
+}
 
 hash_t *load_hash(const char *filename) {
   if (!filename) {

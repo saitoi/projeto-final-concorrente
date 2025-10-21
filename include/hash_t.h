@@ -25,7 +25,7 @@ double hash_find(const hash_t *set, const char *word);
 void hash_add(hash_t *set, const char *word, double value);
 int hash_contains(const hash_t *set, const char *word);
 void hash_merge(hash_t *dst, const hash_t *src);
-void hashes_merge(hash_t **dst, hash_t **src, long int count);
+void hashes_merge(hash_t **dst, hash_t **src, long int count, long int start);
 size_t hash_size(const hash_t *set);
 const char **hash_to_vec(const hash_t *set);
 uint64_t hash_str(const char *str, size_t len);

@@ -145,15 +145,12 @@ int hash_contains(const hash_t *set, const char *word) {
   return 0;
 }
 
-void hashes_merge(hash_t **dst, hash_t **src, long int count) {
-  static long int offset = 0;
+void hashes_merge(hash_t **dst, hash_t **src, long int count, long int start) {
   if (!dst || !src)
     return;
 
   for (long int i = 0; i < count; i++)
-    dst[offset + i] = src[i];
-
-  offset += count;
+    dst[start + i] = src[i];
 }
 
 void hash_merge(hash_t *dst, const hash_t *src) {
