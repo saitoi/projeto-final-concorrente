@@ -20,7 +20,8 @@ CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include -g
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 # Parâmetros configuráveis
-QUERY ?= Oscar 2020
+QUERY ?=
+QUERY_FILENAME ?=
 TEST ?= -1
 ENTRIES ?= 100
 VERBOSE ?= 1
@@ -32,6 +33,8 @@ ifeq ($(TEST),1)
     TBL_NAME = test_tbl_1
 else ifeq ($(TEST),2)
     TBL_NAME = test_tbl_2
+else ifeq ($(TEST),3)
+    QUERY_FILENAME = ./t/perf/shakespeares_work.txt
 else
     TBL_NAME = sample_articles
 endif
@@ -77,7 +80,11 @@ format:
 check: lint format
 
 run: clean all
-	./$(TARGET) --entries $(ENTRIES) $(if $(filter 1,$(VERBOSE)),--verbose,) --nthreads $(NTHR) --tablename $(TBL_NAME) --query_user "$(QUERY)"
+	./$(TARGET) --entries $(ENTRIES) --nthreads $(NTHR) \
+    $(if $(filter 1,$(VERBOSE)),--verbose,) \
+    $(if $(TBL_NAME),--tablename "$(TBL_NAME)",) \
+    $(if $(QUERY),--query_user "$(QUERY)",) \
+    $(if $(QUERY_FILENAME),--query_filename $(QUERY_FILENAME),)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
