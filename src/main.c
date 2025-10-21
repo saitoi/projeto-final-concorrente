@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
   /* --------------- Consulta do Usuário --------------- */
 
   if (query_user) {
-    printf("Consulta do usuário: %s\n", query_user);
+    // printf("Consulta do usuário: %s\n", query_user);
 
     // Processar query (sem threads - é um vetor pequeno)
     hash_t *query_tf;

@@ -21,6 +21,7 @@ FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferH
 
 # Parâmetros configuráveis
 QUERY ?=
+DB_FILENAME ?=
 QUERY_FILENAME ?=
 TEST ?= -1
 ENTRIES ?= 100
@@ -35,6 +36,8 @@ else ifeq ($(TEST),2)
     TBL_NAME = test_tbl_2
 else ifeq ($(TEST),3)
     QUERY_FILENAME = ./t/perf/shakespeares_work.txt
+else ifeq ($(TEST),4)
+    DB_FILENAME = ./book-corpus.db
 else
     TBL_NAME = sample_articles
 endif
@@ -84,7 +87,8 @@ run: clean all
     $(if $(filter 1,$(VERBOSE)),--verbose,) \
     $(if $(TBL_NAME),--tablename "$(TBL_NAME)",) \
     $(if $(QUERY),--query_user "$(QUERY)",) \
-    $(if $(QUERY_FILENAME),--query_filename $(QUERY_FILENAME),)
+    $(if $(QUERY_FILENAME),--query_filename $(QUERY_FILENAME),) \
+    $(if $(DB_FILENAME),--filename_db $(DB_FILENAME),)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@

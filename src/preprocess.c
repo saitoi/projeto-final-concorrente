@@ -169,7 +169,7 @@ void stem_articles(char ***article_vecs, long int count) {
 
 void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count) {
   for (long int i = 0; i < count; ++i) {
-    if (!tf[i])
+    if (!tf[i] || !article_vecs[i])
       continue;
 
     for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
