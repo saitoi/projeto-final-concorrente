@@ -1,0 +1,6 @@
+article_id	article_text
+0	the pawn and the knight are chess pieces the knight is the best in the game
+1	the move involves the rook the pawn and the king
+2	the pawn lassoed the ox
+3	rodeo horse
+4	police officers threw him in jail
