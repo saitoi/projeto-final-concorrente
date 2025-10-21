@@ -202,24 +202,13 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count) {
 char ***tokenize_articles(char **article_texts, long int count) {
   char ***article_vecs;
 
-  LOG(stderr, "DEBUG: tokenize_articles - count=%ld", count);
-  fflush(stderr);
-
   article_vecs = malloc(count * sizeof(char **));
   if (!article_vecs) {
     fprintf(stderr, "Erro ao alocar article_vecs\n");
     return NULL;
   }
 
-  LOG(stderr, "DEBUG: tokenize_articles - article_vecs alocado");
-  fflush(stderr);
-
   for (long int i = 0; i < count; ++i) {
-    if (i % 1000 == 0) {
-      LOG(stderr, "DEBUG: tokenize_articles - processando artigo %ld/%ld",
-              i, count);
-      fflush(stderr);
-    }
     if (!article_texts[i]) {
       article_vecs[i] = NULL;
       continue;
@@ -242,7 +231,7 @@ char ***tokenize_articles(char **article_texts, long int count) {
     }
 
     long int j = 0;
-    char *saveptr; // Para strtok_r (thread-safe)
+    char *saveptr; // (thread-safe)
     char *token = strtok_r(text_copy, " \t\n\r", &saveptr);
     while (token != NULL) {
       if (j >= estimated_tokens - 1) {

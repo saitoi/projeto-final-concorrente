@@ -58,18 +58,12 @@ void *preprocess(void *args);
 //
 
 int main(int argc, char *argv[]) {
-  LOG(stderr, "DEBUG: main() iniciando");
-  fflush(stderr);
   const char *filename_db = "wiki-small.db", *tablename = "sample_articles";
   const char *query_user = "shakespeare english literature";
   const char *query_filename = NULL;
-  char *query_from_file = NULL;  // Para armazenar conteúdo lido do arquivo
   int nthreads = 4;
   long int entries = 0;
-  int k = 10; // Top-k documentos mais similares
-
-  LOG(stderr, "DEBUG: Variáveis locais inicializadas");
-  fflush(stderr);
+  int k = 10;
 
   // CLI com parâmetros nomeados
   LOG(stderr, "DEBUG: Processando %d argumentos", argc);
@@ -113,7 +107,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Ler query de arquivo se fornecido
-  if (query_filename)
+  if (query_filename && strlen(query_filename) > 3)
     query_user = get_filecontent(query_filename);
 
   LOG(stdout,
@@ -414,10 +408,6 @@ int main(int argc, char *argv[]) {
   if (global_doc_norms)
     free(global_doc_norms);
 
-  // Liberar query lida de arquivo
-  if (query_from_file)
-    free(query_from_file);
-
   pthread_mutex_destroy(&mutex);
 
   return 0;
@@ -425,33 +415,29 @@ int main(int argc, char *argv[]) {
 
 /* --------------- PTHREAD_ONCE_INIT --------------- */
 // Tarefas computadas uma única vez dentre todas as threads:
-// 1. Extrair vocabulário completo do IDF (chaves da hash_t *global_idf)
-// 2. Computar o IDF de cada palavra no vocabulário
-// 3. Obter tamanho do vocabulário e alocar vetor de documentos
-// 4. Alocar vetor da norma de cada documento
+// 1. Computar o IDF de cada palavra no vocabulário (corresponde às chaves do global_idf)
+// 2. Obter tamanho do vocabulário e alocar vetor de documentos
+// 3. Alocar vetor da norma de cada documento
 
 void compute_once(void) {
   LOG(stderr, "DEBUG: compute_once() iniciando");
   fflush(stderr);
   LOG(stdout, "Funções computadas uma única vez dentre todas as threads");
 
-  // [1] Vocabulário: usar as chaves da hash global_idf diretamente quando
-  // necessário
-
-  // [2] Computa o IDF
+  // [1] Computa o IDF
   LOG(stderr, "DEBUG: Antes set_idf_value");
   fflush(stderr);
   set_idf_value(global_idf, global_tf, (double)global_entries, global_entries);
   LOG(stderr, "DEBUG: Depois set_idf_value");
   fflush(stderr);
 
-  // [3] Vocabulário já está em global_idf
+  // [2] Vocabulário já está em global_idf
   global_vocab_size = hash_size(global_idf);
   LOG(stderr, "DEBUG: Tamanho do vocabulário: %zu palavras",
           global_vocab_size);
   fflush(stderr);
 
-  // [4]
+  // [3]
   global_doc_norms = (double *)calloc(global_entries, sizeof(double));
   if (!global_doc_norms) {
     LOG(stderr, "Erro ao alocar memória para global_doc_norms");
@@ -561,98 +547,72 @@ void *preprocess(void *arg) {
   LOG(stdout, "Primeiro artigo da thread %ld: %s\n", t->id, article_texts[0]);
 
   // [5] Tokenização
-  LOG(stderr, "DEBUG: Thread %ld - Antes tokenize_articles", t->id);
+  LOG(stderr, "Thread %ld - Tokenizando artigos..", t->id);
   fflush(stderr);
   article_vecs = tokenize_articles(article_texts, count);
-  LOG(stderr, "DEBUG: Thread %ld - Depois tokenize_articles", t->id);
-  fflush(stderr);
   if (!article_vecs) {
     fprintf(stderr, "Erro ao tokenizar artigos\n");
     pthread_exit(NULL);
   }
 
   // [6] Remoção de Stopwords
-  LOG(stderr, "DEBUG: Thread %ld - Antes remove_stopwords", t->id);
+  LOG(stderr, "Thread %ld - Removendo Stopwords", t->id);
   fflush(stderr);
   remove_stopwords(article_vecs, count);
-  LOG(stderr, "DEBUG: Thread %ld - Depois remove_stopwords", t->id);
-  fflush(stderr);
 
   // [7] Stemming
-  LOG(stderr, "DEBUG: Thread %ld - Antes stem_articles", t->id);
+  LOG(stderr, "Thread %ld - Stemmizando os artigos", t->id);
   fflush(stderr);
   stem_articles(article_vecs, count);
-  LOG(stderr, "DEBUG: Thread %ld - Depois stem_articles", t->id);
-  fflush(stderr);
-
-  // [8] Populando hash com os termos e suas frequências
-  LOG(stderr, "DEBUG: Thread %ld - Antes populate_tf_hash", t->id);
-  fflush(stderr);
-  populate_tf_hash(tf, article_vecs, count);
-  LOG(stderr, "DEBUG: Thread %ld - Depois populate_tf_hash", t->id);
-  fflush(stderr);
 
   for (long int i = 0; i < count && i < 20; ++i) {
     if (!article_vecs[i])
       continue;
-    for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
+    LOG(stdout, "Primeiros 10 Tokens pré-processados:");
+    for (long int j = 0; article_vecs[i][j] != NULL && j < 10; ++j) {
       LOG(stdout, "Thread %ld, Article %ld, Token %ld: %s", t->id, i, j,
           article_vecs[i][j]);
     }
   }
 
+  // [8] Populando hash com os termos e suas frequências
+  LOG(stderr, "Thread %ld - Populando Hash local de frequências..", t->id);
+  fflush(stderr);
+  populate_tf_hash(tf, article_vecs, count);
+
   // [9] Computar vocabulário local
-  LOG(stderr, "DEBUG: Thread %ld - Antes set_idf_words", t->id);
+  LOG(stderr, "Thread %ld - Populando palavras do IDF local..", t->id);
   fflush(stderr);
   set_idf_words(idf, article_vecs, count);
-  LOG(stderr, "DEBUG: Thread %ld - Depois set_idf_words", t->id);
-  fflush(stderr);
 
   // [10] Mergir TF e IDF hashes
-  LOG(stderr, "DEBUG: Thread %ld - Antes merge (lock)", t->id);
+  LOG(stderr, "Thread %ld - Mergindo estruturas locais nas globais..", t->id);
   fflush(stderr);
   pthread_mutex_lock(&mutex);
-  LOG(stderr, "DEBUG: Thread %ld - Lock adquirido, merging", t->id);
-  fflush(stderr);
   hashes_merge(global_tf, tf, count, t->start);
-  LOG(stderr, "DEBUG: Thread %ld - tf_hash_merge OK", t->id);
-  fflush(stderr);
   hash_merge(global_idf, idf);
-  LOG(stderr, "DEBUG: Thread %ld - hash_merge OK", t->id);
-  fflush(stderr);
   pthread_mutex_unlock(&mutex);
-  LOG(stderr, "DEBUG: Thread %ld - Lock liberado", t->id);
+  LOG(stderr, "Thread %ld - Lock liberado e merge concluído..", t->id);
   fflush(stderr);
 
   // [11] Sincronizar as threads antes de computar variáveis globais únicas
-  LOG(stdout, "Thread %ld esperando na barreira", t->id);
-  LOG(stderr, "DEBUG: Thread %ld - Antes barrier_wait", t->id);
+  LOG(stderr, "Thread %ld - Aguardando outras Threads terminarem para pthread_once..", t->id);
   fflush(stderr);
   pthread_barrier_wait(&barrier);
-  LOG(stderr, "DEBUG: Thread %ld - Depois barrier_wait", t->id);
-  fflush(stderr);
 
   // [12] Variáveis globais computadas uma vez entre todas as threads
-  LOG(stderr, "DEBUG: Thread %ld - Antes pthread_once", t->id);
-  fflush(stderr);
   pthread_once(&once, compute_once);
-  LOG(stderr, "DEBUG: Thread %ld - Depois pthread_once", t->id);
-  fflush(stderr);
 
   // [13] Computar vetores de documentos usando TF-IDF
-  LOG(stderr, "DEBUG: Thread %ld - Antes compute_doc_vecs", t->id);
+  LOG(stderr, "Thread %ld - Computando vetores dos documentos..", t->id);
   fflush(stderr);
   compute_tf_idf(global_tf, global_idf, count, t->start);
-  LOG(stderr, "DEBUG: Thread %ld - Depois compute_doc_vecs", t->id);
-  fflush(stderr);
 
   // [14] Computar normas dos documentos
-  LOG(stderr, "DEBUG: Thread %ld - Antes compute_doc_norms", t->id);
+  LOG(stderr, "DEBUG: Thread %ld - Computando normas dos vetores..", t->id);
   fflush(stderr);
   compute_doc_norms(global_doc_norms, global_tf, count, global_vocab_size,
                     t->start);
-  LOG(stderr, "DEBUG: Thread %ld - Depois compute_doc_norms", t->id);
-  fflush(stderr);
 
   // Imprimir alguns vetores para verificação
   LOG(stdout, "=== Vetores de documentos da Thread %ld ===", t->id);
@@ -680,8 +640,6 @@ void *preprocess(void *arg) {
     LOG(stdout, ""); // Linha em branco para separar documentos
   }
 
-  LOG(stdout, "Thread %ld passou da barreira e IDF já foi computado", t->id);
-
   // Liberar memória
   for (long int i = 0; i < count; ++i) {
     if (article_texts[i])
@@ -694,8 +652,6 @@ void *preprocess(void *arg) {
   // Liberar memória de estruturas locais
   free(article_texts);
   free_article_vecs(article_vecs, count);
-  // NOTA: Não liberamos tf[i] porque hashes_merge transferiu a propriedade
-  // dos ponteiros para global_tf. Apenas liberamos o array.
   free(tf);
   hash_free(idf);
 

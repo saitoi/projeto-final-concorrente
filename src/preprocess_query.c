@@ -62,12 +62,6 @@ char **tokenize_query(const char *query_user, long int *token_count) {
   return query_tokens;
 }
 
-void *preprocess_query(void *arg) {
-  (void)arg; // Unused parameter
-  fprintf(stdout, "WIP..\n");
-  return NULL;
-}
-
 int preprocess_query_single(const char *query_user, const hash_t *global_idf,
                             hash_t **query_tf_out, double *query_norm_out) {
   if (!query_user || !global_idf || !query_tf_out || !query_norm_out) {
