@@ -92,3 +92,38 @@ Leia `instrucoes-projeto.pdf`.
 ### Questionamentos
 
 - Considero palavras com uma única letra?
+
+## Documentação
+
+A documentação do código é gerada automaticamente usando **Doxygen**.
+
+### Gerar documentação
+
+Para gerar a documentação HTML:
+
+```bash
+doxygen Doxyfile
+```
+
+A documentação será gerada no diretório `docs/html/`. Para visualizar:
+
+```bash
+# Abra o arquivo principal
+firefox docs/html/index.html
+# ou
+xdg-open docs/html/index.html
+```
+
+### Estrutura da documentação
+
+- **src/main.c**: Documentação completa do fluxo principal, estruturas e funções
+- Todas as funções públicas estão documentadas com parâmetros, retornos e notas
+- Grupos de variáveis globais organizados por categoria (sincronização, dados, configuração)
+
+### Atualizar documentação
+
+Após modificar comentários Doxygen no código, regenere a documentação:
+
+```bash
+doxygen Doxyfile
+```

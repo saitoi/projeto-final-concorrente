@@ -1,8 +1,17 @@
-/*
- * Nomes:
- * Pedro Henrique Honorio Saito*
- * Milton Salgado Leandro
- * Marcos Henrique Junqueira Muniz Barbi Silva
+/**
+ * @file main.c
+ * @brief Sistema de busca de documentos usando TF-IDF e similaridade de cosseno
+ *
+ * Este programa implementa um sistema de recuperação de informações que:
+ * - Pré-processa documentos de um banco SQLite
+ * - Calcula vetores TF-IDF para cada documento
+ * - Processa queries de usuários
+ * - Retorna os k documentos mais similares usando similaridade de cosseno
+ *
+ * @authors
+ * - Pedro Henrique Honorio Saito
+ * - Milton Salgado Leandro
+ * - Marcos Henrique Junqueira Muniz Barbi Silva
  */
 
 #include <pthread.h>
@@ -20,95 +29,114 @@
 
 /* --------------- Variáveis globais --------------- */
 
-// Variáveis de sincronização
-pthread_mutex_t mutex;
-pthread_barrier_t barrier;
-pthread_once_t once = PTHREAD_ONCE_INIT;
+/** @defgroup sync Variáveis de Sincronização
+ *  Estruturas para sincronização entre threads
+ *  @{
+ */
+pthread_mutex_t mutex;           /**< Mutex para proteção de seções críticas */
+pthread_barrier_t barrier;       /**< Barreira para sincronização de threads */
+pthread_once_t once = PTHREAD_ONCE_INIT; /**< Garante execução única de compute_once() */
+/** @} */
 
-// Hashes globais
-hash_t **global_tf;
-hash_t *global_idf;
-double *global_doc_norms;
+/** @defgroup global_data Estruturas Globais de Dados
+ *  Hashes e vetores compartilhados entre threads
+ *  @{
+ */
+hash_t **global_tf;              /**< Array de hashes TF (Term Frequency) por documento */
+hash_t *global_idf;              /**< Hash IDF (Inverse Document Frequency) global */
+double *global_doc_norms;        /**< Array com normas dos vetores de documentos */
+size_t global_vocab_size;        /**< Tamanho do vocabulário (palavras únicas) */
+long int global_entries = 0;     /**< Número total de documentos processados */
+/** @} */
 
-// Vetores globais
-size_t global_vocab_size;
-
-// Variáveis globais de controle
-long int global_entries = 0;
-int VERBOSE = 0;
+/** @defgroup config Variáveis de Configuração
+ *  @{
+ */
+int VERBOSE = 0;                 /**< Flag de verbosidade (0=desabilitado, 1=habilitado) */
+/** @} */
 
 /* --------------- Macros --------------- */
 
-#define MAX_DOCS 97549
-#define MAX_THREADS 16
+#define MAX_DOCS 97549           /**< Número máximo de documentos suportados */
+#define MAX_THREADS 16           /**< Número máximo de threads suportadas */
 
+/**
+ * @struct thread_args
+ * @brief Argumentos passados para cada thread de pré-processamento
+ */
 typedef struct {
-  long int start;
-  long int end;
-  long int nthreads;
-  long int id;
-  const char *filename_db;
-  const char *tablename;
+  long int start;                /**< Índice inicial do intervalo de documentos */
+  long int end;                  /**< Índice final do intervalo de documentos */
+  long int nthreads;             /**< Número total de threads */
+  long int id;                   /**< ID da thread (0 a nthreads-1) */
+  const char *filename_db;       /**< Caminho para o arquivo SQLite */
+  const char *tablename;         /**< Nome da tabela no banco de dados */
 } thread_args;
 
+/**
+ * @struct Config
+ * @brief Estrutura de configuração do programa
+ *
+ * Agrupa todos os parâmetros de linha de comando em uma única estrutura.
+ */
+typedef struct {
+  long int entries;              /**< Quantidade de entradas a processar (0=todas) */
+  const char *filename_db;       /**< Arquivo SQLite com os documentos */
+  const char *query_user;        /**< Query do usuário (string direta) */
+  const char *query_filename;    /**< Arquivo contendo a query do usuário */
+  const char *tablename;         /**< Nome da tabela no banco de dados */
+  int nthreads;                  /**< Número de threads para pré-processamento */
+  int k;                         /**< Número de documentos top-k a retornar */
+  int test;                      /**< Modo de teste (0=desabilitado) */
+  int verbose;                   /**< Verbosidade (0=desabilitado, 1=habilitado) */
+} Config;
+
+int parse_cli(int argc, char **argv, Config *cfg);
 void compute_once(void);
 void *preprocess(void *args);
 
 /* --------------- Fluxo Principal --------------- */
-//
 
+/**
+ * @brief Função principal do programa
+ *
+ * Fluxo de execução:
+ * 1. Parseia argumentos de linha de comando
+ * 2. Verifica se modelos pré-processados existem em disco
+ * 3. Se não existirem: executa pré-processamento paralelo com threads
+ * 4. Se existirem: carrega estruturas dos arquivos binários
+ * 5. Processa query do usuário e calcula similaridades
+ * 6. Retorna top-k documentos mais similares
+ *
+ * @param argc Número de argumentos
+ * @param argv Array de argumentos
+ * @return 0 em sucesso, 1 em erro
+ */
 int main(int argc, char *argv[]) {
-  const char *filename_db = "wiki-small.db", *tablename = "sample_articles";
-  const char *query_user = "shakespeare english literature";
-  const char *query_filename = NULL;
-  int nthreads = 4;
-  long int entries = 0;
-  int k = 10;
+  // Inicializar configuração com valores padrão
+  Config cfg = {
+    .nthreads = 4,
+    .entries = 0,
+    .filename_db = "wiki-small.db",
+    .query_user = "shakespeare english literature",
+    .query_filename = NULL,
+    .tablename = "sample_articles",
+    .k = 10,
+    .test = 0,
+    .verbose = 0
+  };
 
-  // CLI com parâmetros nomeados
-  LOG(stderr, "DEBUG: Processando %d argumentos", argc);
-  fflush(stderr);
-  for (int i = 1; i < argc; ++i) {
-    LOG(stderr, "DEBUG: argv[%d] = %s", i, argv[i]);
-    fflush(stderr);
-    if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc)
-      nthreads = atoi(argv[++i]);
-    else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc)
-      entries = atol(argv[++i]);
-    else if (strcmp(argv[i], "--filename_db") == 0 && i + 1 < argc)
-      filename_db = argv[++i];
-    else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
-      query_user = argv[++i];
-    else if (strcmp(argv[i], "--query_filename") == 0 && i + 1 < argc)
-      query_filename = argv[++i];
-    else if (strcmp(argv[i], "--tablename") == 0 && i + 1 < argc)
-      tablename = argv[++i];
-    else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
-      k = atoi(argv[++i]);
-    else if (strcmp(argv[i], "--verbose") == 0)
-      VERBOSE = 1;
-    else {
-      fprintf(
-          stderr,
-          "Uso: %s <parametros nomeados>\n"
-          "--verbose: Verbosidade (default: 0)\n"
-          "--nthreads: Número de threads (default: 4)\n"
-          "--entries: Quantidade de entradas para pré-processamento (default: "
-          "Toda tabela 'sample_articles')\n"
-          "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
-          "--query_user: Consulta do usuário (default: 'exemplo')\n"
-          "--query_filename: Arquivo com a consulta do usuário\n"
-          "--tablename: Nome da tabela consultada (default: "
-          "'sample_articles')\n"
-          "--k: Top-k documentos mais similares (default: 10)\n",
-          argv[0]);
-      return 1;
-    }
+  // Processar argumentos da linha de comando
+  if (parse_cli(argc, argv, &cfg) != 0) {
+    return 1;
   }
 
   // Ler query de arquivo se fornecido
-  if (query_filename && strlen(query_filename) > 3)
-    query_user = get_filecontent(query_filename);
+  if (cfg.query_filename && strlen(cfg.query_filename) > 3)
+    cfg.query_user = get_filecontent(cfg.query_filename);
+
+  // Atualizar variável global de verbosidade
+  VERBOSE = cfg.verbose;
 
   LOG(stdout,
       "Parâmetros nomeados:\n"
@@ -117,17 +145,18 @@ int main(int argc, char *argv[]) {
       "\tentries: %ld\n"
       "\tfilename_db: %s\n"
       "\tquery_user: %s\n"
-      "\ttablename: %s",
-      argc, nthreads, entries, filename_db, query_user, tablename);
+      "\ttablename: %s\n"
+      "\ttest: %d",
+      argc, cfg.nthreads, cfg.entries, cfg.filename_db, cfg.query_user, cfg.tablename, cfg.test);
 
-  if (nthreads <= 0 || nthreads > MAX_THREADS) {
+  if (cfg.nthreads <= 0 || cfg.nthreads > MAX_THREADS) {
     fprintf(stderr,
             "Número de threads inválido (%d). Deve estar entre 1 e %d\n",
-            nthreads, MAX_THREADS);
+            cfg.nthreads, MAX_THREADS);
     return 1;
   }
 
-  if (entries > MAX_DOCS) {
+  if (cfg.entries > MAX_DOCS) {
     fprintf(stderr,
             "Número de entradas excede o limite máximo de documentos (%d)\n",
             MAX_DOCS);
@@ -138,20 +167,20 @@ int main(int argc, char *argv[]) {
 
   // Determinar número de entradas primeiro (para criar nomes de arquivo)
   const char *query_count = "select count(*) from \"%w\";";
-  long int total = get_single_int(filename_db, query_count, tablename);
-  if (!entries || entries > total)
-    entries = total;
+  long int total = get_single_int(cfg.filename_db, query_count, cfg.tablename);
+  if (!cfg.entries || cfg.entries > total)
+    cfg.entries = total;
 
   // Criar nomes de arquivo com sufixo do número de entradas
   char filename_tf[256];
   char filename_idf[256];
   char filename_doc_norms[256];
   snprintf(filename_tf, sizeof(filename_tf),
-           "models/tf_%ld.bin", entries);
+           "models/tf_%ld.bin", cfg.entries);
   snprintf(filename_idf, sizeof(filename_idf),
-           "models/idf_%ld.bin", entries);
+           "models/idf_%ld.bin", cfg.entries);
   snprintf(filename_doc_norms, sizeof(filename_doc_norms),
-           "models/doc_norms_%ld.bin", entries);
+           "models/doc_norms_%ld.bin", cfg.entries);
 
   // Caso o arquivo não exista: Pré-processamento
   if (access(filename_tf, F_OK) == -1 ||
@@ -160,7 +189,7 @@ int main(int argc, char *argv[]) {
     pthread_t tids[MAX_THREADS];
     thread_args args[MAX_THREADS];
     global_idf = hash_new();
-    global_tf = (hash_t **)calloc(entries, sizeof(hash_t *));
+    global_tf = (hash_t **)calloc(cfg.entries, sizeof(hash_t *));
     if (!global_tf) {
       fprintf(stderr, "Falha ao alocar memória para global_tf\n");
       return 1;
@@ -174,23 +203,23 @@ int main(int argc, char *argv[]) {
     }
 
     // Armazenar em variável global para uso em compute_idf_once
-    global_entries = entries;
+    global_entries = cfg.entries;
 
-    printf("Qtd. artigos: %ld\n", entries);
+    printf("Qtd. artigos: %ld\n", cfg.entries);
 
     // Inicializar barreira para sincronizar threads
-    if (pthread_barrier_init(&barrier, NULL, nthreads)) {
+    if (pthread_barrier_init(&barrier, NULL, cfg.nthreads)) {
       fprintf(stderr, "Erro ao inicializar barreira\n");
       return 1;
     }
 
-    long int base = entries / nthreads;
-    long int rem = entries % nthreads;
-    for (long int i = 0; i < nthreads; ++i) {
+    long int base = cfg.entries / cfg.nthreads;
+    long int rem = cfg.entries % cfg.nthreads;
+    for (long int i = 0; i < cfg.nthreads; ++i) {
       args[i].id = i;
-      args[i].nthreads = nthreads;
-      args[i].filename_db = filename_db;
-      args[i].tablename = tablename;
+      args[i].nthreads = cfg.nthreads;
+      args[i].filename_db = cfg.filename_db;
+      args[i].tablename = cfg.tablename;
       args[i].start = i * base + (i < rem ? i : rem);
       args[i].end = args[i].start + base + (i < rem);
       if (pthread_create(&tids[i], NULL, preprocess, (void *)&args[i])) {
@@ -199,7 +228,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    for (long int i = 0; i < nthreads; ++i) {
+    for (long int i = 0; i < cfg.nthreads; ++i) {
       if (pthread_join(tids[i], NULL)) {
         fprintf(stderr, "Erro ao esperar thread %ld\n", i);
         return 1;
@@ -271,14 +300,14 @@ int main(int argc, char *argv[]) {
 
   /* --------------- Consulta do Usuário --------------- */
 
-  if (query_user) {
-    // printf("Consulta do usuário: %s\n", query_user);
+  if (cfg.query_user) {
+    // printf("Consulta do usuário: %s\n", cfg.query_user);
 
     // Processar query (sem threads - é um vetor pequeno)
     hash_t *query_tf;
     double query_norm;
 
-    int result = preprocess_query_single(query_user, global_idf, &query_tf, &query_norm);
+    int result = preprocess_query_single(cfg.query_user, global_idf, &query_tf, &query_norm);
     if (result != 0) {
       fprintf(stderr, "Erro ao processar consulta do usuário\n");
     } else {
@@ -328,7 +357,7 @@ int main(int argc, char *argv[]) {
           }
 
           // Exibir top-k
-          long int top_k = global_entries < k ? global_entries : k;
+          long int top_k = global_entries < cfg.k ? global_entries : cfg.k;
           printf("Exibindo top %ld documentos:\n", top_k);
           for (long int i = 0; i < top_k; i++) {
             printf("Doc %ld: %.6f\n", scores[i].doc_id, scores[i].similarity);
@@ -342,7 +371,7 @@ int main(int argc, char *argv[]) {
               top_ids[i] = scores[i].doc_id;
             }
 
-            char **documents = get_documents_by_ids(filename_db, tablename, top_ids, top_k);
+            char **documents = get_documents_by_ids(cfg.filename_db, cfg.tablename, top_ids, top_k);
             if (documents) {
               for (long int i = 0; i < top_k; i++) {
                 if (documents[i]) {
@@ -414,11 +443,19 @@ int main(int argc, char *argv[]) {
 }
 
 /* --------------- PTHREAD_ONCE_INIT --------------- */
-// Tarefas computadas uma única vez dentre todas as threads:
-// 1. Computar o IDF de cada palavra no vocabulário (corresponde às chaves do global_idf)
-// 2. Obter tamanho do vocabulário e alocar vetor de documentos
-// 3. Alocar vetor da norma de cada documento
 
+/**
+ * @brief Função executada uma única vez após todas as threads completarem merge
+ *
+ * Utiliza pthread_once para garantir execução única. Realiza:
+ * 1. Computa o IDF de cada palavra no vocabulário global
+ * 2. Obtém tamanho do vocabulário
+ * 3. Aloca vetor de normas dos documentos
+ *
+ * Esta função é chamada via pthread_once() após a barreira de sincronização.
+ *
+ * @note Esta função acessa variáveis globais: global_idf, global_tf, global_entries
+ */
 void compute_once(void) {
   LOG(stderr, "DEBUG: compute_once() iniciando");
   fflush(stderr);
@@ -453,28 +490,29 @@ void compute_once(void) {
 }
 
 /* --------------- Pré-processamento --------------- */
-// Pré-processamento computado uma única vez sobre todos os documentos:
-// 0.  Passo preliminar: Pré-processamento/tratamento do texto do wiki-small.db
-// no DuckDB.
-// 1.  Captar os parâmetros das threads: struct thread_args e computar o
-// intervalo de documentos (long int count).
-// 2.  Inicializar as hashes locais.
-// 3.  Validações do intervalo de documentos e debug.
-// 4.  Extrair a coluna de texto (`article_text`) do SQLite.
-// 5.  Tokenizar o texto recuperado usando separador de whitespace (texto já
-// havia sido pré-processado).
-// 6.  Filtrar stopwords e redimensionar o vetor.
-// 7.  Stemming: Processo de remoção de afixos (prefixos e sufixos).
-// 8.  Populando a hash local de frequência dos termos (`tf_hash *global_tf`).
-// 9.  Popular vocabulário local (chaves do `hash_t *global_idf`).
-// 10. Mergir TF e IDF hashes nas globais
-// 11. Uso do padrão barrreira (`pthread_barrier_t barrier`) para sincronizar as
-// threads
-// 12. Executar `compute_once` descrito na seção anterior: PTHREAD_ONCE_INIT.
-// 13. Transformar os documentos em vetores usando esquema de ponderação TF-IDF.
-// 14. Computar as normas dos vetores gerados na etapa anterior.
-// 15. Salvar todas as estruturas em arquivos binários (./models/*.bin).
 
+/**
+ * @brief Função executada por cada thread para pré-processar documentos
+ *
+ * Pipeline de pré-processamento paralelo:
+ * 1. Extrai texto dos documentos do SQLite (intervalo start-end)
+ * 2. Tokeniza textos usando whitespace
+ * 3. Remove stopwords
+ * 4. Aplica stemming (remoção de afixos)
+ * 5. Popula hash local de TF (Term Frequency)
+ * 6. Popula vocabulário local para IDF
+ * 7. Merge de estruturas locais nas globais (seção crítica com mutex)
+ * 8. Sincroniza com barreira
+ * 9. Executa compute_once() via pthread_once
+ * 10. Calcula vetores TF-IDF
+ * 11. Calcula normas dos vetores
+ *
+ * @param arg Ponteiro para struct thread_args com parâmetros da thread
+ * @return NULL
+ *
+ * @note Acessa variáveis globais: global_tf, global_idf, global_doc_norms
+ * @note Utiliza mutex para proteção de seção crítica durante merge
+ */
 void *preprocess(void *arg) {
   LOG(stderr, "DEBUG: preprocess() iniciando");
   fflush(stderr);
@@ -657,3 +695,73 @@ void *preprocess(void *arg) {
 
   pthread_exit(NULL);
 }
+
+/**
+ * @brief Processa argumentos de linha de comando
+ *
+ * Parseia argumentos nomeados no formato --parametro valor e atualiza
+ * a estrutura Config fornecida.
+ *
+ * Parâmetros suportados:
+ * - --nthreads: Número de threads
+ * - --entries: Quantidade de documentos a processar
+ * - --filename_db: Arquivo SQLite
+ * - --query_user: Query direta do usuário
+ * - --query_filename: Arquivo contendo query
+ * - --tablename: Nome da tabela no banco
+ * - --k: Top-k documentos a retornar
+ * - --test: Modo de teste
+ * - --verbose: Ativa modo verboso
+ *
+ * @param argc Número de argumentos
+ * @param argv Array de argumentos
+ * @param cfg Ponteiro para estrutura Config a ser preenchida
+ * @return 0 em sucesso, 1 em erro (argumento inválido)
+ */
+int parse_cli(int argc, char **argv, Config *cfg) {
+  LOG(stderr, "Processando %d argumentos", argc);
+  fflush(stderr);
+
+  for (int i = 1; i < argc; ++i) {
+    LOG(stderr, "argv[%d]: %s", i, argv[i]);
+    fflush(stderr);
+
+    if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc) 
+      cfg->nthreads = atoi(argv[++i]);
+    else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc) 
+      cfg->entries = atol(argv[++i]);
+    else if (strcmp(argv[i], "--filename_db") == 0 && i + 1 < argc) 
+      cfg->filename_db = argv[++i];
+    else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
+      cfg->query_user = argv[++i];
+    else if (strcmp(argv[i], "--query_filename") == 0 && i + 1 < argc)
+      cfg->query_filename = argv[++i];
+    else if (strcmp(argv[i], "--tablename") == 0 && i + 1 < argc)
+      cfg->tablename = argv[++i];
+    else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
+      cfg->k = atoi(argv[++i]);
+    else if (strcmp(argv[i], "--test") == 0 && i + 1 < argc)
+      cfg->test = atoi(argv[++i]);
+    else if (strcmp(argv[i], "--verbose") == 0)
+      cfg->verbose = 1;
+    else {
+      fprintf(stderr,
+        "Uso: %s <parametros nomeados>\n"
+        "--verbose: Verbosidade (default: 0)\n"
+        "--nthreads: Número de threads (default: 4)\n"
+        "--entries: Quantidade de entradas para pré-processamento (default: "
+        "Toda tabela 'sample_articles')\n"
+        "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
+        "--query_user: Consulta do usuário (default: 'shakespeare english literature')\n"
+        "--query_filename: Arquivo com a consulta do usuário\n"
+        "--tablename: Nome da tabela consultada (default: "
+        "'sample_articles')\n"
+        "--k: Top-k documentos mais similares (default: 10)\n"
+        "--test: Modo de teste (default: 0)\n",
+        argv[0]);
+      return 1;
+    }
+  }
+  return 0;
+}
+
