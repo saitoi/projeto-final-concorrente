@@ -35,7 +35,6 @@
  */
 pthread_mutex_t mutex;           /**< Mutex para proteção de seções críticas */
 pthread_barrier_t barrier;       /**< Barreira para sincronização de threads */
-pthread_once_t once = PTHREAD_ONCE_INIT; /**< Garante execução única de compute_once() */
 /** @} */
 
 /** @defgroup global_data Estruturas Globais de Dados
@@ -57,7 +56,6 @@ int VERBOSE = 0;                 /**< Flag de verbosidade (0=desabilitado, 1=hab
 
 /* --------------- Macros --------------- */
 
-#define MAX_DOCS 97549           /**< Número máximo de documentos suportados */
 #define MAX_THREADS 16           /**< Número máximo de threads suportadas */
 
 /**
@@ -92,10 +90,8 @@ typedef struct {
 } Config;
 
 int parse_cli(int argc, char **argv, Config *cfg);
-void compute_once(void);
-void *preprocess(void *args);
-void *phase1_build_vocabulary(void *args);
-void *phase2_compute_tfidf(void *args);
+void *preprocess_1(void *args);
+void *preprocess_2(void *args);
 void format_filenames(char *filename_tf, char *filename_idf,
                       char *filename_doc_norms, const char *tablename,
                       long int entries);
@@ -122,7 +118,7 @@ int main(int argc, char *argv[]) {
   Config cfg = {
     .nthreads = 4,
     .entries = 0,
-    .filename_db = "wiki-small.db",
+    .filename_db = "./data/wiki-small.db",
     .query_user = "shakespeare english literature",
     .query_filename = NULL,
     .tablename = "sample_articles",
@@ -151,8 +147,9 @@ int main(int argc, char *argv[]) {
       "\tfilename_db: %s\n"
       "\tquery_user: %s\n"
       "\ttablename: %s\n"
-      "\ttest: %d",
-      argc, cfg.nthreads, cfg.entries, cfg.filename_db, cfg.query_user, cfg.tablename, cfg.test);
+      "\ttest: %d"
+      "\tk: %d",
+      argc, cfg.nthreads, cfg.entries, cfg.filename_db, cfg.query_user, cfg.tablename, cfg.test, cfg.k);
 
   if (cfg.nthreads <= 0 || cfg.nthreads > MAX_THREADS) {
     fprintf(stderr,
@@ -161,20 +158,15 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  if (cfg.entries > MAX_DOCS) {
-    fprintf(stderr,
-            "Número de entradas excede o limite máximo de documentos (%d)\n",
-            MAX_DOCS);
-    return 1;
-  }
-
   pthread_mutex_init(&mutex, NULL);
 
   // Determinar número de entradas primeiro (para criar nomes de arquivo)
   const char *query_count = "select count(*) from \"%w\";";
   long int total = get_single_int(cfg.filename_db, query_count, cfg.tablename);
-  if (!cfg.entries || cfg.entries > total)
+  if (!cfg.entries || cfg.entries > total) {
+    LOG(stdout, "Número de entradas %ld excedeu a quantidade total de documentos: %ld", cfg.entries, total);
     cfg.entries = total;
+  }
 
   // Criar nomes de arquivo com tablename e número de entradas
   char filename_tf[256];
@@ -188,7 +180,12 @@ int main(int argc, char *argv[]) {
       access(filename_idf, F_OK) == -1 ||
       access(filename_doc_norms, F_OK) == -1) {
 
-    pthread_t tids[MAX_THREADS];
+    pthread_t *tids = (pthread_t*) malloc(sizeof(pthread_t) * cfg.nthreads);
+    if (!tids) {
+      fprintf(stderr, "Falha ao alocar memória para tids\n");
+      return 1;
+    }
+
     thread_args args[MAX_THREADS];
 
     // Inicializar estruturas globais
@@ -213,7 +210,8 @@ int main(int argc, char *argv[]) {
     long int base = cfg.entries / cfg.nthreads;
     long int rem = cfg.entries % cfg.nthreads;
 
-    /* ========== FASE 1: Construir Vocabulário ========== */
+    /* ---------- FASE 1: Construir Vocabulário ---------- */
+
     printf("\n[FASE 1] Construindo vocabulário...\n");
 
     for (long int i = 0; i < cfg.nthreads; ++i) {
@@ -224,7 +222,7 @@ int main(int argc, char *argv[]) {
       args[i].start = i * base + (i < rem ? i : rem);
       args[i].end = args[i].start + base + (i < rem);
 
-      if (pthread_create(&tids[i], NULL, phase1_build_vocabulary, (void *)&args[i])) {
+      if (pthread_create(&tids[i], NULL, preprocess_1, (void *)&args[i])) {
         fprintf(stderr, "Erro ao criar thread %ld\n", i);
         return 1;
       }
@@ -258,7 +256,7 @@ int main(int argc, char *argv[]) {
     printf("\n[FASE 2] Calculando TF-IDF e normas...\n");
 
     for (long int i = 0; i < cfg.nthreads; ++i) {
-      if (pthread_create(&tids[i], NULL, phase2_compute_tfidf, (void *)&args[i])) {
+      if (pthread_create(&tids[i], NULL, preprocess_2, (void *)&args[i])) {
         fprintf(stderr, "Erro ao criar thread %ld\n", i);
         return 1;
       }
@@ -478,260 +476,6 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-/* --------------- PTHREAD_ONCE_INIT --------------- */
-
-/**
- * @brief Função executada uma única vez após todas as threads completarem merge
- *
- * Utiliza pthread_once para garantir execução única. Realiza:
- * 1. Computa o IDF de cada palavra no vocabulário global
- * 2. Obtém tamanho do vocabulário
- * 3. Aloca vetor de normas dos documentos
- *
- * Esta função é chamada via pthread_once() após a barreira de sincronização.
- *
- * @note Esta função acessa variáveis globais: global_idf, global_tf, global_entries
- */
-void compute_once(void) {
-  LOG(stderr, "DEBUG: compute_once() iniciando");
-  fflush(stderr);
-  LOG(stdout, "Funções computadas uma única vez dentre todas as threads");
-
-  // [1] Computa o IDF
-  LOG(stderr, "DEBUG: Antes set_idf_value");
-  fflush(stderr);
-  set_idf_value(global_idf, global_tf, (double)global_entries, global_entries);
-  LOG(stderr, "DEBUG: Depois set_idf_value");
-  fflush(stderr);
-
-  // [2] Vocabulário já está em global_idf
-  global_vocab_size = hash_size(global_idf);
-  LOG(stderr, "DEBUG: Tamanho do vocabulário: %zu palavras",
-          global_vocab_size);
-  fflush(stderr);
-
-  // [3]
-  global_doc_norms = (double *)calloc(global_entries, sizeof(double));
-  if (!global_doc_norms) {
-    LOG(stderr, "Erro ao alocar memória para global_doc_norms");
-    exit(EXIT_FAILURE);
-  }
-
-  fprintf(stdout, "IDF computado. Tamanho do vocabulário: %zu palavras\n",
-          global_vocab_size);
-  fprintf(stdout, "Hashes de documentos alocados: %ld documentos\n",
-          global_entries);
-  fprintf(stdout, "Total de documentos para cálculo IDF: %ld\n",
-          global_entries);
-}
-
-/* --------------- Pré-processamento --------------- */
-
-/**
- * @brief Função executada por cada thread para pré-processar documentos
- *
- * Pipeline de pré-processamento paralelo:
- * 1. Extrai texto dos documentos do SQLite (intervalo start-end)
- * 2. Tokeniza textos usando whitespace
- * 3. Remove stopwords
- * 4. Aplica stemming (remoção de afixos)
- * 5. Popula hash local de TF (Term Frequency)
- * 6. Popula vocabulário local para IDF
- * 7. Merge de estruturas locais nas globais (seção crítica com mutex)
- * 8. Sincroniza com barreira
- * 9. Executa compute_once() via pthread_once
- * 10. Calcula vetores TF-IDF
- * 11. Calcula normas dos vetores
- *
- * @param arg Ponteiro para struct thread_args com parâmetros da thread
- * @return NULL
- *
- * @note Acessa variáveis globais: global_tf, global_idf, global_doc_norms
- * @note Utiliza mutex para proteção de seção crítica durante merge
- */
-void *preprocess(void *arg) {
-  LOG(stderr, "DEBUG: preprocess() iniciando");
-  fflush(stderr);
-
-  // [1] Parâmetros das threads
-  thread_args *t = (thread_args *)arg;
-  long int count = t->end - t->start;
-
-  LOG(stderr, "DEBUG: Thread %ld - range: %ld to %ld (count=%ld)", t->id,
-          t->start, t->end, count);
-  fflush(stderr);
-
-  char **article_texts; // Textos dos artigos
-  char ***article_vecs; // Vetores de tokens dos artigos
-
-  // [2] Hashes locais: TF e IDF
-  LOG(stderr, "DEBUG: Thread %ld - Criando hashes locais", t->id);
-  fflush(stderr);
-  hash_t **tf = (hash_t **)calloc(count, sizeof(hash_t *));
-  if (!tf) {
-    fprintf(stderr, "Falha ao alocar memória para tf local\n");
-    pthread_exit(NULL);
-  }
-
-  // Inicializar cada hash de documento local
-  for (long int i = 0; i < count; i++) {
-    tf[i] = hash_new();
-    if (!tf[i]) {
-      fprintf(stderr, "Falha ao alocar memória para tf[%ld] na thread %ld\n", i,
-              t->id);
-      pthread_exit(NULL);
-    }
-  }
-
-  LOG(stderr, "DEBUG: Thread %ld - tf_hash criado", t->id);
-  fflush(stderr);
-  hash_t *idf = hash_new();
-  LOG(stderr, "DEBUG: Thread %ld - hash_t criado", t->id);
-  fflush(stderr);
-
-  // [3] Validações
-  // Se a thread não tem artigos para processar, retorna
-  if (count <= 0) {
-    LOG(stdout, "Thread %ld sem artigos para processar", t->id);
-    pthread_exit(NULL);
-  }
-
-  LOG(stdout,
-      "Thread %ld iniciou:\n"
-      "\tstart: %ld\n"
-      "\tchunk: %ld\n"
-      "\tfilename_db: %s\n",
-      t->id, t->start, t->end, t->filename_db);
-
-  // [4] Recuperação dos textos dos artigos
-  LOG(stderr, "DEBUG: Thread %ld - Antes get_str_arr", t->id);
-  fflush(stderr);
-  article_texts = get_str_arr(t->filename_db,
-                              "select article_text from \"%w\" "
-                              "where article_id between ? and ?"
-                              "order by article_id asc",
-                              t->start, t->end - 1, t->tablename);
-  LOG(stderr, "DEBUG: Thread %ld - Dvecepois get_str_arr", t->id);
-  fflush(stderr);
-  if (!article_texts) {
-    fprintf(stderr, "Erro ao obter dados do banco\n");
-    pthread_exit(NULL);
-  }
-
-  LOG(stdout, "Primeiro artigo da thread %ld: %s\n", t->id, article_texts[0]);
-
-  // [5] Tokenização
-  LOG(stderr, "Thread %ld - Tokenizando artigos..", t->id);
-  fflush(stderr);
-  article_vecs = tokenize_articles(article_texts, count);
-  if (!article_vecs) {
-    fprintf(stderr, "Erro ao tokenizar artigos\n");
-    pthread_exit(NULL);
-  }
-
-  // [6] Remoção de Stopwords
-  LOG(stderr, "Thread %ld - Removendo Stopwords", t->id);
-  fflush(stderr);
-  remove_stopwords(article_vecs, count);
-
-  // [7] Stemming
-  LOG(stderr, "Thread %ld - Stemmizando os artigos", t->id);
-  fflush(stderr);
-  stem_articles(article_vecs, count);
-
-  for (long int i = 0; i < count && i < 20; ++i) {
-    if (!article_vecs[i])
-      continue;
-    LOG(stdout, "Primeiros 10 Tokens pré-processados:");
-    for (long int j = 0; article_vecs[i][j] != NULL && j < 10; ++j) {
-      LOG(stdout, "Thread %ld, Article %ld, Token %ld: %s", t->id, i, j,
-          article_vecs[i][j]);
-    }
-  }
-
-  // [8] Populando hash com os termos e suas frequências
-  LOG(stderr, "Thread %ld - Populando Hash local de frequências..", t->id);
-  fflush(stderr);
-  populate_tf_hash(tf, article_vecs, count);
-
-  // [9] Computar vocabulário local
-  LOG(stderr, "Thread %ld - Populando palavras do IDF local..", t->id);
-  fflush(stderr);
-  set_idf_words(idf, article_vecs, count);
-
-  // [10] Mergir TF e IDF hashes
-  LOG(stderr, "Thread %ld - Mergindo estruturas locais nas globais..", t->id);
-  fflush(stderr);
-  pthread_mutex_lock(&mutex);
-  hashes_merge(global_tf, tf, count, t->start);
-  hash_merge(global_idf, idf);
-  pthread_mutex_unlock(&mutex);
-  LOG(stderr, "Thread %ld - Lock liberado e merge concluído..", t->id);
-  fflush(stderr);
-
-  // [11] Sincronizar as threads antes de computar variáveis globais únicas
-  LOG(stderr, "Thread %ld - Aguardando outras Threads terminarem para pthread_once..", t->id);
-  fflush(stderr);
-  pthread_barrier_wait(&barrier);
-
-  // [12] Variáveis globais computadas uma vez entre todas as threads
-  pthread_once(&once, compute_once);
-
-  // [13] Computar vetores de documentos usando TF-IDF e armazenar em global_tf
-  LOG(stderr, "Thread %ld - Computando vetores dos documentos..", t->id);
-  fflush(stderr);
-  compute_tf_idf(global_tf, global_idf, count, t->start);
-
-  // [14] Computar normas dos documentos
-  LOG(stderr, "DEBUG: Thread %ld - Computando normas dos vetores..", t->id);
-  fflush(stderr);
-  compute_doc_norms(global_doc_norms, global_tf, count, global_vocab_size,
-                    t->start);
-
-  // Imprimir alguns vetores para verificação
-  LOG(stdout, "=== Vetores de documentos da Thread %ld ===", t->id);
-  for (long int i = 0; i < count && i < 3; ++i) {
-    long int doc_id = t->start + i;
-    LOG(stdout, "Documento %ld:", doc_id);
-
-    // Mostrar valores do hash (primeiros 30 valores não-zero)
-    // trocar isso daqui
-    size_t valores_mostrados = 0;
-    for (size_t j = 0; j < global_tf[doc_id]->cap && valores_mostrados < 30;
-         ++j) {
-      for (HashEntry *e = global_tf[doc_id]->buckets[j];
-           e && valores_mostrados < 30; e = e->next) {
-        if (e->value != 0.0) {
-          LOG(stdout, "  %s = %.6f", e->word, e->value);
-          valores_mostrados++;
-        }
-      }
-    }
-
-    // Mostrar a norma após o vetor
-    LOG(stdout, "  Norma do documento %ld: %.6f", doc_id,
-        global_doc_norms[doc_id]);
-    LOG(stdout, ""); // Linha em branco para separar documentos
-  }
-
-  // Liberar memória
-  for (long int i = 0; i < count; ++i) {
-    if (article_texts[i])
-      free(article_texts[i]);
-  }
-
-  fprintf(stdout, "Tamanho da Hash local da thread %zu: %ld\n", t->id,
-          hash_size(idf));
-
-  // Liberar memória de estruturas locais
-  free(article_texts);
-  free_article_vecs(article_vecs, count);
-  free(tf);
-  hash_free(idf);
-
-  pthread_exit(NULL);
-}
-
 /**
  * @brief Processa argumentos de linha de comando
  *
@@ -787,7 +531,7 @@ int parse_cli(int argc, char **argv, Config *cfg) {
         "--nthreads: Número de threads (default: 4)\n"
         "--entries: Quantidade de entradas para pré-processamento (default: "
         "Toda tabela 'sample_articles')\n"
-        "--filename_db: Nome do arquivo Sqlite (default: 'wiki-small.db')\n"
+        "--filename_db: Nome do arquivo Sqlite (default: './data/wiki-small.db')\n"
         "--query_user: Consulta do usuário (default: 'shakespeare english literature')\n"
         "--query_filename: Arquivo com a consulta do usuário\n"
         "--tablename: Nome da tabela consultada (default: "
@@ -816,11 +560,11 @@ int parse_cli(int argc, char **argv, Config *cfg) {
  * @param arg Ponteiro para thread_args
  * @return NULL
  */
-void *phase1_build_vocabulary(void *arg) {
+void *preprocess_1(void *arg) {
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
 
-  LOG(stdout, "Thread %ld [FASE 1]: Processando %ld documentos (%ld-%ld)",
+  LOG(stdout, "Thread %ld [FASE 1]: Processando %ld documentos [%ld, %ld]",
       t->id, count, t->start, t->end - 1);
 
   if (count <= 0) {
@@ -828,6 +572,7 @@ void *phase1_build_vocabulary(void *arg) {
   }
 
   // Alocar hashes locais
+  LOG(stdout, "Thread %ld [FASE 1]: Alocando hash do TF..", t->id);
   hash_t **tf = (hash_t **)calloc(count, sizeof(hash_t *));
   if (!tf) {
     fprintf(stderr, "Thread %ld: Falha ao alocar tf local\n", t->id);
@@ -856,6 +601,7 @@ void *phase1_build_vocabulary(void *arg) {
   }
 
   // [2] Tokenizar
+  LOG(stdout, "Thread %ld [FASE 1]: Tokenizando textos..", t->id);
   char ***article_vecs = tokenize_articles(article_texts, count);
   if (!article_vecs) {
     fprintf(stderr, "Thread %ld: Erro ao tokenizar\n", t->id);
@@ -863,33 +609,39 @@ void *phase1_build_vocabulary(void *arg) {
   }
 
   // [3] Remover stopwords
+  LOG(stdout, "Thread %ld [FASE 1]: Removendo stopwords..", t->id);
   remove_stopwords(article_vecs, count);
 
   // [4] Stemming
+  LOG(stdout, "Thread %ld [FASE 1]: Stemming..", t->id);
   stem_articles(article_vecs, count);
 
   // [5] Popular TF local
+  LOG(stdout, "Thread %ld [FASE 1]: Populando hash TF..", t->id);
   populate_tf_hash(tf, article_vecs, count);
 
   // [6] Popular vocabulário local
+  LOG(stdout, "Thread %ld [FASE 1]: Populando vocabulário..", t->id);
   set_idf_words(idf, article_vecs, count);
 
   // [7] Merge nas estruturas globais (seção crítica)
+  LOG(stdout, "Thread %ld [FASE 1]: Populando vocabulário e frequências globais..", t->id);
   pthread_mutex_lock(&mutex);
   hashes_merge(global_tf, tf, count, t->start);
   hash_merge(global_idf, idf);
   pthread_mutex_unlock(&mutex);
 
+  LOG(stdout, "Thread %ld [FASE 1]: Concluída", t->id);
+
   // Limpar memória local
   for (long int i = 0; i < count; i++) {
     if (article_texts[i]) free(article_texts[i]);
   }
+
   free(article_texts);
   free_article_vecs(article_vecs, count);
   free(tf);  // Ponteiros movidos para global_tf
   hash_free(idf);
-
-  LOG(stdout, "Thread %ld [FASE 1]: Concluída", t->id);
   pthread_exit(NULL);
 }
 
@@ -903,7 +655,7 @@ void *phase1_build_vocabulary(void *arg) {
  * @param arg Ponteiro para thread_args
  * @return NULL
  */
-void *phase2_compute_tfidf(void *arg) {
+void *preprocess_2(void *arg) {
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
 
