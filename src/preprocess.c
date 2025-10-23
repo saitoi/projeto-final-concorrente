@@ -17,7 +17,6 @@
 
 #include "../include/file_io.h"
 #include "../include/hash_t.h"
-#include "../include/log.h"
 #include <libstemmer.h>
 #include <math.h>
 #include <pthread.h>
