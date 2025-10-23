@@ -1,3 +1,17 @@
+/**
+ * @file file_io.c
+ * @brief Funções de I/O para serialização e carregamento de estruturas
+ *
+ * Este arquivo implementa funcionalidades de entrada/saída para:
+ * - Gerenciamento de stopwords (carregamento e liberação)
+ * - Serialização de estruturas (hash, arrays, vetores, normas)
+ * - Desserialização (carregamento de arquivos binários)
+ * - Leitura de arquivos de texto (queries, vocabulário)
+ *
+ * As funções save_* e load_* são usadas para persistir modelos
+ * pré-processados em disco, evitando reprocessamento.
+ */
+
 #include "../include/file_io.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,8 +19,17 @@
 
 /* -------------------- Stopwords -------------------- */
 
-hash_t *global_stopwords = NULL;
+hash_t *global_stopwords = NULL; /**< Hash global de stopwords */
 
+/**
+ * @brief Carrega stopwords de arquivo para hash global
+ *
+ * Lê arquivo linha por linha e popula hash global de stopwords.
+ * Usado para filtrar palavras irrelevantes durante pré-processamento.
+ *
+ * @param filename Caminho para arquivo de stopwords
+ * @note Define global_stopwords
+ */
 void load_stopwords(const char *filename) {
   FILE *f = fopen(filename, "r");
   if (!f) {
@@ -29,6 +52,9 @@ void load_stopwords(const char *filename) {
   fclose(f);
 }
 
+/**
+ * @brief Libera memória de stopwords globais
+ */
 void free_stopwords(void) {
   if (global_stopwords) {
     hash_free(global_stopwords);
@@ -38,6 +64,15 @@ void free_stopwords(void) {
 
 /* -------------------- Funções de Serialização -------------------- */
 
+/**
+ * @brief Salva tabela hash em arquivo binário
+ *
+ * Formato: capacidade, tamanho, seguido de (wlen, word, value) para cada entrada.
+ *
+ * @param gh Tabela hash (tipicamente global_idf)
+ * @param filename Caminho do arquivo de saída
+ * @return 0 em sucesso, -1 em erro
+ */
 int save_hash(const hash_t *gh, const char *filename) {
   if (!gh || !filename) {
     fprintf(stderr, "Erro: hash_t ou filename é nulo\n");
@@ -70,6 +105,14 @@ int save_hash(const hash_t *gh, const char *filename) {
   return 0;
 }
 
+/**
+ * @brief Salva array de hashes em arquivo binário
+ *
+ * @param hashes Array de hash_t* (tipicamente global_tf)
+ * @param num_hashes Número de hashes no array
+ * @param filename Caminho do arquivo de saída
+ * @return 0 em sucesso, -1 em erro
+ */
 int save_hash_array(hash_t **hashes, long int num_hashes, const char *filename) {
   if (!hashes || !filename) {
     fprintf(stderr, "Erro: hashes ou filename é nulo\n");
@@ -191,6 +234,14 @@ int save_vocab(const char **vocab, size_t vocab_size, const char *filename) {
 
 /* -------------------- Funções de Carregamento -------------------- */
 
+/**
+ * @brief Lê conteúdo completo de arquivo de texto
+ *
+ * Usado para carregar queries de arquivo.
+ *
+ * @param filename_txt Caminho para arquivo de texto
+ * @return String com conteúdo completo (caller deve liberar), ou NULL em erro
+ */
 char *get_filecontent(const char *filename_txt) {
   if (!filename_txt) {
     fprintf(stderr, "Erro: filename é nulo\n");
@@ -237,6 +288,14 @@ char *get_filecontent(const char *filename_txt) {
   return content;
 }
 
+/**
+ * @brief Carrega tabela hash de arquivo binário
+ *
+ * Reconstrói hash (tipicamente global_idf) de arquivo salvo com save_hash().
+ *
+ * @param filename Caminho para arquivo binário
+ * @return Ponteiro para hash_t carregado, ou NULL em erro
+ */
 hash_t *load_hash(const char *filename) {
   if (!filename) {
     fprintf(stderr, "Erro: filename é nulo\n");
@@ -312,6 +371,13 @@ hash_t *load_hash(const char *filename) {
   return gh;
 }
 
+/**
+ * @brief Carrega array de hashes de arquivo binário
+ *
+ * @param filename Caminho para arquivo binário
+ * @param num_hashes_out Ponteiro para receber número de hashes (pode ser NULL)
+ * @return Array de hash_t*, ou NULL em erro
+ */
 hash_t **load_hash_array(const char *filename, long int *num_hashes_out) {
   if (!filename) {
     fprintf(stderr, "Erro: filename é nulo\n");
@@ -418,6 +484,14 @@ hash_t **load_hash_array(const char *filename, long int *num_hashes_out) {
   return hashes;
 }
 
+/**
+ * @brief Carrega vetores de documentos de arquivo binário
+ *
+ * @param filename Caminho para arquivo binário
+ * @param num_docs_out Ponteiro para receber número de documentos
+ * @param vocab_size_out Ponteiro para receber tamanho do vocabulário
+ * @return Matriz de double**, ou NULL em erro
+ */
 double **load_doc_vecs(const char *filename, long int *num_docs_out,
                        size_t *vocab_size_out) {
   if (!filename) {
@@ -469,6 +543,13 @@ double **load_doc_vecs(const char *filename, long int *num_docs_out,
   return doc_vecs;
 }
 
+/**
+ * @brief Carrega normas de documentos de arquivo binário
+ *
+ * @param filename Caminho para arquivo binário
+ * @param num_docs_out Ponteiro para receber número de documentos
+ * @return Array de double com normas, ou NULL em erro
+ */
 double *load_doc_norms(const char *filename, long int *num_docs_out) {
   if (!filename) {
     fprintf(stderr, "Erro: filename é nulo\n");

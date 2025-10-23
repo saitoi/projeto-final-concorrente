@@ -1,3 +1,17 @@
+/**
+ * @file preprocess_query.c
+ * @brief Processamento de queries de usuário e cálculo de similaridade
+ *
+ * Este arquivo implementa o processamento de consultas do usuário para
+ * o sistema de recuperação de informações:
+ * - Tokenização de queries
+ * - Pré-processamento (lowercase, stopwords, stemming)
+ * - Cálculo de TF-IDF da query
+ * - Computação de similaridade cosseno entre query e documentos
+ *
+ * Pipeline similar ao de documentos, mas otimizado para queries únicas.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +22,16 @@
 #include "../include/hash_t.h"
 #include "../include/file_io.h"
 
+/**
+ * @brief Tokeniza string de query em array de palavras
+ *
+ * Divide query usando whitespace como delimitador e retorna array de tokens.
+ *
+ * @param query_user String com a query do usuário
+ * @param token_count Ponteiro para armazenar número de tokens encontrados
+ * @return Array de strings (tokens), ou NULL em erro
+ * @note Caller deve liberar o array e as strings individualmente
+ */
 char **tokenize_query(const char *query_user, long int *token_count) {
   if (!query_user) {
     return NULL;
@@ -63,6 +87,26 @@ char **tokenize_query(const char *query_user, long int *token_count) {
   return query_tokens;
 }
 
+/**
+ * @brief Processa query completa e calcula seu vetor TF-IDF
+ *
+ * Pipeline completo de pré-processamento da query:
+ * 1. Tokenização
+ * 2. Conversão para lowercase
+ * 3. Remoção de stopwords
+ * 4. Stemming
+ * 5. Cálculo de TF
+ * 6. Cálculo de TF-IDF (usando IDF global dos documentos)
+ * 7. Cálculo da norma do vetor
+ *
+ * Inclui medição de tempo para cada etapa.
+ *
+ * @param query_user String com a query do usuário
+ * @param global_idf Hash IDF global dos documentos
+ * @param query_tf_out Ponteiro para armazenar hash TF-IDF da query
+ * @param query_norm_out Ponteiro para armazenar norma do vetor
+ * @return 0 em sucesso, -1 em erro
+ */
 int preprocess_query_single(const char *query_user, const hash_t *global_idf,
                             hash_t **query_tf_out, double *query_norm_out) {
   if (!query_user || !global_idf || !query_tf_out || !query_norm_out) {
@@ -196,6 +240,22 @@ int preprocess_query_single(const char *query_user, const hash_t *global_idf,
   return 0;
 }
 
+/**
+ * @brief Calcula similaridade cosseno entre query e todos os documentos
+ *
+ * Computa similaridade usando:
+ * similarity(Q, D) = (Q · D) / (||Q|| * ||D||)
+ *
+ * onde · é produto interno e || || é norma euclidiana.
+ *
+ * @param query_tf Hash TF-IDF da query
+ * @param query_norm Norma do vetor da query
+ * @param global_tf Array de hashes TF-IDF dos documentos
+ * @param global_doc_norms Array de normas dos documentos
+ * @param num_docs Número total de documentos
+ * @return Array de similaridades (uma por documento), ou NULL em erro
+ * @note Caller deve liberar o array retornado
+ */
 double *compute_similarities(const hash_t *query_tf, double query_norm,
                              hash_t **global_tf, const double *global_doc_norms,
                              long int num_docs) {

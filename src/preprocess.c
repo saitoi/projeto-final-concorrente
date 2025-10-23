@@ -1,3 +1,20 @@
+/**
+ * @file preprocess.c
+ * @brief Pipeline de pré-processamento de documentos para TF-IDF
+ *
+ * Este arquivo implementa o pipeline completo de pré-processamento paralelo
+ * de documentos usado no sistema de recuperação de informações:
+ * - Tokenização de textos
+ * - Remoção de stopwords
+ * - Aplicação de stemming (normalização morfológica)
+ * - Construção de vocabulário (IDF)
+ * - Cálculo de Term Frequency (TF)
+ * - Cálculo de TF-IDF
+ * - Computação de normas vetoriais
+ *
+ * Projetado para execução paralela com múltiplas threads.
+ */
+
 #include "../include/file_io.h"
 #include "../include/hash_t.h"
 #include "../include/log.h"
@@ -8,6 +25,17 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @brief Popula vocabulário com palavras únicas dos documentos
+ *
+ * Extrai todas as palavras únicas de um conjunto de documentos tokenizados
+ * e adiciona ao hash de vocabulário. Usado para construir o vocabulário
+ * global antes de calcular IDF.
+ *
+ * @param vocab Hash de vocabulário (IDF) a ser populado
+ * @param article_vecs Array de vetores de tokens (documentos tokenizados)
+ * @param count Número de documentos no array
+ */
 void set_idf_words(hash_t *vocab, char ***article_vecs, long int count) {
   if (!article_vecs) {
     fprintf(stderr, "Erro: article_vecs é nulo.\n");
@@ -24,6 +52,17 @@ void set_idf_words(hash_t *vocab, char ***article_vecs, long int count) {
   }
 }
 
+/**
+ * @brief Calcula valores IDF para todas as palavras do vocabulário
+ *
+ * Computa Inverse Document Frequency usando a fórmula:
+ * IDF(palavra) = log2(total_documentos / documentos_contendo_palavra)
+ *
+ * @param set Hash de vocabulário (IDF) a ser calculado
+ * @param tf Array de hashes TF de todos os documentos
+ * @param doc_count Número total de documentos (double para cálculo)
+ * @param num_docs Número de documentos no array tf
+ */
 void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
                    long int num_docs) {
   if (!set || !tf) {
@@ -78,6 +117,17 @@ void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
   }
 }
 
+/**
+ * @brief Converte valores TF para TF-IDF nos vetores de documentos
+ *
+ * Transforma frequências (TF) em valores TF-IDF usando a fórmula:
+ * TF-IDF = (1 + log2(TF)) * IDF
+ *
+ * @param global_tf Array global de hashes TF
+ * @param global_idf Hash global de IDF
+ * @param count Número de documentos a processar
+ * @param offset Índice inicial no array global_tf
+ */
 void compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count,
                     long int offset) {
   if (!global_tf || !global_idf || count <= 0) {
@@ -112,6 +162,17 @@ void compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count,
   }
 }
 
+/**
+ * @brief Calcula norma euclidiana dos vetores TF-IDF de documentos
+ *
+ * Computa ||doc|| = sqrt(sum(tfidf^2)) para normalização da similaridade.
+ *
+ * @param global_doc_norms Array de normas a ser preenchido
+ * @param global_tf Array de hashes TF-IDF dos documentos
+ * @param doc_count Número de documentos a processar
+ * @param vocab_size Tamanho do vocabulário (não usado atualmente)
+ * @param offset Índice inicial no array global
+ */
 void compute_doc_norms(double *global_doc_norms, hash_t **global_tf,
                        long int doc_count, long int vocab_size,
                        long int offset) {
@@ -145,6 +206,15 @@ void compute_doc_norms(double *global_doc_norms, hash_t **global_tf,
   }
 }
 
+/**
+ * @brief Aplica stemming (normalização morfológica) aos tokens
+ *
+ * Reduz palavras às suas raízes usando algoritmo Porter Stemmer.
+ * Exemplo: "running" -> "run", "computers" -> "comput"
+ *
+ * @param article_vecs Array de vetores de tokens a serem normalizados
+ * @param count Número de documentos no array
+ */
 void stem_articles(char ***article_vecs, long int count) {
   struct sb_stemmer *stemmer = sb_stemmer_new("english", NULL);
   if (!stemmer) {
@@ -167,6 +237,16 @@ void stem_articles(char ***article_vecs, long int count) {
   sb_stemmer_delete(stemmer);
 }
 
+/**
+ * @brief Popula hashes TF com frequências de termos dos documentos
+ *
+ * Conta ocorrências de cada palavra em cada documento e armazena
+ * em estruturas hash individuais.
+ *
+ * @param tf Array de hashes TF (um por documento)
+ * @param article_vecs Array de vetores de tokens (documentos tokenizados)
+ * @param count Número de documentos
+ */
 void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count) {
   for (long int i = 0; i < count; ++i) {
     if (!tf[i] || !article_vecs[i])
@@ -199,6 +279,17 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count) {
   }
 }
 
+/**
+ * @brief Tokeniza textos de documentos em arrays de palavras
+ *
+ * Divide textos em tokens usando whitespace como delimitador.
+ * Thread-safe (usa strtok_r).
+ *
+ * @param article_texts Array de strings com textos dos documentos
+ * @param count Número de documentos
+ * @return Array de vetores de tokens, ou NULL em erro
+ * @note Caller deve liberar usando free_article_vecs()
+ */
 char ***tokenize_articles(char **article_texts, long int count) {
   char ***article_vecs;
 
@@ -257,6 +348,15 @@ char ***tokenize_articles(char **article_texts, long int count) {
   return article_vecs;
 }
 
+/**
+ * @brief Remove stopwords e palavras de uma letra dos tokens
+ *
+ * Filtra palavras comuns sem valor semântico (a, the, is, etc.)
+ * e palavras muito curtas. Modifica os arrays in-place.
+ *
+ * @param article_vecs Array de vetores de tokens a serem filtrados
+ * @param count Número de documentos
+ */
 void remove_stopwords(char ***article_vecs, long int count) {
   if (!global_stopwords) {
     fprintf(stderr,
@@ -283,6 +383,12 @@ void remove_stopwords(char ***article_vecs, long int count) {
   }
 }
 
+/**
+ * @brief Libera memória alocada para vetores de tokens
+ *
+ * @param article_vecs Array de vetores de tokens a serem liberados
+ * @param count Número de documentos
+ */
 void free_article_vecs(char ***article_vecs, long int count) {
   if (!article_vecs)
     return;
