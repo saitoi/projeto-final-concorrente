@@ -188,8 +188,7 @@ int preprocess_query_single(const char *query_user, const hash_t *global_idf,
   hash_t *query_tf = hash_new();
   for (long int i = 0; i < token_count; i++) {
     const char *word = tokens[i];
-    double current_freq = hash_find(query_tf, word);
-    hash_add(query_tf, word, current_freq + 1.0);
+    hash_add(query_tf, word, 1.0);
   }
   end = clock();
   time_taken = ((double)(end - start)) / CLOCKS_PER_SEC;
@@ -296,7 +295,7 @@ double *compute_similarities(const hash_t *query_tf, double query_norm,
       }
     }
 
-    // Similaridade cosseno = (query · doc) / (||query|| * ||doc||)
+    // Similaridade cosseno
     double doc_norm = global_doc_norms[doc_id];
     if (query_norm > 0.0 && doc_norm > 0.0) {
       similarities[doc_id] = dot_product / (query_norm * doc_norm);

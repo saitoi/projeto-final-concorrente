@@ -157,13 +157,13 @@ static void hash_rehash(hash_t *set, size_t ncap) {
 /**
  * @brief Adiciona ou atualiza entrada na tabela hash
  *
- * Se a palavra já existir, não faz nada (mantém valor original).
+ * Se a palavra já existir, incrementa o valor existente com o novo valor.
  * Se não existir, cria nova entrada com o valor fornecido.
  * Realiza rehashing automático se necessário.
  *
  * @param set Tabela hash
  * @param word Palavra (chave)
- * @param value Valor a ser armazenado
+ * @param value Valor a ser adicionado/incrementado
  */
 void hash_add(hash_t *set, const char *word, double value) {
   size_t wlen = strlen(word);
@@ -177,6 +177,7 @@ void hash_add(hash_t *set, const char *word, double value) {
 
   for (HashEntry *e = set->buckets[idx]; e; e = e->next) {
     if (e->wlen == wlen && memcmp(e->word, word, wlen) == 0) {
+      e->value += value;
       return;
     }
   }
@@ -253,7 +254,7 @@ void hash_merge(hash_t *dst, const hash_t *src) {
   for (size_t i = 0; i < src->cap; i++) {
     HashEntry *e = src->buckets[i];
     while (e) {
-      hash_add(dst, e->word, e->value);
+        hash_add(dst, e->word, e->value);
       e = e->next;
     }
   }

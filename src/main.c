@@ -175,7 +175,7 @@ int main(int argc, char *argv[]) {
   format_filenames(filename_tf, filename_idf, filename_doc_norms,
                    cfg.tablename, cfg.entries);
 
-  // Caso o arquivo não exista: Pré-processamento em 2 fases
+  // Caso o arquivo não exista: Pré-processamento
   if (access(filename_tf, F_OK) == -1 ||
       access(filename_idf, F_OK) == -1 ||
       access(filename_doc_norms, F_OK) == -1) {
@@ -195,6 +195,16 @@ int main(int argc, char *argv[]) {
       fprintf(stderr, "Falha ao alocar memória para global_tf\n");
       return 1;
     }
+
+    // Inicializar cada hash TF individual
+    for (long int i = 0; i < cfg.entries; i++) {
+      global_tf[i] = hash_new();
+      if (!global_tf[i]) {
+        fprintf(stderr, "Falha ao alocar hash TF para documento %ld\n", i);
+        return 1;
+      }
+    }
+
     global_entries = cfg.entries;
 
     // Carregar stopwords (compartilhado por todas threads)
@@ -287,6 +297,9 @@ int main(int argc, char *argv[]) {
 
     // Liberar stopwords (usado apenas no pré-processamento)
     free_stopwords();
+
+    // Liberar array de thread IDs
+    free(tids);
 
   } else {
 
@@ -572,20 +585,20 @@ void *preprocess_1(void *arg) {
   }
 
   // Alocar hashes locais
-  LOG(stdout, "Thread %ld [FASE 1]: Alocando hash do TF..", t->id);
-  hash_t **tf = (hash_t **)calloc(count, sizeof(hash_t *));
-  if (!tf) {
-    fprintf(stderr, "Thread %ld: Falha ao alocar tf local\n", t->id);
-    pthread_exit(NULL);
-  }
+  // LOG(stdout, "Thread %ld [FASE 1]: Alocando hash do TF..", t->id);
+  // hash_t **tf = (hash_t **)calloc(count, sizeof(hash_t *));
+  // if (!tf) {
+  //   fprintf(stderr, "Thread %ld: Falha ao alocar tf local\n", t->id);
+  //   pthread_exit(NULL);
+  // }
 
-  for (long int i = 0; i < count; i++) {
-    tf[i] = hash_new();
-    if (!tf[i]) {
-      fprintf(stderr, "Thread %ld: Falha ao alocar tf[%ld]\n", t->id, i);
-      pthread_exit(NULL);
-    }
-  }
+  // for (long int i = 0; i < count; i++) {
+  //   tf[i] = hash_new();
+  //   if (!tf[i]) {
+  //     fprintf(stderr, "Thread %ld: Falha ao alocar tf[%ld]\n", t->id, i);
+  //     pthread_exit(NULL);
+  //   }
+  // }
 
   hash_t *idf = hash_new();
 
@@ -618,7 +631,7 @@ void *preprocess_1(void *arg) {
 
   // [5] Popular TF local
   LOG(stdout, "Thread %ld [FASE 1]: Populando hash TF..", t->id);
-  populate_tf_hash(tf, article_vecs, count);
+  populate_tf_hash(global_tf, article_vecs, count, t->start);
 
   // [6] Popular vocabulário local
   LOG(stdout, "Thread %ld [FASE 1]: Populando vocabulário..", t->id);
@@ -627,7 +640,6 @@ void *preprocess_1(void *arg) {
   // [7] Merge nas estruturas globais (seção crítica)
   LOG(stdout, "Thread %ld [FASE 1]: Populando vocabulário e frequências globais..", t->id);
   pthread_mutex_lock(&mutex);
-  hashes_merge(global_tf, tf, count, t->start);
   hash_merge(global_idf, idf);
   pthread_mutex_unlock(&mutex);
 
@@ -640,7 +652,7 @@ void *preprocess_1(void *arg) {
 
   free(article_texts);
   free_article_vecs(article_vecs, count);
-  free(tf);  // Ponteiros movidos para global_tf
+  // free(tf);  // Ponteiros movidos para global_tf
   hash_free(idf);
   pthread_exit(NULL);
 }

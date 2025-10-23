@@ -291,7 +291,7 @@ char *get_filecontent(const char *filename_txt) {
 /**
  * @brief Carrega tabela hash de arquivo binário
  *
- * Reconstrói hash (tipicamente global_idf) de arquivo salvo com save_hash().
+ * Reconstrói hash (global_idf) de arquivo salvo com save_hash().
  *
  * @param filename Caminho para arquivo binário
  * @return Ponteiro para hash_t carregado, ou NULL em erro
