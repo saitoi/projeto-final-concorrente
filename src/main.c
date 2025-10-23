@@ -94,6 +94,9 @@ typedef struct {
 int parse_cli(int argc, char **argv, Config *cfg);
 void compute_once(void);
 void *preprocess(void *args);
+void format_filenames(char *filename_tf, char *filename_idf,
+                      char *filename_doc_norms, const char *tablename,
+                      long int entries);
 
 /* --------------- Fluxo Principal --------------- */
 
@@ -102,9 +105,9 @@ void *preprocess(void *args);
  *
  * Fluxo de execução:
  * 1. Parseia argumentos de linha de comando
- * 2. Verifica se modelos pré-processados existem em disco
- * 3. Se não existirem: executa pré-processamento paralelo com threads
- * 4. Se existirem: carrega estruturas dos arquivos binários
+ * 2. Verifica existência de modelos pré-processados em models/
+ * 3. Se não existirem: Executa pré-processamento paralelo com threads
+ * 4. Se existirem: Carrega estruturas dos arquivos binários
  * 5. Processa query do usuário e calcula similaridades
  * 6. Retorna top-k documentos mais similares
  *
@@ -126,7 +129,7 @@ int main(int argc, char *argv[]) {
     .verbose = 0
   };
 
-  // Processar argumentos da linha de comando
+  // [1]
   if (parse_cli(argc, argv, &cfg) != 0) {
     return 1;
   }
@@ -135,7 +138,7 @@ int main(int argc, char *argv[]) {
   if (cfg.query_filename && strlen(cfg.query_filename) > 3)
     cfg.query_user = get_filecontent(cfg.query_filename);
 
-  // Atualizar variável global de verbosidade
+  // Atualiza variável global de verbosidade
   VERBOSE = cfg.verbose;
 
   LOG(stdout,
@@ -171,16 +174,12 @@ int main(int argc, char *argv[]) {
   if (!cfg.entries || cfg.entries > total)
     cfg.entries = total;
 
-  // Criar nomes de arquivo com sufixo do número de entradas
+  // Criar nomes de arquivo com tablename e número de entradas
   char filename_tf[256];
   char filename_idf[256];
   char filename_doc_norms[256];
-  snprintf(filename_tf, sizeof(filename_tf),
-           "models/tf_%ld.bin", cfg.entries);
-  snprintf(filename_idf, sizeof(filename_idf),
-           "models/idf_%ld.bin", cfg.entries);
-  snprintf(filename_doc_norms, sizeof(filename_doc_norms),
-           "models/doc_norms_%ld.bin", cfg.entries);
+  format_filenames(filename_tf, filename_idf, filename_doc_norms,
+                   cfg.tablename, cfg.entries);
 
   // Caso o arquivo não exista: Pré-processamento
   if (access(filename_tf, F_OK) == -1 ||
@@ -323,6 +322,8 @@ int main(int argc, char *argv[]) {
         }
       }
 
+      
+      
       // Calcular similaridade com todos os documentos
       double *similarities = compute_similarities(query_tf, query_norm, global_tf,
                                                    global_doc_norms, global_entries);
@@ -641,7 +642,7 @@ void *preprocess(void *arg) {
   // [12] Variáveis globais computadas uma vez entre todas as threads
   pthread_once(&once, compute_once);
 
-  // [13] Computar vetores de documentos usando TF-IDF
+  // [13] Computar vetores de documentos usando TF-IDF e armazenar em global_tf
   LOG(stderr, "Thread %ld - Computando vetores dos documentos..", t->id);
   fflush(stderr);
   compute_tf_idf(global_tf, global_idf, count, t->start);
@@ -765,3 +766,22 @@ int parse_cli(int argc, char **argv, Config *cfg) {
   return 0;
 }
 
+/**
+ * @brief Formata nomes de arquivos de modelo com tablename e entries
+ *
+ * Cria nomes no formato: models/<tipo>_<tablename>_<entries>.bin
+ * Exemplo: models/tf_sample_articles_1000.bin
+ *
+ * @param filename_tf Buffer para nome do arquivo TF (mín. 256 bytes)
+ * @param filename_idf Buffer para nome do arquivo IDF (mín. 256 bytes)
+ * @param filename_doc_norms Buffer para nome do arquivo de normas (mín. 256 bytes)
+ * @param tablename Nome da tabela
+ * @param entries Número de entradas
+ */
+void format_filenames(char *filename_tf, char *filename_idf,
+                      char *filename_doc_norms, const char *tablename,
+                      long int entries) {
+  snprintf(filename_tf, 256, "models/tf_%s_%ld.bin", tablename, entries);
+  snprintf(filename_idf, 256, "models/idf_%s_%ld.bin", tablename, entries);
+  snprintf(filename_doc_norms, 256, "models/doc_norms_%s_%ld.bin", tablename, entries);
+}

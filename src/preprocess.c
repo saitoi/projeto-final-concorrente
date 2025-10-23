@@ -55,7 +55,7 @@ void set_idf_words(hash_t *vocab, char ***article_vecs, long int count) {
 /**
  * @brief Calcula valores IDF para todas as palavras do vocabulário
  *
- * Computa Inverse Document Frequency usando a fórmula:
+ * Computa o IDF (Inverse Document Frequency) usando a fórmula:
  * IDF(palavra) = log2(total_documentos / documentos_contendo_palavra)
  *
  * @param set Hash de vocabulário (IDF) a ser calculado
