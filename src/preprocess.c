@@ -214,7 +214,7 @@ void compute_doc_norms(double *global_doc_norms, hash_t **global_tf,
  * @param article_vecs Array de vetores de tokens a serem normalizados
  * @param count Número de documentos no array
  */
-void stem_articles(char ***article_vecs, long int count) {
+void stem(char ***article_vecs, long int count) {
   struct sb_stemmer *stemmer = sb_stemmer_new("english", NULL);
   if (!stemmer) {
     fprintf(stderr, "Erro ao criar o Stemmer.\n");
@@ -273,7 +273,7 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long in
  * @return Array de vetores de tokens, ou NULL em erro
  * @note Caller deve liberar usando free_article_vecs()
  */
-char ***tokenize_articles(char **article_texts, long int count) {
+char ***tokenize(char **article_texts, long int count) {
   char ***article_vecs;
 
   article_vecs = malloc(count * sizeof(char **));

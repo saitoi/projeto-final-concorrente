@@ -89,7 +89,13 @@ typedef struct {
   int verbose;                   /**< Verbosidade (0=desabilitado, 1=habilitado) */
 } Config;
 
+typedef struct {
+  long int doc_id;
+  double similarity;
+} DocSim;
+
 int parse_cli(int argc, char **argv, Config *cfg);
+int compare_sim(const void *a, const void *b);
 void *preprocess_1(void *args);
 void *preprocess_2(void *args);
 void format_filenames(char *filename_tf, char *filename_idf,
@@ -343,6 +349,9 @@ int main(int argc, char *argv[]) {
     global_vocab_size = hash_size(global_idf);
 
     printf("Todas as estruturas foram carregadas com sucesso!\n");
+
+    // Carregar stopwords para processar queries
+    load_stopwords("assets/stopwords.txt");
   }
 
   /* --------------- Consulta do Usuário --------------- */
@@ -350,11 +359,20 @@ int main(int argc, char *argv[]) {
   if (cfg.query_user) {
     // printf("Consulta do usuário: %s\n", cfg.query_user);
 
+    // Carregar stopwords se não estiverem carregadas
+    if (!global_stopwords) {
+      load_stopwords("assets/stopwords.txt");
+      if (!global_stopwords) {
+        fprintf(stderr, "Falha ao carregar stopwords para processar query\n");
+        return 1;
+      }
+    }
+
     // Processar query (sem threads - é um vetor pequeno)
     hash_t *query_tf;
     double query_norm;
 
-    int result = preprocess_query_single(cfg.query_user, global_idf, &query_tf, &query_norm);
+    int result = preprocess_query(cfg.query_user, global_idf, &query_tf, &query_norm);
     if (result != 0) {
       fprintf(stderr, "Erro ao processar consulta do usuário\n");
     } else {
@@ -372,7 +390,7 @@ int main(int argc, char *argv[]) {
 
       // Calcular similaridade com todos os documentos
       double *similarities = compute_similarities(query_tf, query_norm, global_tf,
-                                                   global_doc_norms, global_entries);
+                                                   global_doc_norms, global_entries, cfg.nthreads);
       if (!similarities) {
         fprintf(stderr, "Erro ao calcular similaridades\n");
       } else {
@@ -380,28 +398,15 @@ int main(int argc, char *argv[]) {
 
         // Encontrar os top-k documentos mais similares
         // Criar array de índices
-        typedef struct {
-          long int doc_id;
-          double similarity;
-        } DocScore;
 
-        DocScore *scores = (DocScore *)malloc(global_entries * sizeof(DocScore));
+        DocSim *scores = (DocSim *)malloc(global_entries * sizeof(DocSim));
         if (scores) {
           for (long int i = 0; i < global_entries; i++) {
             scores[i].doc_id = i;
             scores[i].similarity = similarities[i];
           }
 
-          // Ordenar por similaridade (bubble sort simples - OK para poucos docs)
-          for (long int i = 0; i < global_entries - 1; i++) {
-            for (long int j = 0; j < global_entries - i - 1; j++) {
-              if (scores[j].similarity < scores[j + 1].similarity) {
-                DocScore temp = scores[j];
-                scores[j] = scores[j + 1];
-                scores[j + 1] = temp;
-              }
-            }
-          }
+          qsort(scores, global_entries, sizeof(DocSim), compare_sim);
 
           // Exibir top-k
           long int top_k = global_entries < cfg.k ? global_entries : cfg.k;
@@ -577,28 +582,12 @@ void *preprocess_1(void *arg) {
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
 
-  LOG(stdout, "Thread %ld [FASE 1]: Processando %ld documentos [%ld, %ld]",
+  LOG(stdout, "[FASE 1] T%ld : Processando %ld documentos [%ld, %ld]",
       t->id, count, t->start, t->end - 1);
 
   if (count <= 0) {
     pthread_exit(NULL);
   }
-
-  // Alocar hashes locais
-  // LOG(stdout, "Thread %ld [FASE 1]: Alocando hash do TF..", t->id);
-  // hash_t **tf = (hash_t **)calloc(count, sizeof(hash_t *));
-  // if (!tf) {
-  //   fprintf(stderr, "Thread %ld: Falha ao alocar tf local\n", t->id);
-  //   pthread_exit(NULL);
-  // }
-
-  // for (long int i = 0; i < count; i++) {
-  //   tf[i] = hash_new();
-  //   if (!tf[i]) {
-  //     fprintf(stderr, "Thread %ld: Falha ao alocar tf[%ld]\n", t->id, i);
-  //     pthread_exit(NULL);
-  //   }
-  // }
 
   hash_t *idf = hash_new();
 
@@ -614,36 +603,36 @@ void *preprocess_1(void *arg) {
   }
 
   // [2] Tokenizar
-  LOG(stdout, "Thread %ld [FASE 1]: Tokenizando textos..", t->id);
-  char ***article_vecs = tokenize_articles(article_texts, count);
+  LOG(stdout, "[FASE 1] T%ld: Tokenizando textos..", t->id);
+  char ***article_vecs = tokenize(article_texts, count);
   if (!article_vecs) {
     fprintf(stderr, "Thread %ld: Erro ao tokenizar\n", t->id);
     pthread_exit(NULL);
   }
 
   // [3] Remover stopwords
-  LOG(stdout, "Thread %ld [FASE 1]: Removendo stopwords..", t->id);
+  LOG(stdout, "[FASE 1] T%ld: Removendo stopwords..", t->id);
   remove_stopwords(article_vecs, count);
 
   // [4] Stemming
-  LOG(stdout, "Thread %ld [FASE 1]: Stemming..", t->id);
-  stem_articles(article_vecs, count);
+  LOG(stdout, "[FASE 1] T%ld: Stemming..", t->id);
+  stem(article_vecs, count);
 
   // [5] Popular TF local
-  LOG(stdout, "Thread %ld [FASE 1]: Populando hash TF..", t->id);
+  LOG(stdout, "[FASE 1] T%ld: Populando hash TF..", t->id);
   populate_tf_hash(global_tf, article_vecs, count, t->start);
 
   // [6] Popular vocabulário local
-  LOG(stdout, "Thread %ld [FASE 1]: Populando vocabulário..", t->id);
+  LOG(stdout, "[FASE 1] T%ld: Populando vocabulário..", t->id);
   set_idf_words(idf, article_vecs, count);
 
   // [7] Merge nas estruturas globais (seção crítica)
-  LOG(stdout, "Thread %ld [FASE 1]: Populando vocabulário e frequências globais..", t->id);
+  LOG(stdout, "[FASE 1] T%ld: Populando vocabulário e frequências globais..", t->id);
   pthread_mutex_lock(&mutex);
   hash_merge(global_idf, idf);
   pthread_mutex_unlock(&mutex);
 
-  LOG(stdout, "Thread %ld [FASE 1]: Concluída", t->id);
+  LOG(stdout, "[FASE 1] T%ld: Concluída", t->id);
 
   // Limpar memória local
   for (long int i = 0; i < count; i++) {
@@ -705,4 +694,10 @@ void format_filenames(char *filename_tf, char *filename_idf,
   snprintf(filename_tf, 256, "models/tf_%s_%ld.bin", tablename, entries);
   snprintf(filename_idf, 256, "models/idf_%s_%ld.bin", tablename, entries);
   snprintf(filename_doc_norms, 256, "models/doc_norms_%s_%ld.bin", tablename, entries);
+}
+
+int compare_sim(const void *a, const void *b) {
+    const DocSim *doc1 = (const DocSim *)a;
+    const DocSim *doc2 = (const DocSim *)b;
+    return doc1->similarity > doc2->similarity ? -1 : doc1->similarity < doc2->similarity;
 }
