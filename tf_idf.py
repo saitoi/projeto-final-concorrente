@@ -6,12 +6,13 @@
 # ]
 # ///
 
+import os
+import re
+import nltk
 from math import log2
 from prettytable import PrettyTable, HRuleStyle, VRuleStyle
-import os, re, nltk
 from nltk.stem import SnowballStemmer
 from collections import Counter
-from typing import Literal
 
 class MatrizFrequencia:
     def __init__(
@@ -57,18 +58,19 @@ class MatrizFrequencia:
 
     def weight(self, key, doc_id) -> float:
         f = self.freq(key, doc_id)
-        return 0 if f == 0 else round(self.tf(key, doc_id) * self.idf[key], 2)
+        return 0 if f == 0 else self.tf(key, doc_id) * self.idf[key]
 
     def _compute_vecs(self) -> list[list[float]]:
         return [[self.weight(w, d) for w in self.words] for d in range(self.ndocs)]
 
     def _compute_norms(self) -> list[float]:
-        return [round(sum(v**2 for v in self.doc_vecs[d])**0.5, 2) for d in range(self.ndocs)]
+        return [sum(v**2 for v in self.doc_vecs[d])**0.5 for d in range(self.ndocs)]
 
     def sim(self, doc_id: int, query_id: int) -> float:
         q = self.queries[query_id]
         num = sum(v1 * v2 for v1, v2 in zip(self.doc_vecs[doc_id], q.doc_vecs[0]))
-        return num / (self.doc_norms[doc_id] * q.doc_norms[0])
+        denom = self.doc_norms[doc_id] * q.doc_norms[0]
+        return 0.0 if denom == 0 else num / denom
 
     def vec_search(
         self,
@@ -125,7 +127,7 @@ class MatrizFrequencia:
         print(f"Consulta adicionada com id={len(self.queries)-1}")
 
     @classmethod
-    def from_db(cls, stopwords=None, stemmer=None, separadores_filename='separadores.txt', db_filename='wiki-small.db', tablename='test_tbl_2', encoding='utf-8'):
+    def from_db(cls, stopwords=None, stemmer=None, separadores_filename='./assets/separadores.txt', db_filename='wiki-small.db', tablename='test_tbl_2', encoding='utf-8'):
         import sqlite3
 
         conn = sqlite3.connect(db_filename)
@@ -145,7 +147,7 @@ class MatrizFrequencia:
         
 
     @classmethod
-    def from_dir(cls, base_dir, stopwords=None, stemmer=None, separadores_filename='separadores.txt', docs_dir='documentos', encoding='utf-8'):
+    def from_dir(cls, base_dir, stopwords=None, stemmer=None, separadores_filename='./assets/separadores.txt', docs_dir='documentos', encoding='utf-8'):
         docs = []
         docdir = os.path.join(base_dir, docs_dir)
         for e in sorted(os.scandir(docdir), key=lambda e: int(e.name.removeprefix("doc").removesuffix(".txt"))):
@@ -186,10 +188,12 @@ class MatrizFrequencia:
 if __name__ == "__main__":
     import argparse
 
+    nltk.download('stopwords')
+
     parser = argparse.ArgumentParser(description='TF-IDF Vector Search')
-    parser.add_argument('-d', '--database', type=str, default='wiki-small.db', help='Nome do arquivo de banco de dados')
+    parser.add_argument('-d', '--database', type=str, default='./data/wiki-small.db', help='Nome do arquivo de banco de dados')
     parser.add_argument('-t', '--tablename', type=str, default='test_tbl_2', help='Nome da tabela no banco de dados')
-    parser.add_argument('-s', '--separadores', type=str, default='separadores.txt', help='Arquivo de separadores')
+    parser.add_argument('-s', '--separadores', type=str, default='./assets/separadores.txt', help='Arquivo de separadores')
     parser.add_argument('-q', '--query', type=str, help='Consulta a ser processada')
 
     args = parser.parse_args()
