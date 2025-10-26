@@ -30,7 +30,9 @@ MANUAL ?= 0
 NTHR ?= 4
 
 # Mapeamento TEST para TBL_NAME
-ifeq ($(TEST),1)
+ifeq ($(TEST),0)
+    TBL_NAME = test_tbl_0
+else ifeq ($(TEST),1)
     TBL_NAME = test_tbl_1
 else ifeq ($(TEST),2)
     TBL_NAME = test_tbl_2
