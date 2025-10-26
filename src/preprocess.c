@@ -17,7 +17,6 @@
 
 #include "../include/file_io.h"
 #include "../include/hash_t.h"
-#include "../include/log.h"
 #include <libstemmer.h>
 #include <math.h>
 #include <pthread.h>
@@ -47,7 +46,7 @@ void set_idf_words(hash_t *vocab, char ***article_vecs, long int count) {
       continue;
 
     for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-      hash_add(vocab, article_vecs[i][j], 0.0);
+        hash_add(vocab, article_vecs[i][j], 0.0);
     }
   }
 }
@@ -215,7 +214,7 @@ void compute_doc_norms(double *global_doc_norms, hash_t **global_tf,
  * @param article_vecs Array de vetores de tokens a serem normalizados
  * @param count Número de documentos no array
  */
-void stem_articles(char ***article_vecs, long int count) {
+void stem(char ***article_vecs, long int count) {
   struct sb_stemmer *stemmer = sb_stemmer_new("english", NULL);
   if (!stemmer) {
     fprintf(stderr, "Erro ao criar o Stemmer.\n");
@@ -247,34 +246,18 @@ void stem_articles(char ***article_vecs, long int count) {
  * @param article_vecs Array de vetores de tokens (documentos tokenizados)
  * @param count Número de documentos
  */
-void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count) {
+void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long int offset) {
   for (long int i = 0; i < count; ++i) {
-    if (!tf[i] || !article_vecs[i])
+    long int global_idx = offset + i;
+    if (!tf[global_idx] || !article_vecs[i])
       continue;
 
     for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
       if (!article_vecs[i][j])
         continue;
 
-      // Buscar se a palavra já existe
       const char *word = article_vecs[i][j];
-      size_t wlen = strlen(word);
-      size_t idx = hash_str(word, wlen) & (tf[i]->cap - 1);
-
-      int found = 0;
-      for (HashEntry *e = tf[i]->buckets[idx]; e; e = e->next) {
-        if (e->wlen == wlen && memcmp(e->word, word, wlen) == 0) {
-          // Palavra já existe, incrementar frequência
-          e->value += 1.0;
-          found = 1;
-          break;
-        }
-      }
-
-      if (!found) {
-        // Palavra não existe, adicionar com frequência 1.0
-        hash_add(tf[i], word, 1.0);
-      }
+      hash_add(tf[global_idx], word, 1.0);
     }
   }
 }
@@ -290,7 +273,7 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count) {
  * @return Array de vetores de tokens, ou NULL em erro
  * @note Caller deve liberar usando free_article_vecs()
  */
-char ***tokenize_articles(char **article_texts, long int count) {
+char ***tokenize(char **article_texts, long int count) {
   char ***article_vecs;
 
   article_vecs = malloc(count * sizeof(char **));

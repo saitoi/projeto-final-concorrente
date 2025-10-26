@@ -3,29 +3,36 @@
 Pipeline de preprocessamento para SQLite
 Uso: python pipeline-sqlite.py database.db tablename
 """
-import re, sqlite3, unicodedata, sys
+import re
+import sqlite3
+import unicodedata
+import sys
 
 LETTER = r"[^\W\d_]"
 APOS = rf"(?<={LETTER})'(?={LETTER})"
-DASH = rf"(?<=[\w])-(?=[\w])"
-DOT = rf"(?<=[\w])\.(?=[\w])"
+DASH = r"(?<=[\w])-(?=[\w])"
+DOT = r"(?<=[\w])\.(?=[\w])"
 SYMBOLS = r"[#:\"()\[\]{}~=_|;<>*\$`\\]"
 
 def remove_accents(text):
-    if text is None: return None
+    if text is None:
+        return None
     nfd = unicodedata.normalize('NFD', text)
     return ''.join(char for char in nfd if unicodedata.category(char) != 'Mn')
 
 def remove_non_ascii(text):
-    if text is None: return None
+    if text is None:
+        return None
     return text.encode('ascii', 'ignore').decode('ascii')
 
 def unescape_quotes(text):
-    if text is None: return None
+    if text is None:
+        return None
     return re.sub(r"\\'", "'", text)
 
 def clean_quotes(text):
-    if text is None: return None
+    if text is None:
+        return None
     ph = "\uffff"
     t = re.sub(APOS, ph, text)
     t = re.sub(r"'+", " ", t)
@@ -33,7 +40,8 @@ def clean_quotes(text):
     return t.replace(ph, "'")
 
 def clean_commas(text):
-    if text is None: return None
+    if text is None:
+        return None
     ph = "\uffff"
     num_comma = r"(?<=\d),(?=\d)"
     t = re.sub(num_comma, ph, text)
@@ -42,7 +50,8 @@ def clean_commas(text):
     return t.replace(ph, ",")
 
 def clean_dashes(text):
-    if text is None: return None
+    if text is None:
+        return None
     ph = "\uffff"
     t = re.sub(DASH, ph, text)
     t = re.sub(r"-+", " ", t)
@@ -50,7 +59,8 @@ def clean_dashes(text):
     return t.replace(ph, "-")
 
 def clean_dots(text):
-    if text is None: return None
+    if text is None:
+        return None
     ph = "\uffff"
     t = re.sub(DOT, ph, text)
     t = re.sub(r"\.+", " ", t)
@@ -58,19 +68,22 @@ def clean_dots(text):
     return t.replace(ph, ".")
 
 def clean_symbols(text):
-    if text is None: return None
+    if text is None:
+        return None
     t = re.sub(SYMBOLS, " ", text)
     t = re.sub(r"\s+", " ", t).strip()
     return t
 
 def remove_question_exclamation(text):
-    if text is None: return None
+    if text is None:
+        return None
     t = text.replace("?", " ").replace("!", " ").replace("/", " ")
     t = re.sub(r"\s+", " ", t).strip()
     return t
 
 def remove_apostrophe_s(text):
-    if text is None: return None
+    if text is None:
+        return None
     t = text.replace("'s ", " ")
     t = re.sub(r"\s+", " ", t).strip()
     return t
@@ -102,7 +115,7 @@ def main():
 
     # Verificar se a tabela existe
     cur = con.cursor()
-    cur.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table,))
     if not cur.fetchone():
         print(f"Erro: Tabela '{table}' não encontrada", file=sys.stderr)
         con.close()
@@ -116,32 +129,28 @@ def main():
     # Pipeline eficiente: aplica todas as etapas em uma única query UPDATE
     print("Aplicando pipeline de preprocessamento...")
 
-    update_query = f"""
-    UPDATE {table}
-    SET article_text = remove_apostrophe_s(
-                         remove_question_exclamation(
-                           clean_symbols(
-                             clean_dots(
-                               clean_dashes(
-                                 clean_commas(
-                                   clean_quotes(
-                                     unescape_quotes(
-                                       remove_non_ascii(
-                                         remove_accents(
-                                           lower(article_text)
-                                         )
-                                       )
-                                     )
-                                   )
-                                 )
-                               )
-                             )
-                           )
-                         )
-                       )
-    """
-
-    cur.execute(update_query)
+    print("Lower...")
+    cur.execute("update sample_articles set article_text = lower(article_text)")
+    print("Accents...")
+    cur.execute("update sample_articles set article_text = remove_accents(article_text)")
+    print("Non ASCII...")
+    cur.execute("update sample_articles set article_text = remove_non_ascii(article_text)")
+    print("Unescape Quotes...")
+    cur.execute("update sample_articles set article_text = unescape_quotes(article_text)")
+    print("Unescape Quotes...")
+    cur.execute("update sample_articles set article_text = clean_quotes(article_text)")
+    print("Commas...")
+    cur.execute("update sample_articles set article_text = clean_commas(article_text)")
+    print("Dashes...")
+    cur.execute("update sample_articles set article_text = clean_dashes(article_text)")
+    print("Dots...")
+    cur.execute("update sample_articles set article_text = clean_dots(article_text)")
+    print("Symbols...")
+    cur.execute("update sample_articles set article_text = clean_symbols(article_text)")
+    print("Question Exclamation Slash...")
+    cur.execute("update sample_articles set article_text = remove_question_exclamation(article_text)")
+    print("'s...")
+    cur.execute("update sample_articles set article_text = remove_apostrophe_s(article_text)")
     con.commit()
 
     print(f"Processamento concluído! {cur.rowcount} registros atualizados.")
