@@ -20,14 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef TF_HASH_INIT_CAP
-#define TF_HASH_INIT_CAP 1024    /**< Capacidade inicial para TF hash */
-#endif
-#ifndef IMAP_INIT_CAP
-#define IMAP_INIT_CAP 16          /**< Capacidade inicial para mapa de índices */
-#endif
-#ifndef GENERIC_HASH_INIT_CAP
-#define GENERIC_HASH_INIT_CAP 256 /**< Capacidade inicial padrão */
+#ifndef HASH_INIT_CAP
+#define HASH_INIT_CAP 256 /**< Capacidade inicial padrão */
 #endif
 #define MAX_LOAD 0.75             /**< Fator de carga máximo antes de rehash */
 
@@ -85,7 +79,7 @@ hash_t *hash_new(void) {
     exit(1);
   }
 
-  set->cap = GENERIC_HASH_INIT_CAP;
+  set->cap = HASH_INIT_CAP;
   set->size = 0;
   set->buckets = calloc(set->cap, sizeof(HashEntry *));
   if (!set->buckets) {
@@ -220,25 +214,6 @@ int hash_contains(const hash_t *set, const char *word) {
 }
 
 /**
- * @brief Merge array de hashes locais para array global
- *
- * Copia ponteiros de hashes locais (src) para posições específicas
- * do array global (dst). Usado para consolidar TF de threads.
- *
- * @param dst Array de hashes destino (global)
- * @param src Array de hashes origem (local da thread)
- * @param count Número de hashes a copiar
- * @param start Índice inicial no array destino
- */
-void hashes_merge(hash_t **dst, hash_t **src, long int count, long int start) {
-  if (!dst || !src)
-    return;
-
-  for (long int i = 0; i < count; i++)
-    dst[start + i] = src[i];
-}
-
-/**
  * @brief Merge duas tabelas hash (copia entradas de src para dst)
  *
  * Adiciona todas as entradas da hash origem para a hash destino.
@@ -305,37 +280,4 @@ double hash_find(const hash_t *set, const char *word) {
   }
 
   return 0.0;
-}
-
-/**
- * @brief Converte tabela hash para array de strings
- *
- * Cria array com todas as palavras (chaves) da hash.
- * Útil para iterar sobre vocabulário.
- *
- * @param set Tabela hash
- * @return Array de ponteiros para strings, ou NULL se vazio
- * @note Caller deve liberar array (mas não as strings)
- */
-const char **hash_to_vec(const hash_t *set) {
-  if (!set || !set->cap)
-    return NULL;
-
-  size_t count = hash_size(set);
-  const char **vec = (const char **)malloc(count * sizeof(const char *));
-  if (!vec) {
-    perror("malloc");
-    exit(1);
-  }
-
-  size_t idx = 0;
-  for (size_t i = 0; i < set->cap; i++) {
-    HashEntry *e = set->buckets[i];
-    while (e) {
-      vec[idx++] = e->word;
-      e = e->next;
-    }
-  }
-
-  return vec;
 }

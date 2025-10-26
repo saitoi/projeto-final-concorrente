@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../include/log.h"
+
 /**
  * @brief Executa query SQL e retorna um único valor inteiro
  *
@@ -95,7 +97,8 @@ char **get_str_arr(const char *filename_db, const char *query, long int start,
     return NULL;
   }
 
-  printf("Executando query: %s\n", sql);
+  // aqui poderia imprimir a thread
+  LOG(stdout, "Executando query: %s\n", sql);
 
   rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {

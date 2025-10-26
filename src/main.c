@@ -29,14 +29,6 @@
 
 /* --------------- Variáveis globais --------------- */
 
-/** @defgroup sync Variáveis de Sincronização
- *  Estruturas para sincronização entre threads
- *  @{
- */
-pthread_mutex_t mutex;           /**< Mutex para proteção de seções críticas */
-pthread_barrier_t barrier;       /**< Barreira para sincronização de threads */
-/** @} */
-
 /** @defgroup global_data Estruturas Globais de Dados
  *  Hashes e vetores compartilhados entre threads
  *  @{
@@ -164,8 +156,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  pthread_mutex_init(&mutex, NULL);
-
   // Determinar número de entradas primeiro (para criar nomes de arquivo)
   const char *query_count = "select count(*) from \"%w\";";
   long int total = get_single_int(cfg.filename_db, query_count, cfg.tablename);
@@ -244,11 +234,23 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // Aguardar conclusão da Fase 1
+    // Aguardar conclusão da Fase 1 e coletar IDFs locais
+    hash_t *local_idfs[MAX_THREADS];
     for (long int i = 0; i < cfg.nthreads; ++i) {
-      if (pthread_join(tids[i], NULL)) {
+      void *ret_val;
+      if (pthread_join(tids[i], &ret_val)) {
         fprintf(stderr, "Erro ao esperar thread %ld\n", i);
         return 1;
+      }
+      local_idfs[i] = (hash_t *)ret_val;
+    }
+
+    // Merge dos IDFs locais no global (fora da seção crítica)
+    printf("[FASE 1] Fazendo merge dos vocabulários locais...\n");
+    for (long int i = 0; i < cfg.nthreads; ++i) {
+      if (local_idfs[i]) {
+        hash_merge(global_idf, local_idfs[i]);
+        hash_free(local_idfs[i]);
       }
     }
 
@@ -316,7 +318,6 @@ int main(int argc, char *argv[]) {
     global_tf = load_hash_array(filename_tf, &global_entries);
     if (!global_tf) {
       fprintf(stderr, "Erro ao carregar global_tf de %s\n", filename_tf);
-      pthread_mutex_destroy(&mutex);
       return 1;
     }
 
@@ -329,7 +330,6 @@ int main(int argc, char *argv[]) {
           hash_free(global_tf[i]);
       }
       free(global_tf);
-      pthread_mutex_destroy(&mutex);
       return 1;
     }
 
@@ -342,7 +342,6 @@ int main(int argc, char *argv[]) {
           hash_free(global_tf[i]);
       }
       free(global_tf);
-      pthread_mutex_destroy(&mutex);
       return 1;
     }
 
@@ -489,8 +488,6 @@ int main(int argc, char *argv[]) {
   if (global_doc_norms)
     free(global_doc_norms);
 
-  pthread_mutex_destroy(&mutex);
-
   return 0;
 }
 
@@ -571,18 +568,17 @@ int parse_cli(int argc, char **argv, Config *cfg) {
  * 2. Tokenizar
  * 3. Remover stopwords
  * 4. Stemming
- * 5. Popular TF local
- * 6. Popular vocabulário local
- * 7. Merge nas estruturas globais (com mutex)
+ * 5. Popular TF local (global_tf)
+ * 6. Popular vocabulário local (IDF)
  *
  * @param arg Ponteiro para thread_args
- * @return NULL
+ * @return IDF local (hash_t*) para merge posterior no thread principal
  */
 void *preprocess_1(void *arg) {
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
 
-  LOG(stdout, "[FASE 1] T%ld : Processando %ld documentos [%ld, %ld]",
+  LOG(stdout, "[FASE 1] T%02ld: Processando %ld documentos [%ld, %ld]",
       t->id, count, t->start, t->end - 1);
 
   if (count <= 0) {
@@ -598,41 +594,35 @@ void *preprocess_1(void *arg) {
                                       "order by article_id asc",
                                       t->start, t->end - 1, t->tablename);
   if (!article_texts) {
-    fprintf(stderr, "Thread %ld: Erro ao obter dados do banco\n", t->id);
+    fprintf(stderr, "Thread %02ld: Erro ao obter dados do banco\n", t->id);
     pthread_exit(NULL);
   }
 
   // [2] Tokenizar
-  LOG(stdout, "[FASE 1] T%ld: Tokenizando textos..", t->id);
+  LOG(stdout, "[FASE 1] T%02ld: Tokenizando textos..", t->id);
   char ***article_vecs = tokenize(article_texts, count);
   if (!article_vecs) {
-    fprintf(stderr, "Thread %ld: Erro ao tokenizar\n", t->id);
+    fprintf(stderr, "Thread %02ld: Erro ao tokenizar\n", t->id);
     pthread_exit(NULL);
   }
 
   // [3] Remover stopwords
-  LOG(stdout, "[FASE 1] T%ld: Removendo stopwords..", t->id);
+  LOG(stdout, "[FASE 1] T%02ld: Removendo stopwords..", t->id);
   remove_stopwords(article_vecs, count);
 
   // [4] Stemming
-  LOG(stdout, "[FASE 1] T%ld: Stemming..", t->id);
+  LOG(stdout, "[FASE 1] T%02ld: Stemming..", t->id);
   stem(article_vecs, count);
 
   // [5] Popular TF local
-  LOG(stdout, "[FASE 1] T%ld: Populando hash TF..", t->id);
+  LOG(stdout, "[FASE 1] T%02ld: Populando hash TF..", t->id);
   populate_tf_hash(global_tf, article_vecs, count, t->start);
 
   // [6] Popular vocabulário local
-  LOG(stdout, "[FASE 1] T%ld: Populando vocabulário..", t->id);
+  LOG(stdout, "[FASE 1] T%02ld: Populando vocabulário..", t->id);
   set_idf_words(idf, article_vecs, count);
 
-  // [7] Merge nas estruturas globais (seção crítica)
-  LOG(stdout, "[FASE 1] T%ld: Populando vocabulário e frequências globais..", t->id);
-  pthread_mutex_lock(&mutex);
-  hash_merge(global_idf, idf);
-  pthread_mutex_unlock(&mutex);
-
-  LOG(stdout, "[FASE 1] T%ld: Concluída", t->id);
+  LOG(stdout, "[FASE 1] T%02ld: Concluída", t->id);
 
   // Limpar memória local
   for (long int i = 0; i < count; i++) {
@@ -642,8 +632,9 @@ void *preprocess_1(void *arg) {
   free(article_texts);
   free_article_vecs(article_vecs, count);
   // free(tf);  // Ponteiros movidos para global_tf
-  hash_free(idf);
-  pthread_exit(NULL);
+
+  // Retornar IDF local para merge no thread principal
+  pthread_exit((void *)idf);
 }
 
 /**
@@ -660,7 +651,7 @@ void *preprocess_2(void *arg) {
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
 
-  LOG(stdout, "Thread %ld [FASE 2]: Calculando TF-IDF e normas", t->id);
+  LOG(stdout, "[FASE 2] T%02ld: Calculando TF-IDF e normas", t->id);
 
   if (count <= 0) {
     pthread_exit(NULL);
@@ -672,7 +663,7 @@ void *preprocess_2(void *arg) {
   // [2] Calcular normas dos documentos
   compute_doc_norms(global_doc_norms, global_tf, count, global_vocab_size, t->start);
 
-  LOG(stdout, "Thread %ld [FASE 2]: Concluída", t->id);
+  LOG(stdout, "[FASE 2] T%02ld: Concluída", t->id);
   pthread_exit(NULL);
 }
 

@@ -158,34 +158,6 @@ int save_hash_array(hash_t **hashes, long int num_hashes, const char *filename) 
   return 0;
 }
 
-int save_doc_vecs(double **doc_vecs, long int num_docs, size_t vocab_size,
-                  const char *filename) {
-  if (!doc_vecs || !filename) {
-    fprintf(stderr, "Erro: doc_vecs ou filename é nulo\n");
-    return -1;
-  }
-
-  FILE *fp = fopen(filename, "wb");
-  if (!fp) {
-    fprintf(stderr, "Erro ao abrir arquivo %s para escrita\n", filename);
-    return -1;
-  }
-
-  // Salvar dimensões
-  fwrite(&num_docs, sizeof(long int), 1, fp);
-  fwrite(&vocab_size, sizeof(size_t), 1, fp);
-
-  // Salvar cada vetor de documento
-  for (long int i = 0; i < num_docs; i++) {
-    fwrite(doc_vecs[i], sizeof(double), vocab_size, fp);
-  }
-
-  fclose(fp);
-  printf("global_doc_vec salvo em %s (%ld docs x %zu palavras)\n", filename,
-         num_docs, vocab_size);
-  return 0;
-}
-
 int save_doc_norms(const double *norms, long int num_docs,
                    const char *filename) {
   if (!norms || !filename) {
@@ -207,28 +179,6 @@ int save_doc_norms(const double *norms, long int num_docs,
 
   fclose(fp);
   printf("global_doc_norms salvo em %s (%ld normas)\n", filename, num_docs);
-  return 0;
-}
-
-int save_vocab(const char **vocab, size_t vocab_size, const char *filename) {
-  if (!vocab || !filename) {
-    fprintf(stderr, "Erro: vocab ou filename é nulo\n");
-    return -1;
-  }
-
-  FILE *fp = fopen(filename, "w");
-  if (!fp) {
-    fprintf(stderr, "Erro ao abrir arquivo %s para escrita\n", filename);
-    return -1;
-  }
-
-  // Salvar cada palavra do vocabulário
-  for (size_t i = 0; i < vocab_size; i++) {
-    fprintf(fp, "%s\n", vocab[i]);
-  }
-
-  fclose(fp);
-  printf("global_vocab salvo em %s (%zu palavras)\n", filename, vocab_size);
   return 0;
 }
 
@@ -485,65 +435,6 @@ hash_t **load_hash_array(const char *filename, long int *num_hashes_out) {
 }
 
 /**
- * @brief Carrega vetores de documentos de arquivo binário
- *
- * @param filename Caminho para arquivo binário
- * @param num_docs_out Ponteiro para receber número de documentos
- * @param vocab_size_out Ponteiro para receber tamanho do vocabulário
- * @return Matriz de double**, ou NULL em erro
- */
-double **load_doc_vecs(const char *filename, long int *num_docs_out,
-                       size_t *vocab_size_out) {
-  if (!filename) {
-    fprintf(stderr, "Erro: filename é nulo\n");
-    return NULL;
-  }
-
-  FILE *fp = fopen(filename, "rb");
-  if (!fp) {
-    fprintf(stderr, "Erro ao abrir arquivo %s para leitura\n", filename);
-    return NULL;
-  }
-
-  // Ler dimensões
-  long int num_docs;
-  size_t vocab_size;
-  fread(&num_docs, sizeof(long int), 1, fp);
-  fread(&vocab_size, sizeof(size_t), 1, fp);
-
-  // Alocar matriz
-  double **doc_vecs = (double **)malloc(num_docs * sizeof(double *));
-  if (!doc_vecs) {
-    fclose(fp);
-    return NULL;
-  }
-
-  // Ler cada vetor de documento
-  for (long int i = 0; i < num_docs; i++) {
-    doc_vecs[i] = (double *)malloc(vocab_size * sizeof(double));
-    if (!doc_vecs[i]) {
-      for (long int j = 0; j < i; j++)
-        free(doc_vecs[j]);
-      free(doc_vecs);
-      fclose(fp);
-      return NULL;
-    }
-    fread(doc_vecs[i], sizeof(double), vocab_size, fp);
-  }
-
-  fclose(fp);
-  printf("global_doc_vec carregado de %s (%ld docs x %zu palavras)\n", filename,
-         num_docs, vocab_size);
-
-  if (num_docs_out)
-    *num_docs_out = num_docs;
-  if (vocab_size_out)
-    *vocab_size_out = vocab_size;
-
-  return doc_vecs;
-}
-
-/**
  * @brief Carrega normas de documentos de arquivo binário
  *
  * @param filename Caminho para arquivo binário
@@ -582,55 +473,4 @@ double *load_doc_norms(const char *filename, long int *num_docs_out) {
     *num_docs_out = num_docs;
 
   return norms;
-}
-
-const char **load_vocab(const char *filename, size_t *vocab_size_out) {
-  if (!filename) {
-    fprintf(stderr, "Erro: filename é nulo\n");
-    return NULL;
-  }
-
-  FILE *fp = fopen(filename, "r");
-  if (!fp) {
-    fprintf(stderr, "Erro ao abrir arquivo %s para leitura\n", filename);
-    return NULL;
-  }
-
-  // Primeiro, contar quantas linhas temos
-  size_t count = 0;
-  char line[1024];
-  while (fgets(line, sizeof(line), fp)) {
-    count++;
-  }
-  rewind(fp);
-
-  // Alocar array de ponteiros
-  const char **vocab = (const char **)malloc(count * sizeof(char *));
-  if (!vocab) {
-    fclose(fp);
-    return NULL;
-  }
-
-  // Ler cada palavra
-  size_t i = 0;
-  while (fgets(line, sizeof(line), fp) && i < count) {
-    line[strcspn(line, "\n")] = '\0';
-    vocab[i] = strdup(line);
-    if (!vocab[i]) {
-      for (size_t j = 0; j < i; j++)
-        free((void *)vocab[j]);
-      free(vocab);
-      fclose(fp);
-      return NULL;
-    }
-    i++;
-  }
-
-  fclose(fp);
-  printf("global_vocab carregado de %s (%zu palavras)\n", filename, count);
-
-  if (vocab_size_out)
-    *vocab_size_out = count;
-
-  return vocab;
 }
