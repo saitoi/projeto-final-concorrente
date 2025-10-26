@@ -45,7 +45,7 @@ long int get_single_int(const char *filename_db, const char *query,
     return -1;
   }
 
-  printf("Executando query: %s\n", sql);
+  LOG(stdout, "Executando query: %s\n", sql);
 
   rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {

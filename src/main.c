@@ -268,7 +268,7 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    printf("IDF computado. Tamanho do vocabulário: %zu palavras\n", global_vocab_size);
+    printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n", global_vocab_size);
 
     /* ========== FASE 2: Calcular TF-IDF ========== */
     printf("\n[FASE 2] Calculando TF-IDF e normas...\n");
@@ -347,7 +347,7 @@ int main(int argc, char *argv[]) {
 
     global_vocab_size = hash_size(global_idf);
 
-    printf("Todas as estruturas foram carregadas com sucesso!\n");
+    printf("Estruturas carregadas com sucesso.\n");
 
     // Carregar stopwords para processar queries
     load_stopwords("assets/stopwords.txt");
@@ -375,16 +375,18 @@ int main(int argc, char *argv[]) {
     if (result != 0) {
       fprintf(stderr, "Erro ao processar consulta do usuário\n");
     } else {
-      printf("Consulta processada com sucesso!\n");
-      printf("Norma da query: %.6f\n", query_norm);
-      printf("Tamanho do vetor TF-IDF da query: %zu palavras\n", hash_size(query_tf));
+      LOG(stdout, "Consulta processada com sucesso!\n");
+      LOG(stdout, "Norma da query: %.6f\n", query_norm);
+      LOG(stdout, "Tamanho do vetor TF-IDF da query: %zu palavras\n", hash_size(query_tf));
 
       // DEBUG: Exibir palavras da query
-      printf("Palavras na query (após processamento):\n");
-      for (size_t i = 0; i < query_tf->cap; i++) {
-        for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
-          printf("  '%s': TF-IDF=%.6f\n", e->word, e->value);
-        }
+      if (VERBOSE) {
+          printf("Palavras na query (após processamento):\n");
+          for (size_t i = 0; i < query_tf->cap; i++) {
+            for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
+              printf("  '%s': TF-IDF=%.6f\n", e->word, e->value);
+            }
+          }
       }
 
       // Calcular similaridade com todos os documentos
@@ -392,61 +394,55 @@ int main(int argc, char *argv[]) {
                                                    global_doc_norms, global_entries, cfg.nthreads);
       if (!similarities) {
         fprintf(stderr, "Erro ao calcular similaridades\n");
-      } else {
-        printf("\n=== Similaridades (Top 10) ===\n");
+        return 1;
+      }
 
-        // Encontrar os top-k documentos mais similares
-        // Criar array de índices
-
-        DocSim *scores = (DocSim *)malloc(global_entries * sizeof(DocSim));
-        if (scores) {
-          for (long int i = 0; i < global_entries; i++) {
-            scores[i].doc_id = i;
-            scores[i].similarity = similarities[i];
-          }
-
-          qsort(scores, global_entries, sizeof(DocSim), compare_sim);
-
-          // Exibir top-k
-          long int top_k = global_entries < cfg.k ? global_entries : cfg.k;
-          printf("Exibindo top %ld documentos:\n", top_k);
-          for (long int i = 0; i < top_k; i++) {
-            printf("Doc %ld: %.6f\n", scores[i].doc_id, scores[i].similarity);
-          }
-
-          // Buscar o corpus dos top-k documentos
-          printf("\n=== Corpus dos Top-%ld Documentos ===\n", top_k);
-          long int *top_ids = (long int *)malloc(top_k * sizeof(long int));
-          if (top_ids) {
-            for (long int i = 0; i < top_k; i++) {
-              top_ids[i] = scores[i].doc_id;
-            }
-
-            char **documents = get_documents_by_ids(cfg.filename_db, cfg.tablename, top_ids, top_k);
-            if (documents) {
-              for (long int i = 0; i < top_k; i++) {
-                if (documents[i]) {
-                  printf("\n--- Documento %ld (similaridade: %.6f) ---\n",
-                         top_ids[i], scores[i].similarity);
-                  // Limitar a exibição a 200 caracteres
-                  if (strlen(documents[i]) > 200) {
-                    printf("%.200s...\n", documents[i]);
-                  } else {
-                    printf("%s\n", documents[i]);
-                  }
-                  free(documents[i]);
-                }
-              }
-              free(documents);
-            }
-            free(top_ids);
-          }
-
-          free(scores);
+      // Encontrar os top-k documentos mais similares
+      // Criar array de índices
+      DocSim *scores = (DocSim *)malloc(global_entries * sizeof(DocSim));
+      if (scores) {
+        for (long int i = 0; i < global_entries; i++) {
+          scores[i].doc_id = i;
+          scores[i].similarity = similarities[i];
         }
 
-        free(similarities);
+        qsort(scores, global_entries, sizeof(DocSim), compare_sim);
+
+        // Exibir top-k
+        long int top_k = global_entries < cfg.k ? global_entries : cfg.k;
+        // Buscar o corpus dos top-k documentos
+        printf("\nTop %ld documentos mais similares:\n", top_k);
+        printf("---------------------------------\n");
+        long int *top_ids = (long int *)malloc(top_k * sizeof(long int));
+        if (top_ids) {
+          for (long int i = 0; i < top_k; i++) {
+            top_ids[i] = scores[i].doc_id;
+          }
+
+          char **documents = get_documents_by_ids(cfg.filename_db, cfg.tablename, top_ids, top_k);
+          if (documents) {
+            for (long int i = 0; i < top_k; i++) {
+              if (documents[i]) {
+                printf("[%ld] %.6f   ",
+                       top_ids[i], scores[i].similarity);
+                // Limitar a exibição a 200 caracteres
+                if (strlen(documents[i]) > 200) {
+                  printf("%.200s...\n", documents[i]);
+                } else {
+                  printf("%s\n", documents[i]);
+                }
+                free(documents[i]);
+              }
+            }
+            free(documents);
+          }
+          free(top_ids);
+        }
+
+        free(scores);
       }
+
+      free(similarities);
 
       // Liberar hash da query
       hash_free(query_tf);
@@ -455,19 +451,13 @@ int main(int argc, char *argv[]) {
     printf("Nenhuma consulta fornecida\n");
   }
 
-  // Impressão das palavras com IDF (primeiras 30 entradas)
+  // Impressão das palavras com IDF (primeiras 5 entradas)
   if (VERBOSE) {
-    printf("\n=== Primeiras 30 palavras com IDF ===\n");
-    size_t count = 0;
-    size_t limit = 30;
-
-    for (size_t i = 0; i < global_idf->cap && count < limit; i++) {
-      for (HashEntry *e = global_idf->buckets[i]; e && count < limit;
-           e = e->next) {
-        printf("Palavra: %-25s IDF: %.6f\n", e->word, e->value);
-        count++;
-      }
-    }
+    printf("\nTop 5 palavras (IDF):\n");
+    printf("---------------------\n");
+    for (size_t i = 0, c = 0; i < global_idf->cap && c < 5; i++)
+      for (HashEntry *e = global_idf->buckets[i]; e && c < 5; e = e->next, c++)
+        printf("%-15s %.2f\n", e->word, e->value);
   }
 
   // Liberar todas as estruturas globais
