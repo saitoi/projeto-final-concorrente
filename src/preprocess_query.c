@@ -65,7 +65,7 @@ void *compute_similarities_thread(void *arg) {
  */
 int preprocess_query(const char *query_user, const hash_t *global_idf,
                      hash_t **query_tf_out, double *query_norm_out) {
-  if (!query_user || !global_idf || !query_tf_out || !query_norm_out) {
+  if (!query_user || !global_idf) {
     return -1;
   }
 
