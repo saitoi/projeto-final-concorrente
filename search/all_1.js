@@ -1,0 +1,11 @@
+var searchData=
+[
+  ['cap_0',['cap',['../structhash__t.html#aafb1038b451a9bee71025f6fb22f7482',1,'hash_t']]],
+  ['compare_5fsim_1',['compare_sim',['../main_8c.html#ae88945f213abf6d0145581e42290e4a8',1,'main.c']]],
+  ['compute_5fdoc_5fnorms_2',['compute_doc_norms',['../preprocess_8c.html#a46a3907c8d9409dc28e454bbd734e187',1,'compute_doc_norms(double *global_doc_norms, hash_t **global_tf, long int doc_count, long int vocab_size, long int offset):&#160;preprocess.c'],['../preprocess_8h.html#a46a3907c8d9409dc28e454bbd734e187',1,'compute_doc_norms(double *global_doc_norms, hash_t **global_tf, long int doc_count, long int vocab_size, long int offset):&#160;preprocess.c']]],
+  ['compute_5fsimilarities_3',['compute_similarities',['../preprocess__query_8c.html#af13422f1ec7db12eaacd7db13f3e92b8',1,'compute_similarities(const hash_t *query_tf, double query_norm, hash_t **global_tf, const double *global_doc_norms, long int num_docs, int nthreads):&#160;preprocess_query.c'],['../preprocess__query_8h.html#af13422f1ec7db12eaacd7db13f3e92b8',1,'compute_similarities(const hash_t *query_tf, double query_norm, hash_t **global_tf, const double *global_doc_norms, long int num_docs, int nthreads):&#160;preprocess_query.c']]],
+  ['compute_5fsimilarities_5fthread_4',['compute_similarities_thread',['../preprocess__query_8c.html#ab926c9807b67245fb3d4c377345f05f4',1,'preprocess_query.c']]],
+  ['compute_5ftf_5fidf_5',['compute_tf_idf',['../preprocess_8c.html#a9fd5f3969354fa56d10a6dc837406543',1,'compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count, long int offset):&#160;preprocess.c'],['../preprocess_8h.html#a9fd5f3969354fa56d10a6dc837406543',1,'compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count, long int offset):&#160;preprocess.c']]],
+  ['config_6',['Config',['../structConfig.html',1,'']]],
+  ['configuração_7',['Variáveis de Configuração',['../group__config.html',1,'']]]
+];

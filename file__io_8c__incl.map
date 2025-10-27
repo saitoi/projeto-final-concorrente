@@ -1,0 +1,21 @@
+<map id="src/file_io.c" name="src/file_io.c">
+<area shape="rect" id="Node000001" title="Funções de I/O para serialização e carregamento de estruturas." alt="" coords="273,5,367,31"/>
+<area shape="rect" id="Node000002" href="$file__io_8h.html" title=" " alt="" coords="5,79,141,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="281,33,127,77,126,72,280,28"/>
+<area shape="rect" id="Node000006" href="$log_8h.html" title=" " alt="" coords="165,79,283,104"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="306,33,252,72,249,68,303,29"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="244,152,311,177"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="319,32,287,139,282,138,314,30"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="358,79,429,104"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="334,29,373,67,370,71,330,33"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="453,79,523,104"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="348,28,449,71,447,76,346,33"/>
+<area shape="rect" id="Node000003" href="$hash__t_8h.html" title=" " alt="" coords="100,152,177,177"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="86,103,121,140,117,144,82,106"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="25,225,100,251"/>
+<area shape="poly" id="edge5_Node000002_Node000004" title=" " alt="" coords="75,105,67,212,62,211,70,104"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="128,179,87,218,83,214,125,175"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="125,225,195,251"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="145,177,155,211,150,213,140,178"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="235,103,263,140,258,143,231,106"/>
+</map>

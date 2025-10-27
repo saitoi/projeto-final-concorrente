@@ -1,0 +1,25 @@
+<map id="src/preprocess.c" name="src/preprocess.c">
+<area shape="rect" id="Node000001" title="Pipeline de pré&#45;processamento de documentos para TF&#45;IDF." alt="" coords="383,5,509,31"/>
+<area shape="rect" id="Node000002" href="$file__io_8h.html" title=" " alt="" coords="70,79,206,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="397,33,201,78,200,73,396,28"/>
+<area shape="rect" id="Node000003" href="$hash__t_8h.html" title=" " alt="" coords="13,152,90,177"/>
+<area shape="poly" id="edge6_Node000001_Node000003" title=" " alt="" coords="383,23,296,26,200,35,114,53,81,65,60,81,52,93,48,108,48,138,43,138,43,107,47,91,56,77,79,61,112,48,199,30,296,21,382,17"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="231,79,339,104"/>
+<area shape="poly" id="edge7_Node000001_Node000006" title=" " alt="" coords="421,33,325,75,322,71,419,28"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="363,79,431,104"/>
+<area shape="poly" id="edge8_Node000001_Node000007" title=" " alt="" coords="440,33,415,69,410,66,436,29"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="455,79,539,104"/>
+<area shape="poly" id="edge9_Node000001_Node000008" title=" " alt="" coords="457,29,483,66,478,69,452,33"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="563,79,630,104"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="471,28,561,70,558,75,469,33"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="655,79,725,104"/>
+<area shape="poly" id="edge11_Node000001_Node000010" title=" " alt="" coords="486,28,642,73,641,79,484,33"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="749,79,820,104"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="506,28,736,76,735,81,505,33"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="126,106,78,145,74,141,122,102"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="101,225,175,251"/>
+<area shape="poly" id="edge5_Node000002_Node000004" title=" " alt="" coords="141,104,141,212,135,212,135,104"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="67,175,115,214,112,219,64,179"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="5,225,76,251"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="52,178,47,212,42,211,47,177"/>
+</map>

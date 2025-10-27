@@ -1,0 +1,14 @@
+<map id="src/sqlite_helper.c" name="src/sqlite_helper.c">
+<area shape="rect" id="Node000001" title="Funções auxiliares para interação com banco de dados SQLite." alt="" coords="126,5,265,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,79,84,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="172,33,83,75,81,70,170,28"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="231,152,298,177"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="182,33,167,48,154,65,147,84,151,103,164,119,181,132,219,150,217,155,178,136,161,123,146,105,142,84,149,63,163,44,179,29"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="160,79,231,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="198,31,198,65,193,65,193,31"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="255,79,325,104"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="212,29,265,68,262,72,209,33"/>
+<area shape="rect" id="Node000006" href="$log_8h.html" title=" " alt="" coords="350,79,467,104"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="230,28,362,72,360,77,229,33"/>
+<area shape="poly" id="edge6_Node000006_Node000003" title=" " alt="" coords="387,106,302,148,299,143,384,102"/>
+</map>

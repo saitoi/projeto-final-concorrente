@@ -1,0 +1,9 @@
+<map id="include/file_io.h" name="include/file_io.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="107,5,231,31"/>
+<area shape="rect" id="Node000002" href="$file__io_8c.html" title="Funções de I/O para serialização e carregamento de estruturas." alt="" coords="5,79,100,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="140,40,73,81,70,76,137,35"/>
+<area shape="rect" id="Node000003" href="$main_8c.html" title="Sistema de busca de documentos usando TF&#45;IDF e similaridade de cosseno." alt="" coords="124,79,213,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="171,44,171,79,166,79,166,44"/>
+<area shape="rect" id="Node000004" href="$preprocess_8c.html" title="Pipeline de pré&#45;processamento de documentos para TF&#45;IDF." alt="" coords="237,79,364,104"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="203,35,280,76,278,81,200,39"/>
+</map>

@@ -1,0 +1,7 @@
+<map id="include/preprocess.h" name="include/preprocess.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="48,5,204,31"/>
+<area shape="rect" id="Node000002" href="$main_8c.html" title="Sistema de busca de documentos usando TF&#45;IDF e similaridade de cosseno." alt="" coords="5,79,95,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="106,42,64,80,61,76,102,38"/>
+<area shape="rect" id="Node000003" href="$preprocess__query_8c.html" title="Processamento de queries reutilizando funções de documentos." alt="" coords="119,79,288,104"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="150,38,192,76,189,80,147,42"/>
+</map>

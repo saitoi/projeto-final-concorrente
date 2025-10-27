@@ -1,0 +1,24 @@
+<map id="include/hash_t.h" name="include/hash_t.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="373,5,501,31"/>
+<area shape="rect" id="Node000002" href="$file__io_8h.html" title=" " alt="" coords="107,86,231,111"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="385,37,208,89,207,83,384,32"/>
+<area shape="rect" id="Node000004" href="$main_8c.html" title="Sistema de busca de documentos usando TF&#45;IDF e similaridade de cosseno." alt="" coords="319,167,408,192"/>
+<area shape="poly" id="edge11_Node000001_Node000004" title=" " alt="" coords="436,45,428,81,414,120,396,147,377,168,373,165,392,144,409,117,423,80,431,44"/>
+<area shape="rect" id="Node000005" href="$preprocess_8c.html" title="Pipeline de pré&#45;processamento de documentos para TF&#45;IDF." alt="" coords="5,167,132,192"/>
+<area shape="poly" id="edge12_Node000001_Node000005" title=" " alt="" coords="359,26,285,32,207,43,139,59,114,69,96,81,82,100,74,124,71,167,65,166,69,123,77,98,92,77,111,64,138,54,206,38,285,27,358,21"/>
+<area shape="rect" id="Node000006" href="$preprocess_8h.html" title=" " alt="" coords="475,86,631,111"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="467,36,537,84,534,88,464,41"/>
+<area shape="rect" id="Node000007" href="$preprocess__query_8c.html" title="Processamento de queries reutilizando funções de documentos." alt="" coords="525,167,695,192"/>
+<area shape="poly" id="edge13_Node000001_Node000007" title=" " alt="" coords="515,29,593,48,625,62,645,77,651,89,653,101,648,126,636,150,622,168,618,165,631,147,643,125,648,101,646,90,641,80,622,66,591,54,514,34"/>
+<area shape="rect" id="Node000008" href="$preprocess__query_8h.html" title=" " alt="" coords="255,79,399,119"/>
+<area shape="poly" id="edge8_Node000001_Node000008" title=" " alt="" coords="411,41,355,81,352,76,408,36"/>
+<area shape="rect" id="Node000009" href="$hash__t_8c.html" title="Implementação de tabela hash genérica (string &#45;&gt; double)" alt="" coords="706,86,805,111"/>
+<area shape="poly" id="edge10_Node000001_Node000009" title=" " alt="" coords="501,31,688,76,715,83,714,89,687,81,500,36"/>
+<area shape="rect" id="Node000003" href="$file__io_8c.html" title="Funções de I/O para serialização e carregamento de estruturas." alt="" coords="156,167,251,192"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="182,123,201,165,196,168,177,125"/>
+<area shape="poly" id="edge3_Node000002_Node000004" title=" " alt="" coords="210,114,336,164,334,169,209,119"/>
+<area shape="poly" id="edge4_Node000002_Node000005" title=" " alt="" coords="145,122,85,169,82,164,141,118"/>
+<area shape="poly" id="edge6_Node000006_Node000004" title=" " alt="" coords="513,119,392,169,390,164,511,114"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="571,121,604,165,599,168,567,124"/>
+<area shape="poly" id="edge9_Node000008_Node000004" title=" " alt="" coords="344,130,360,165,356,167,339,132"/>
+</map>
