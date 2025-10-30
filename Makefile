@@ -21,7 +21,7 @@ FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferH
 
 # Parâmetros configuráveis
 QUERY ?=
-DB_FILENAME ?=
+DB ?=
 QUERY_FILENAME ?=
 TEST ?= -1
 ENTRIES ?= 100
@@ -31,17 +31,17 @@ NTHR ?= 4
 
 # Mapeamento TEST para TBL_NAME
 ifeq ($(TEST),0)
-    TBL_NAME = test_tbl_0
+    TBL = test_tbl_0
 else ifeq ($(TEST),1)
-    TBL_NAME = test_tbl_1
+    TBL = test_tbl_1
 else ifeq ($(TEST),2)
-    TBL_NAME = test_tbl_2
+    TBL = test_tbl_2
 else ifeq ($(TEST),3)
     QUERY_FILENAME = ./t/perf/shakespeares_work.txt
 else ifeq ($(TEST),4)
-    DB_FILENAME = ./book-corpus.db
+    DB = ./book-corpus.db
 else
-    TBL_NAME = sample_articles
+    TBL = sample_articles
 endif
 
 
@@ -87,10 +87,10 @@ check: lint format
 run: clean all
 	./$(TARGET) --entries $(ENTRIES) --nthreads $(NTHR) \
     $(if $(filter 1,$(VERBOSE)),--verbose,) \
-    $(if $(TBL_NAME),--tablename "$(TBL_NAME)",) \
+    $(if $(TBL),--table "$(TBL)",) \
     $(if $(QUERY),--query_user "$(QUERY)",) \
     $(if $(QUERY_FILENAME),--query_filename $(QUERY_FILENAME),) \
-    $(if $(DB_FILENAME),--filename_db $(DB_FILENAME),)
+    $(if $(DB),--db $(DB),)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@

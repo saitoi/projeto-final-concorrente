@@ -22,7 +22,7 @@
     ```bash
     cc main.c -o app -lsqlite3
     ./app # Parâmetros padrões já definidos
-    ./app --nthreads 4 --filename_db alguma_coisa.db --filename_tfidf marcos.bin
+    ./app --nthreads 4 --db alguma_coisa.db --filename_tfidf marcos.bin
     ```
 
 6. **(Preferencialmente) Use o Makefile:**
@@ -30,7 +30,7 @@
     ```bash
     make clean && make
     ./app # Parâmetros padrões já definidos
-    ./app --nthreads 4 --filename_db alguma_coisa.db --filename_tfidf marcos.bin
+    ./app --nthreads 4 --db alguma_coisa.db --filename_tfidf marcos.bin
     ```
 
 ## Próximos Passos
@@ -38,7 +38,6 @@
 Começar a processar 100 primeiros artigos somente para facilitar.
 
 Leia `instrucoes-projeto.pdf`.
-
 - [x] Estrutura de Hash (`hash_t.h`).
 - [x] Separar funções auxiliares do SQLite (`sqlite_helper.h`).
 - [x] Makefile
