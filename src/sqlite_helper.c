@@ -21,25 +21,25 @@
  *
  * Útil para queries de contagem (COUNT) ou extração de valores numéricos.
  *
- * @param filename_db Caminho para o arquivo SQLite
- * @param query Query SQL com placeholder %w para tablename
- * @param tablename Nome da tabela a ser consultada
+ * @param db Caminho para o arquivo SQLite
+ * @param query Query SQL com placeholder %w para table
+ * @param table Nome da tabela a ser consultada
  * @return Valor inteiro retornado pela query, ou -1 em erro
  */
-long int get_single_int(const char *filename_db, const char *query,
-                        const char *tablename) {
+long int get_single_int(const char *filename, const char *query,
+                        const char *table) {
   int rc;
   long int result = -1;
   sqlite3 *db;
   sqlite3_stmt *stmt;
 
-  rc = sqlite3_open(filename_db, &db);
+  rc = sqlite3_open(filename, &db);
   if (rc) {
     fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
     return 1;
   }
 
-  char *sql = sqlite3_mprintf(query, tablename);
+  char *sql = sqlite3_mprintf(query, table);
   if (!sql) {
     fprintf(stderr, "Erro ao formatar statement: %s\n", sqlite3_errmsg(db));
     return -1;
@@ -73,25 +73,25 @@ long int get_single_int(const char *filename_db, const char *query,
  * @param query Query SQL com placeholders ? para start/end
  * @param start ID inicial do intervalo (inclusive)
  * @param end ID final do intervalo (inclusive)
- * @param tablename Nome da tabela a ser consultada
+ * @param table Nome da tabela a ser consultada
  * @return Array de strings alocado, ou NULL em erro
  * @note Caller deve liberar o array e as strings individualmente
  */
-char **get_str_arr(const char *filename_db, const char *query, long int start,
-                   long int end, const char *tablename) {
+char **get_str_arr(const char *filename, const char *query, long int start,
+                   long int end, const char *table) {
   int rc;
   sqlite3 *db;
   sqlite3_stmt *stmt;
   char **result = NULL;
   long int i = 0;
 
-  rc = sqlite3_open(filename_db, &db);
+  rc = sqlite3_open(filename, &db);
   if (rc) {
     fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
     return NULL;
   }
 
-  char *sql = sqlite3_mprintf(query, tablename);
+  char *sql = sqlite3_mprintf(query, table);
   if (!sql) {
     fprintf(stderr, "Erro ao formatar statement: %s\n", sqlite3_errmsg(db));
     return NULL;
@@ -138,15 +138,15 @@ char **get_str_arr(const char *filename_db, const char *query, long int start,
  * são fornecidos no array doc_ids. Usado para exibir resultados top-k.
  *
  * @param filename_db Caminho para o arquivo SQLite
- * @param tablename Nome da tabela contendo os documentos
+ * @param table Nome da tabela contendo os documentos
  * @param doc_ids Array com IDs dos documentos a buscar
  * @param k Número de documentos a buscar
  * @return Array de k strings com os textos, ou NULL em erro
  * @note Caller deve liberar o array e as strings individualmente
  */
-char **get_documents_by_ids(const char *filename_db, const char *tablename,
+char **get_documents_by_ids(const char *filename, const char *table,
                             const long int *doc_ids, long int k) {
-  if (!filename_db || !tablename || !doc_ids || k <= 0) {
+  if (!filename || !table || !doc_ids || k <= 0) {
     return NULL;
   }
 
@@ -155,7 +155,7 @@ char **get_documents_by_ids(const char *filename_db, const char *tablename,
   sqlite3_stmt *stmt;
   char **result = NULL;
 
-  rc = sqlite3_open(filename_db, &db);
+  rc = sqlite3_open(filename, &db);
   if (rc) {
     fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
     return NULL;
@@ -171,8 +171,8 @@ char **get_documents_by_ids(const char *filename_db, const char *tablename,
 
   // Para cada ID, buscar o documento
   for (long int i = 0; i < k; i++) {
-    // Query: SELECT article_text FROM tablename WHERE article_id = ?
-    char *sql = sqlite3_mprintf("SELECT article_text FROM \"%w\" WHERE article_id = ?", tablename);
+    // Query: SELECT article_text FROM table WHERE article_id = ?
+    char *sql = sqlite3_mprintf("SELECT article_text FROM \"%w\" WHERE article_id = ?", table);
     if (!sql) {
       fprintf(stderr, "Erro ao formatar statement\n");
       // Liberar resultados já alocados

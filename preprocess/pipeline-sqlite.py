@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Pipeline de preprocessamento para SQLite
-Uso: python pipeline-sqlite.py database.db tablename
+Uso: python pipeline-sqlite.py database.db table
 """
 import re
 import sqlite3
@@ -90,7 +90,7 @@ def remove_apostrophe_s(text):
 
 def main():
     if len(sys.argv) != 3:
-        print(f"Uso: {sys.argv[0]} <database.db> <tablename>", file=sys.stderr)
+        print(f"Uso: {sys.argv[0]} <database.db> <table>", file=sys.stderr)
         sys.exit(1)
 
     db_file = sys.argv[1]

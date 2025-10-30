@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "../include/file_io.h"
@@ -26,6 +27,10 @@
 #include "../include/preprocess.h"
 #include "../include/preprocess_query.h"
 #include "../include/sqlite_helper.h"
+
+static inline double get_elapsed_time(struct timespec *start, struct timespec *end) {
+  return (end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec) / 1e9;
+}
 
 /* --------------- Variáveis globais --------------- */
 
@@ -59,8 +64,8 @@ typedef struct {
   long int end;                  /**< Índice final do intervalo de documentos */
   long int nthreads;             /**< Número total de threads */
   long int id;                   /**< ID da thread (0 a nthreads-1) */
-  const char *filename_db;       /**< Caminho para o arquivo SQLite */
-  const char *tablename;         /**< Nome da tabela no banco de dados */
+  const char *db;                /**< Caminho para o arquivo SQLite */
+  const char *table;             /**< Nome da tabela no banco de dados */
 } thread_args;
 
 /**
@@ -71,10 +76,10 @@ typedef struct {
  */
 typedef struct {
   long int entries;              /**< Quantidade de entradas a processar (0=todas) */
-  const char *filename_db;       /**< Arquivo SQLite com os documentos */
+  const char *db;                /**< Arquivo SQLite com os documentos */
   const char *query_user;        /**< Query do usuário (string direta) */
   const char *query_filename;    /**< Arquivo contendo a query do usuário */
-  const char *tablename;         /**< Nome da tabela no banco de dados */
+  const char *table;             /**< Nome da tabela no banco de dados */
   int nthreads;                  /**< Número de threads para pré-processamento */
   int k;                         /**< Número de documentos top-k a retornar */
   int test;                      /**< Modo de teste (0=desabilitado) */
@@ -91,7 +96,7 @@ int compare_sim(const void *a, const void *b);
 void *preprocess_1(void *args);
 void *preprocess_2(void *args);
 void format_filenames(char *filename_tf, char *filename_idf,
-                      char *filename_doc_norms, const char *tablename,
+                      char *filename_doc_norms, const char *table,
                       long int entries);
 
 /* --------------- Fluxo Principal --------------- */
@@ -112,14 +117,17 @@ void format_filenames(char *filename_tf, char *filename_idf,
  * @return 0 em sucesso, 1 em erro
  */
 int main(int argc, char *argv[]) {
+  struct timespec t_start_total, t_end_total;
+  clock_gettime(CLOCK_MONOTONIC, &t_start_total);
+
   // Inicializar configuração com valores padrão
   Config cfg = {
     .nthreads = 4,
     .entries = 0,
-    .filename_db = "./data/wiki-small.db",
+    .db = "./data/wiki-small.db",
     .query_user = "shakespeare english literature",
     .query_filename = NULL,
-    .tablename = "sample_articles",
+    .table= "sample_articles",
     .k = 10,
     .test = 0,
     .verbose = 0
@@ -142,12 +150,12 @@ int main(int argc, char *argv[]) {
       "\targc: %d\n"
       "\tnthreads: %d\n"
       "\tentries: %ld\n"
-      "\tfilename_db: %s\n"
+      "\tdb: %s\n"
       "\tquery_user: %s\n"
-      "\ttablename: %s\n"
+      "\ttable: %s\n"
       "\ttest: %d"
       "\tk: %d",
-      argc, cfg.nthreads, cfg.entries, cfg.filename_db, cfg.query_user, cfg.tablename, cfg.test, cfg.k);
+      argc, cfg.nthreads, cfg.entries, cfg.db, cfg.query_user, cfg.table, cfg.test, cfg.k);
 
   if (cfg.nthreads <= 0 || cfg.nthreads > MAX_THREADS) {
     fprintf(stderr,
@@ -158,18 +166,18 @@ int main(int argc, char *argv[]) {
 
   // Determinar número de entradas primeiro (para criar nomes de arquivo)
   const char *query_count = "select count(*) from \"%w\";";
-  long int total = get_single_int(cfg.filename_db, query_count, cfg.tablename);
+  long int total = get_single_int(cfg.db, query_count, cfg.table);
   if (!cfg.entries || cfg.entries > total) {
     LOG(stdout, "Número de entradas %ld excedeu a quantidade total de documentos: %ld", cfg.entries, total);
     cfg.entries = total;
   }
 
-  // Criar nomes de arquivo com tablename e número de entradas
+  // Criar nomes de arquivo com table e número de entradas
   char filename_tf[256];
   char filename_idf[256];
   char filename_doc_norms[256];
   format_filenames(filename_tf, filename_idf, filename_doc_norms,
-                   cfg.tablename, cfg.entries);
+                   cfg.table, cfg.entries);
 
   // Caso o arquivo não exista: Pré-processamento
   if (access(filename_tf, F_OK) == -1 ||
@@ -218,13 +226,16 @@ int main(int argc, char *argv[]) {
 
     /* ---------- FASE 1: Construir Vocabulário ---------- */
 
+    struct timespec t_start_fase1, t_end_fase1;
+    clock_gettime(CLOCK_MONOTONIC, &t_start_fase1);
+
     printf("\n[FASE 1] Construindo vocabulário...\n");
 
     for (long int i = 0; i < cfg.nthreads; ++i) {
       args[i].id = i;
       args[i].nthreads = cfg.nthreads;
-      args[i].filename_db = cfg.filename_db;
-      args[i].tablename = cfg.tablename;
+      args[i].db = cfg.db;
+      args[i].table= cfg.table;
       args[i].start = i * base + (i < rem ? i : rem);
       args[i].end = args[i].start + base + (i < rem);
 
@@ -268,9 +279,15 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &t_end_fase1);
+    double elapsed_fase1 = get_elapsed_time(&t_start_fase1, &t_end_fase1);
     printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n", global_vocab_size);
+    printf("[FASE 1] Tempo: %.3f segundos\n", elapsed_fase1);
 
     /* ========== FASE 2: Calcular TF-IDF ========== */
+    struct timespec t_start_fase2, t_end_fase2;
+    clock_gettime(CLOCK_MONOTONIC, &t_start_fase2);
+
     printf("\n[FASE 2] Calculando TF-IDF e normas...\n");
 
     for (long int i = 0; i < cfg.nthreads; ++i) {
@@ -288,7 +305,10 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &t_end_fase2);
+    double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);
     printf("[FASE 2] TF-IDF e normas calculados!\n");
+    printf("[FASE 2] Tempo: %.3f segundos\n", elapsed_fase2);
 
     // Imprimir TF hash global final
     LOG(stdout, "=== TF Hash Global Final ===");
@@ -390,12 +410,20 @@ int main(int argc, char *argv[]) {
       }
 
       // Calcular similaridade com todos os documentos
+      struct timespec t_start_sim, t_end_sim;
+      clock_gettime(CLOCK_MONOTONIC, &t_start_sim);
+
       double *similarities = compute_similarities(query_tf, query_norm, global_tf,
                                                    global_doc_norms, global_entries, cfg.nthreads);
+
+      clock_gettime(CLOCK_MONOTONIC, &t_end_sim);
+      double elapsed_sim = get_elapsed_time(&t_start_sim, &t_end_sim);
+
       if (!similarities) {
         fprintf(stderr, "Erro ao calcular similaridades\n");
         return 1;
       }
+      printf("\n[SIMILARIDADE] Tempo: %.3f segundos\n", elapsed_sim);
 
       // Encontrar os top-k documentos mais similares
       // Criar array de índices
@@ -419,15 +447,20 @@ int main(int argc, char *argv[]) {
             top_ids[i] = scores[i].doc_id;
           }
 
-          char **documents = get_documents_by_ids(cfg.filename_db, cfg.tablename, top_ids, top_k);
+          char **documents = get_documents_by_ids(cfg.db, cfg.table, top_ids, top_k);
           if (documents) {
             for (long int i = 0; i < top_k; i++) {
               if (documents[i]) {
-                printf("[%ld] %.6f   ",
+                printf("[%ld] %.6f  ",
                        top_ids[i], scores[i].similarity);
                 // Limitar a exibição a 200 caracteres
-                if (strlen(documents[i]) > 200) {
-                  printf("%.200s...\n", documents[i]);
+                if (strlen(documents[i]) > 100) {
+		  const char *p = documents[i];
+		  int j = 0;
+		  for (; *p && j < 100; ++j, p++)
+		    putchar(*p);
+		  if (*p) printf("...");
+		  printf("\n");
                 } else {
                   printf("%s\n", documents[i]);
                 }
@@ -478,6 +511,10 @@ int main(int argc, char *argv[]) {
   if (global_doc_norms)
     free(global_doc_norms);
 
+  clock_gettime(CLOCK_MONOTONIC, &t_end_total);
+  double elapsed_total = get_elapsed_time(&t_start_total, &t_end_total);
+  printf("\n[TEMPO TOTAL] %.3f segundos\n", elapsed_total);
+
   return 0;
 }
 
@@ -490,10 +527,10 @@ int main(int argc, char *argv[]) {
  * Parâmetros suportados:
  * - --nthreads: Número de threads
  * - --entries: Quantidade de documentos a processar
- * - --filename_db: Arquivo SQLite
+ * - --db: Arquivo SQLite
  * - --query_user: Query direta do usuário
  * - --query_filename: Arquivo contendo query
- * - --tablename: Nome da tabela no banco
+ * - --table: Nome da tabela no banco
  * - --k: Top-k documentos a retornar
  * - --test: Modo de teste
  * - --verbose: Ativa modo verboso
@@ -515,14 +552,14 @@ int parse_cli(int argc, char **argv, Config *cfg) {
       cfg->nthreads = atoi(argv[++i]);
     else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc) 
       cfg->entries = atol(argv[++i]);
-    else if (strcmp(argv[i], "--filename_db") == 0 && i + 1 < argc) 
-      cfg->filename_db = argv[++i];
+    else if (strcmp(argv[i], "--db") == 0 && i + 1 < argc) 
+      cfg->db = argv[++i];
     else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
       cfg->query_user = argv[++i];
     else if (strcmp(argv[i], "--query_filename") == 0 && i + 1 < argc)
       cfg->query_filename = argv[++i];
-    else if (strcmp(argv[i], "--tablename") == 0 && i + 1 < argc)
-      cfg->tablename = argv[++i];
+    else if (strcmp(argv[i], "--table") == 0 && i + 1 < argc)
+      cfg->table= argv[++i];
     else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
       cfg->k = atoi(argv[++i]);
     else if (strcmp(argv[i], "--test") == 0 && i + 1 < argc)
@@ -536,10 +573,10 @@ int parse_cli(int argc, char **argv, Config *cfg) {
         "--nthreads: Número de threads (default: 4)\n"
         "--entries: Quantidade de entradas para pré-processamento (default: "
         "Toda tabela 'sample_articles')\n"
-        "--filename_db: Nome do arquivo Sqlite (default: './data/wiki-small.db')\n"
+        "--db: Nome do arquivo Sqlite (default: './data/wiki-small.db')\n"
         "--query_user: Consulta do usuário (default: 'shakespeare english literature')\n"
         "--query_filename: Arquivo com a consulta do usuário\n"
-        "--tablename: Nome da tabela consultada (default: "
+        "--table: Nome da tabela consultada (default: "
         "'sample_articles')\n"
         "--k: Top-k documentos mais similares (default: 10)\n"
         "--test: Modo de teste (default: 0)\n",
@@ -578,11 +615,11 @@ void *preprocess_1(void *arg) {
   hash_t *idf = hash_new();
 
   // [1] Recuperar textos
-  char **article_texts = get_str_arr(t->filename_db,
+  char **article_texts = get_str_arr(t->db,
                                       "select article_text from \"%w\" "
                                       "where article_id between ? and ? "
                                       "order by article_id asc",
-                                      t->start, t->end - 1, t->tablename);
+                                      t->start, t->end - 1, t->table);
   if (!article_texts) {
     fprintf(stderr, "Thread %02ld: Erro ao obter dados do banco\n", t->id);
     pthread_exit(NULL);
@@ -658,23 +695,23 @@ void *preprocess_2(void *arg) {
 }
 
 /**
- * @brief Formata nomes de arquivos de modelo com tablename e entries
+ * @brief Formata nomes de arquivos de modelo com table e entries
  *
- * Cria nomes no formato: models/<tipo>_<tablename>_<entries>.bin
+ * Cria nomes no formato: models/<tipo>_<table>_<entries>.bin
  * Exemplo: models/tf_sample_articles_1000.bin
  *
  * @param filename_tf Buffer para nome do arquivo TF (mín. 256 bytes)
  * @param filename_idf Buffer para nome do arquivo IDF (mín. 256 bytes)
  * @param filename_doc_norms Buffer para nome do arquivo de normas (mín. 256 bytes)
- * @param tablename Nome da tabela
+ * @param table Nome da tabela
  * @param entries Número de entradas
  */
 void format_filenames(char *filename_tf, char *filename_idf,
-                      char *filename_doc_norms, const char *tablename,
+                      char *filename_doc_norms, const char *table,
                       long int entries) {
-  snprintf(filename_tf, 256, "models/tf_%s_%ld.bin", tablename, entries);
-  snprintf(filename_idf, 256, "models/idf_%s_%ld.bin", tablename, entries);
-  snprintf(filename_doc_norms, 256, "models/doc_norms_%s_%ld.bin", tablename, entries);
+  snprintf(filename_tf, 256, "models/tf_%s_%ld.bin", table, entries);
+  snprintf(filename_idf, 256, "models/idf_%s_%ld.bin", table, entries);
+  snprintf(filename_doc_norms, 256, "models/doc_norms_%s_%ld.bin", table, entries);
 }
 
 int compare_sim(const void *a, const void *b) {
