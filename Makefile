@@ -84,8 +84,11 @@ format:
 
 check: lint format
 
-run: clean all
-	./$(TARGET) --entries $(ENTRIES) --nthreads $(NTHR) \
+run:
+	@echo "Cleaning old binaries.."
+	@echo "Running.."
+	@$(MAKE) --no-print-directory clean all >$(NULL_DEVICE) 2>&1
+	@./$(TARGET) --entries $(ENTRIES) --nthreads $(NTHR) \
     $(if $(filter 1,$(VERBOSE)),--verbose,) \
     $(if $(TBL),--table "$(TBL)",) \
     $(if $(QUERY),--query_user "$(QUERY)",) \
@@ -93,10 +96,11 @@ run: clean all
     $(if $(DB),--db $(DB),)
 
 %.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+	@$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	$(RM) $(OBJ) $(TARGET)
+	@echo 'Cleaning old binaries..'
+	@$(RM) $(OBJ) $(TARGET)
 
 clean_models:
 ifeq ($(OS),Windows_NT)
