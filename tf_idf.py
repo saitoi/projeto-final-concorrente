@@ -127,13 +127,13 @@ class MatrizFrequencia:
         print(f"Consulta adicionada com id={len(self.queries)-1}")
 
     @classmethod
-    def from_db(cls, stopwords=None, stemmer=None, separadores_filename='./assets/separadores.txt', db_filename='wiki-small.db', tablename='test_tbl_2', encoding='utf-8'):
+    def from_db(cls, stopwords=None, stemmer=None, separadores_filename='./assets/separadores.txt', db_filename='wiki-small.db', tablename='test_tbl_2', entries=100, encoding='utf-8'):
         import sqlite3
 
         conn = sqlite3.connect(db_filename)
         cursor = conn.cursor()
 
-        cursor.execute(f"select article_id, article_text from {tablename} order by article_id")
+        cursor.execute(f"select article_id, article_text from {tablename} order by article_id limit {entries}")
         rows = cursor.fetchall()
         conn.close()
 
@@ -175,15 +175,103 @@ class MatrizFrequencia:
             raise ValueError("Consulta vazia")
         return query
 
-    def print_weight_matrix(self, zero='.'):
-        table = PrettyTable()
-        table.field_names = ["word"] + [str(d) for d in range(self.ndocs)]
-        table.hrules = HRuleStyle.ALL
-        table.vrules = VRuleStyle.NONE
+    def _print_matrix(self, zero='.', cell_fn=None) -> None:
+        t = PrettyTable()
+        t.field_names = ["word"] + [str(d) for d in range(self.ndocs)]
+        t.border = True
+        t.hrules = HRuleStyle.ALL
+        t.vrules = VRuleStyle.NONE
+
         for w in self.words:
-            row = [zero if self.weight(w, d) == 0 else self.weight(w, d) for d in range(self.ndocs)]
-            table.add_row([w] + row)
-        print(table)
+            row = ([self[w].get(d, zero) for d in self.docs]
+                  if cell_fn is None
+                  else [zero if (x == 0 or x is None) else x for x in (cell_fn(w, d) for d in self.docs)])
+            t.add_row([w] + row)
+
+        print(t)
+
+    def print_weight_matrix_summary(self, top_words=10, max_docs=5):
+        """Imprime um resumo da matriz TF-IDF mostrando as top palavras por documento"""
+        print("\n=== Resumo Matriz TF-IDF (Top palavras por documento) ===")
+
+        docs_to_show = min(max_docs, self.ndocs)
+
+        for doc_id in range(docs_to_show):
+            print(f"\n--- Documento {doc_id} ---")
+
+            # Pega as palavras com maior peso para este documento
+            word_weights = [(w, self.weight(w, doc_id)) for w in self.words]
+            word_weights = [(w, wt) for w, wt in word_weights if wt > 0]
+            word_weights.sort(key=lambda x: x[1], reverse=True)
+
+            t = PrettyTable()
+            t.field_names = ["Palavra", "TF-IDF"]
+            t.border = True
+            t.hrules = HRuleStyle.ALL
+            t.vrules = VRuleStyle.NONE
+
+            for w, wt in word_weights[:top_words]:
+                t.add_row([w, f"{wt:.4f}"])
+
+            print(t)
+
+        if self.ndocs > docs_to_show:
+            print(f"\n... e mais {self.ndocs - docs_to_show} documentos")
+
+    def print_idf(self):
+        print("\nIDF")
+        t = PrettyTable()
+        t.field_names = ["Palavra", "IDF"]
+        t.border = True
+        t.hrules = HRuleStyle.ALL
+        t.vrules = VRuleStyle.NONE
+
+        i = 0
+        for w in self.words:
+            if i > 20:
+                break
+            t.add_row([w, f"{self.idf[w]:.4f}"])
+
+        print(t)
+
+    def print_vectors(self):
+        print("\nVetores TF-IDF dos Documentos")
+        t = PrettyTable()
+        t.field_names = ["Doc"] + [f"w{i}" for i in range(min(10, len(self.words)))]
+        if len(self.words) > 10:
+            t.field_names += ["..."]
+        t.border = True
+        t.hrules = HRuleStyle.ALL
+        t.vrules = VRuleStyle.NONE
+
+        for d in range(self.ndocs):
+            vec = self.doc_vecs[d]
+            if len(vec) > 10:
+                row = [f"{v:.4f}" for v in vec[:10]] + ["..."]
+            else:
+                row = [f"{v:.4f}" for v in vec]
+            t.add_row([d] + row)
+
+        print(t)
+
+    def print_norms(self):
+        print("\nNormas dos Vetores")
+        t = PrettyTable()
+        t.field_names = ["Doc", "Norma"]
+        t.border = True
+        t.hrules = HRuleStyle.ALL
+        t.vrules = VRuleStyle.NONE
+
+        for d in range(self.ndocs):
+            t.add_row([d, f"{self.doc_norms[d]:.4f}"])
+
+        print(t)
+
+    def print_info(self):
+        self.print_idf()
+        self.print_vectors()
+        self.print_norms()
+        self.print_weight_matrix_summary()
 
 if __name__ == "__main__":
     import argparse
@@ -193,19 +281,27 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='TF-IDF Vector Search')
     parser.add_argument('-d', '--database', type=str, default='./data/wiki-small.db', help='Nome do arquivo de banco de dados')
     parser.add_argument('-t', '--tablename', type=str, default='test_tbl_2', help='Nome da tabela no banco de dados')
+    parser.add_argument('-e', '--entries', type=int, default=100, help='Quantidade de entradas para recuperar da base')
     parser.add_argument('-s', '--separadores', type=str, default='./assets/separadores.txt', help='Arquivo de separadores')
     parser.add_argument('-q', '--query', type=str, help='Consulta a ser processada')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Imprime informações detalhadas (IDF, vetores, normas, matriz TF-IDF)')
 
     args = parser.parse_args()
 
     mf = MatrizFrequencia.from_db(
         db_filename=args.database,
         tablename=args.tablename,
+        entries=args.entries,
         separadores_filename=args.separadores
     )
 
+    if args.verbose:
+        print(f"Matriz de frequência carregada: {mf.ndocs} documentos, {len(mf.words)} palavras únicas")
+        mf.print_info()
+
     if args.query:
         mf.show_vec_search(query=args.query)
-    else:
+    elif not args.verbose:
         print(f"Matriz de frequência carregada: {mf.ndocs} documentos, {len(mf.words)} palavras únicas")
         print("Use -q/--query para executar uma busca")
+        print("Use -v/--verbose para ver informações detalhadas")

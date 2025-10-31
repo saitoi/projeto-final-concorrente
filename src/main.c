@@ -14,6 +14,7 @@
  * - Marcos Henrique Junqueira Muniz Barbi Silva
  */
 
+#include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,6 +55,7 @@ int VERBOSE = 0;                 /**< Flag de verbosidade (0=desabilitado, 1=hab
 /* --------------- Macros --------------- */
 
 #define MAX_THREADS 16           /**< Número máximo de threads suportadas */
+#define PRINT_IDF_WORDS 20
 
 /**
  * @struct thread_args
@@ -153,7 +155,7 @@ int main(int argc, char *argv[]) {
       "\tdb: %s\n"
       "\tquery_user: %s\n"
       "\ttable: %s\n"
-      "\ttest: %d"
+      "\ttest: %d\n"
       "\tk: %d",
       argc, cfg.nthreads, cfg.entries, cfg.db, cfg.query_user, cfg.table, cfg.test, cfg.k);
 
@@ -267,9 +269,18 @@ int main(int argc, char *argv[]) {
 
     printf("[FASE 1] Vocabulário construído: %zu palavras\n", hash_size(global_idf));
 
-    // Calcular IDF global (single-threaded, entre as fases)
+    // Aplicar log2(N / n_i) em todos os valores
     printf("[FASE 1] Calculando IDF global...\n");
-    set_idf_value(global_idf, global_tf, (double)global_entries, global_entries);
+    for (size_t i = 0; i < global_idf->cap; i++) {
+      HashEntry *e = global_idf->buckets[i];
+      while (e) {
+        if (e->value > 0)
+          e->value = log2((double)global_entries / e->value);
+        else
+          e->value = 0.0;
+        e = e->next;
+      }
+    }
     global_vocab_size = hash_size(global_idf);
 
     // Alocar normas
@@ -376,7 +387,6 @@ int main(int argc, char *argv[]) {
   /* --------------- Consulta do Usuário --------------- */
 
   if (cfg.query_user) {
-    // printf("Consulta do usuário: %s\n", cfg.query_user);
 
     // Carregar stopwords se não estiverem carregadas
     if (!global_stopwords) {
@@ -486,10 +496,10 @@ int main(int argc, char *argv[]) {
 
   // Impressão das palavras com IDF (primeiras 5 entradas)
   if (VERBOSE) {
-    printf("\nTop 5 palavras (IDF):\n");
+    printf("\nTop %d palavras (IDF):\n", PRINT_IDF_WORDS);
     printf("---------------------\n");
-    for (size_t i = 0, c = 0; i < global_idf->cap && c < 5; i++)
-      for (HashEntry *e = global_idf->buckets[i]; e && c < 5; e = e->next, c++)
+    for (size_t i = 0, c = 0; i < global_idf->cap && c < PRINT_IDF_WORDS; i++)
+      for (HashEntry *e = global_idf->buckets[i]; e && c < PRINT_IDF_WORDS; e = e->next, c++)
         printf("%-15s %.2f\n", e->word, e->value);
   }
 
@@ -633,21 +643,14 @@ void *preprocess_1(void *arg) {
     pthread_exit(NULL);
   }
 
-  // [3] Remover stopwords
-  LOG(stdout, "[FASE 1] T%02ld: Removendo stopwords..", t->id);
-  remove_stopwords(article_vecs, count);
-
-  // [4] Stemming
-  LOG(stdout, "[FASE 1] T%02ld: Stemming..", t->id);
-  stem(article_vecs, count);
-
-  // [5] Popular TF local
+  // [3] Popular TF local (já faz stopwords+stemming internamente)
+  LOG(stdout, "[FASE 1] T%02ld: Removendo stopwords e Stemmizando..", t->id);
   LOG(stdout, "[FASE 1] T%02ld: Populando hash TF..", t->id);
   populate_tf_hash(global_tf, article_vecs, count, t->start);
 
-  // [6] Popular vocabulário local
+  // [4] Popular vocabulário local com n_i (usa os hashes TF já processados)
   LOG(stdout, "[FASE 1] T%02ld: Populando vocabulário..", t->id);
-  set_idf_words(idf, article_vecs, count);
+  set_idf_words(idf, global_tf, t->start, count);
 
   LOG(stdout, "[FASE 1] T%02ld: Concluída", t->id);
 
@@ -658,7 +661,6 @@ void *preprocess_1(void *arg) {
 
   free(article_texts);
   free_article_vecs(article_vecs, count);
-  // free(tf);  // Ponteiros movidos para global_tf
 
   // Retornar IDF local para merge no thread principal
   pthread_exit((void *)idf);

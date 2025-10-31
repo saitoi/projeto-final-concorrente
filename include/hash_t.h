@@ -11,6 +11,7 @@ typedef struct HashEntry {
   size_t wlen;
   double value;
   struct HashEntry *next;
+  unsigned long epoch;
 } HashEntry;
 
 typedef struct hash_t {
@@ -22,6 +23,7 @@ typedef struct hash_t {
 hash_t *hash_new(void);
 void hash_free(hash_t *set);
 double hash_find(const hash_t *set, const char *word);
+HashEntry *hash_get(hash_t *set, const char *word);
 void hash_add(hash_t *set, const char *word, double value);
 int hash_contains(const hash_t *set, const char *word);
 void hash_merge(hash_t *dst, const hash_t *src);

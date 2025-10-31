@@ -35,18 +35,84 @@
  * @param article_vecs Array de vetores de tokens (documentos tokenizados)
  * @param count Número de documentos no array
  */
-void set_idf_words(hash_t *vocab, char ***article_vecs, long int count) {
-  if (!article_vecs) {
-    fprintf(stderr, "Erro: article_vecs é nulo.\n");
+void set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc, long int count) {
+  if (!vocab || !tf) {
+    fprintf(stderr, "Erro: vocab ou tf é nulo.\n");
     pthread_exit(NULL);
   }
 
-  for (long int i = 0; i < count; ++i) {
-    if (!article_vecs[i])
+  // Para cada documento local, contar n_i (documentos que contêm cada palavra)
+  for (long int doc_idx = 0; doc_idx < count; doc_idx++) {
+    long int doc_id = start_doc + doc_idx;
+    if (!tf[doc_id]) continue;
+
+    // Para cada palavra neste documento
+    for (size_t i = 0; i < tf[doc_id]->cap; i++) {
+      HashEntry *doc_entry = tf[doc_id]->buckets[i];
+      while (doc_entry) {
+        // Buscar entrada no vocabulário
+        HashEntry *vocab_entry = hash_get(vocab, doc_entry->word);
+
+        if (!vocab_entry) {
+          // Palavra não existe: adicionar com n_i = 1 e marcar epoch
+          hash_add(vocab, doc_entry->word, 1.0);
+          // Buscar novamente após add (pode ter ocorrido rehash)
+          vocab_entry = hash_get(vocab, doc_entry->word);
+          if (vocab_entry)
+            vocab_entry->epoch = doc_id;
+        } else {
+          // Palavra existe: incrementar n_i apenas se não foi vista neste documento
+          if (vocab_entry->epoch != (unsigned long)doc_id) {
+            vocab_entry->value += 1.0;
+            vocab_entry->epoch = doc_id;
+          }
+        }
+
+        doc_entry = doc_entry->next;
+      }
+    }
+  }
+}
+
+// Isso daqui é extremamente idiota
+// Isso daqui já é feito em set_idf_words
+void set_idf_freq(hash_t *idf_local, hash_t **tf, long int start_doc, long int num_docs) {
+  if (!idf_local || !tf) {
+    fprintf(stderr, "Erro: idf_local ou tf é nulo.\n");
+    pthread_exit(NULL);
+  }
+
+  // Zerar todos os valores antes de contar
+  for (size_t i = 0; i < idf_local->cap; i++) {
+    HashEntry *e = idf_local->buckets[i];
+    while (e) {
+      e->value = 0.0;
+      e = e->next;
+    }
+  }
+
+  // Para cada documento local, contar quantos documentos contêm cada palavra
+  for (long int doc_idx = 0; doc_idx < num_docs; doc_idx++) {
+    long int doc_id = start_doc + doc_idx;
+    if (!tf[doc_id])
       continue;
 
-    for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-        hash_add(vocab, article_vecs[i][j], 0.0);
+    // Para cada palavra neste documento
+    for (size_t i = 0; i < tf[doc_id]->cap; i++) {
+      HashEntry *doc_entry = tf[doc_id]->buckets[i];
+      while (doc_entry) {
+        size_t wlen = doc_entry->wlen;
+        size_t idx = hash_str(doc_entry->word, wlen) & (idf_local->cap - 1);
+
+        // Buscar palavra no vocabulário local e incrementar contador (n_i local)
+        for (HashEntry *vocab_entry = idf_local->buckets[idx]; vocab_entry; vocab_entry = vocab_entry->next) {
+          if (vocab_entry->wlen == wlen && memcmp(vocab_entry->word, doc_entry->word, wlen) == 0) {
+            vocab_entry->value += 1.0;
+            break;
+          }
+        }
+        doc_entry = doc_entry->next;
+      }
     }
   }
 }
@@ -247,6 +313,12 @@ void stem(char ***article_vecs, long int count) {
  * @param count Número de documentos
  */
 void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long int offset) {
+  struct sb_stemmer *stemmer = sb_stemmer_new("english", NULL);
+  if (!stemmer) {
+    fprintf(stderr, "Erro ao criar o Stemmer.\n");
+    pthread_exit(NULL);
+  }
+
   for (long int i = 0; i < count; ++i) {
     long int global_idx = offset + i;
     if (!tf[global_idx] || !article_vecs[i])
@@ -257,9 +329,22 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long in
         continue;
 
       const char *word = article_vecs[i][j];
-      hash_add(tf[global_idx], word, 1.0);
+      // Remoção de stopwords diretamente no populate
+      if (!hash_contains(global_stopwords, word) && strlen(word) > 1) {
+        const char *stemmed = (const char *)sb_stemmer_stem(
+            stemmer, (const sb_symbol *)article_vecs[i][j],
+            strlen(article_vecs[i][j]));
+	char *new_w = strdup(stemmed);
+        hash_add(tf[global_idx], new_w, 1.0);
+	free(article_vecs[i][j]);
+	article_vecs[i][j] = NULL;  // Evitar double free
+      } else {
+        free(article_vecs[i][j]);
+        article_vecs[i][j] = NULL;  // Liberar stopwords também
+      }
     }
   }
+  sb_stemmer_delete(stemmer);
 }
 
 /**
