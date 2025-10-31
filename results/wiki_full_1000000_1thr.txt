@@ -1,0 +1,81 @@
+Models cleaned..
+Cleaning old binaries..
+Running..
+Parâmetros nomeados:
+        argc: 10
+        nthreads: 1
+        entries: 1000000
+        db: ./data/wiki-pre.db
+        query_user: shakespeare english literature
+        table: sample_articles
+        test: 0 k: 10
+Executando query: select count(*) from "sample_articles";
+
+Qtd. artigos: 1000000
+
+[FASE 1] Construindo vocabulário...
+[FASE 1] T00: Processando 1000000 documentos [0, 999999]
+Executando query: select article_text from "sample_articles" where article_id between ? and ? order by article_id asc
+
+[FASE 1] T00: Tokenizando textos..
+[FASE 1] T00: Removendo stopwords..
+[FASE 1] T00: Stemming..
+[FASE 1] T00: Populando hash TF..
+[FASE 1] T00: Populando vocabulário..
+[FASE 1] T00: Concluída
+[FASE 1] Fazendo merge dos vocabulários locais...
+[FASE 1] Vocabulário construído: 6684364 palavras
+[FASE 1] Calculando IDF global...
+[FASE 1] Concluída.. IDF computado e vocabulário com 6684364 palavras
+[FASE 1] Tempo: 401.946 segundos
+
+[FASE 2] Calculando TF-IDF e normas...
+[FASE 2] T00: Calculando TF-IDF e normas
+[FASE 2] T00: Concluída
+[FASE 2] TF-IDF e normas calculados!
+[FASE 2] Tempo: 56.996 segundos
+=== TF Hash Global Final ===
+
+Salvando estruturas em disco
+global_tf salvo em models/tf_sample_articles_1000000.bin (1000000 hashes)
+
+global_idf salvo em models/idf_sample_articles_1000000.bin (6684364 entradas)
+
+global_doc_norms salvo em models/doc_norms_sample_articles_1000000.bin (1000000 normas)
+Consulta processada com sucesso!
+
+Norma da query: 8.496349
+
+Tamanho do vetor TF-IDF da query: 3 palavras
+
+Palavras na query (após processamento):
+  'english': TF-IDF=2.689855
+  'literatur': TF-IDF=4.501083
+  'shakespear': TF-IDF=6.685273
+
+[SIMILARIDADE] Tempo: 1.124 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[123179] 0.504397  shakespeare sister can refer to shakespears sister an alternative pop group featuring siobhan fahey ...
+[921374] 0.436985  shakespeare and company or shakespeare & company may refer to shakespeare and company bookstore an i...
+[780689] 0.397951  william shakespeare 15641616 was an english playwright and poet for other people with this family na...
+[266726] 0.380165  shakespear may refer to william shakespeare famous english playwright as a variant spelling of his n...
+[797720] 0.354763  as a four letter acronym nysf can be national youth science forum an australian stem outreach progra...
+[671754] 0.335837  stephen orgel is professor of english at stanford university best known as a scholar of shakespeare ...
+[798459] 0.330798  shakespeare is a village and designated place within the municipality of perth east in perth county ...
+[668564] 0.322798  wells in 2012 sir stanley william wells cbe born 21 may 1930 is a shakespearean scholar writer profe...
+[574395] 0.322345  shakespeare dallas formerly known as shakespeare festival of dallas has been a local staple since th...
+[292211] 0.317886  the shakespeare institute is a centre for postgraduate study dedicated to the study of william shake...
+
+Top 5 palavras (IDF):
+---------------------
+75%of           19.93
+henri-beland    19.93
+othmaringhausen 19.93
+behoedzaam      19.93
+taleswarn       19.93
+DEBUG: Liberando global_tf (1000000 documentos)
+DEBUG: global_tf liberado
+
+[TEMPO TOTAL] 537.955 segundos
