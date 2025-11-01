@@ -98,7 +98,8 @@ static inline double get_elapsed_time(struct timespec *start, struct timespec *e
     void format_filenames(char *filename_tf, char *filename_idf,
       char *filename_doc_norms, const char *table,
       long int entries);
-    int compute_vocabulary();
+    int phase1();
+    int phase2();
       
       // Inicializar configuração com valores padrão
       Config cfg = {
@@ -187,8 +188,6 @@ int main(int argc, char *argv[]) {
       access(filename_idf, F_OK) == -1 ||
       access(filename_doc_norms, F_OK) == -1) {
 
-    thread_args args[MAX_THREADS];
-
     // Inicializar estruturas globais
     global_idf = hash_new();
     global_tf = (hash_t **)calloc(cfg.entries, sizeof(hash_t *));
@@ -219,37 +218,15 @@ int main(int argc, char *argv[]) {
 
     /* ---------- FASE 1: Construir Vocabulário ---------- */
 
-    if(compute_vocabulary()) {
+    if (phase1()) {
       return 1;
     }
 
     /* ========== FASE 2: Calcular TF-IDF ========== */
-    struct timespec t_start_fase2, t_end_fase2;
-    clock_gettime(CLOCK_MONOTONIC, &t_start_fase2);
 
-    printf("\n[FASE 2] Calculando TF-IDF e normas...\n");
-
-    pthread_t tids[MAX_THREADS];
-
-    for (long int i = 0; i < cfg.nthreads; ++i) {
-      if (pthread_create(&tids[i], NULL, preprocess_2, (void *)&args[i])) {
-        fprintf(stderr, "Erro ao criar thread %ld\n", i);
-        return 1;
-      }
+    if (phase2()) {
+      return 1;
     }
-
-    // Aguardar conclusão da Fase 2
-    for (long int i = 0; i < cfg.nthreads; ++i) {
-      if (pthread_join(tids[i], NULL)) {
-        fprintf(stderr, "Erro ao esperar thread %ld\n", i);
-        return 1;
-      }
-    }
-
-    clock_gettime(CLOCK_MONOTONIC, &t_end_fase2);
-    double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);
-    printf("[FASE 2] TF-IDF e normas calculados!\n");
-    printf("[FASE 2] Tempo: %.3f segundos\n", elapsed_fase2);
 
     // Imprimir TF hash global final
     LOG(stdout, "=== TF Hash Global Final ===");
@@ -658,7 +635,7 @@ int compare_sim(const void *a, const void *b) {
     return doc1->similarity > doc2->similarity ? -1 : doc1->similarity < doc2->similarity;
 }
 
-int compute_vocabulary() {
+int phase1() {
   struct timespec t_start_fase1, t_end_fase1;
   clock_gettime(CLOCK_MONOTONIC, &t_start_fase1);
 
@@ -667,29 +644,30 @@ int compute_vocabulary() {
   pthread_t tids[MAX_THREADS];
   thread_args args[MAX_THREADS];
   // Calcular divisão de trabalho
-  long int base = cfg.entries / cfg.nthreads;
-  long int rem = cfg.entries % cfg.nthreads;
+  int base = cfg.entries / cfg.nthreads;
+  int rem = cfg.entries % cfg.nthreads;
 
-  for (long int i = 0; i < cfg.nthreads; ++i) {
+  for (int i = 0; i < cfg.nthreads; ++i) {
     args[i].id = i;
     args[i].nthreads = cfg.nthreads;
     args[i].db = cfg.db;
-    args[i].table= cfg.table;
+    args[i].table = cfg.table;
     args[i].start = i * base + (i < rem ? i : rem);
     args[i].end = args[i].start + base + (i < rem);
 
     if (pthread_create(&tids[i], NULL, preprocess_1, (void *)&args[i])) {
-      fprintf(stderr, "Erro ao criar thread %ld\n", i);
+      fprintf(stderr, "Erro ao criar thread %d\n", i);
       return 1;
     }
   }
 
   // Aguardar conclusão da Fase 1 e coletar IDFs locais
   hash_t *local_idfs[MAX_THREADS];
-  for (long int i = 0; i < cfg.nthreads; ++i) {
+
+  for (int i = 0; i < cfg.nthreads; ++i) {
     void *ret_val;
     if (pthread_join(tids[i], &ret_val)) {
-      fprintf(stderr, "Erro ao esperar thread %ld\n", i);
+      fprintf(stderr, "Erro ao esperar thread %d\n", i);
       return 1;
     }
     local_idfs[i] = (hash_t *)ret_val;
@@ -697,7 +675,7 @@ int compute_vocabulary() {
 
   // Merge dos IDFs locais no global (fora da seção crítica)
   printf("[FASE 1] Fazendo merge dos vocabulários locais...\n");
-  for (long int i = 0; i < cfg.nthreads; ++i) {
+  for (int i = 0; i < cfg.nthreads; ++i) {
     if (local_idfs[i]) {
       hash_merge(global_idf, local_idfs[i]);
       hash_free(local_idfs[i]);
@@ -722,6 +700,38 @@ int compute_vocabulary() {
   double elapsed_fase1 = get_elapsed_time(&t_start_fase1, &t_end_fase1);
   printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n", global_vocab_size);
   printf("[FASE 1] Tempo: %.3f segundos\n", elapsed_fase1);
+
+  return 0;
+}
+
+int phase2() {
+  struct timespec t_start_fase2, t_end_fase2;
+  clock_gettime(CLOCK_MONOTONIC, &t_start_fase2);
+
+  printf("\n[FASE 2] Calculando TF-IDF e normas...\n");
+
+  pthread_t tids[MAX_THREADS];
+  thread_args args[MAX_THREADS];
+
+  for (int i = 0; i < cfg.nthreads; ++i) {
+    if (pthread_create(&tids[i], NULL, preprocess_2, (void *)&args[i])) {
+      fprintf(stderr, "Erro ao criar thread %d\n", i);
+      return 1;
+    }
+  }
+
+  // Aguardar conclusão da Fase 2
+  for (int i = 0; i < cfg.nthreads; ++i) {
+    if (pthread_join(tids[i], NULL)) {
+      fprintf(stderr, "Erro ao esperar thread %d\n", i);
+      return 1;
+    }
+  }
+
+  clock_gettime(CLOCK_MONOTONIC, &t_end_fase2);
+  double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);
+  printf("[FASE 2] TF-IDF e normas calculados!\n");
+  printf("[FASE 2] Tempo: %.3f segundos\n", elapsed_fase2);
 
   return 0;
 }
