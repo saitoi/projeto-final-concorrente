@@ -199,10 +199,6 @@ int main(int argc, char *argv[]) {
     // Inicializar cada hash TF individual
     for (long int i = 0; i < cfg.entries; i++) {
       global_tf[i] = hash_new();
-      if (!global_tf[i]) {
-        fprintf(stderr, "Falha ao alocar hash TF para documento %ld\n", i);
-        return 1;
-      }
     }
 
     global_entries = cfg.entries;
