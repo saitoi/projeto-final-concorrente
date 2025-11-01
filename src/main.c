@@ -100,6 +100,7 @@ static inline double get_elapsed_time(struct timespec *start, struct timespec *e
       long int entries);
     int phase1();
     int phase2();
+    void free_global_tf();
       
       // Inicializar configuração com valores padrão
       Config cfg = {
@@ -189,20 +190,18 @@ int main(int argc, char *argv[]) {
 
     // Inicializar estruturas globais
     global_idf = hash_new();
+
     global_tf = (hash_t **)calloc(cfg.entries, sizeof(hash_t *));
     if (!global_tf) {
       fprintf(stderr, "Falha ao alocar memória para global_tf\n");
       return 1;
     }
 
-    // Inicializar cada hash TF individual
     for (long int i = 0; i < cfg.entries; i++) {
       global_tf[i] = hash_new();
     }
 
     global_entries = cfg.entries;
-
-    // Carregar stopwords (compartilhado por todas threads)
     if (load_stopwords("assets/stopwords.txt")) {
       return 1;
     }
@@ -252,12 +251,7 @@ int main(int argc, char *argv[]) {
     global_idf = load_hash(filename_idf);
     if (!global_idf) {
       fprintf(stderr, "Erro ao carregar global_idf de %s\n", filename_idf);
-      // Liberar global_tf
-      for (long int i = 0; i < global_entries; i++) {
-        if (global_tf[i])
-          hash_free(global_tf[i]);
-      }
-      free(global_tf);
+      free_global_tf();
       return 1;
     }
 
@@ -265,11 +259,7 @@ int main(int argc, char *argv[]) {
     if (!global_doc_norms) {
       fprintf(stderr, "Erro ao carregar global_doc_norms\n");
       hash_free(global_idf);
-      for (long int i = 0; i < global_entries; i++) {
-        if (global_tf[i])
-          hash_free(global_tf[i]);
-      }
-      free(global_tf);
+      free_global_tf();
       return 1;
     }
 
@@ -726,4 +716,12 @@ int phase2() {
   printf("[FASE 2] Tempo: %.3f segundos\n", elapsed_fase2);
 
   return 0;
+}
+
+void free_global_tf() {
+  for (long int i = 0; i < global_entries; i++) {
+    if (global_tf[i])
+      hash_free(global_tf[i]);
+  }
+  free(global_tf);
 }
