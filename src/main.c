@@ -204,9 +204,7 @@ int main(int argc, char *argv[]) {
     global_entries = cfg.entries;
 
     // Carregar stopwords (compartilhado por todas threads)
-    load_stopwords("assets/stopwords.txt");
-    if (!global_stopwords) {
-      fprintf(stderr, "Falha ao carregar stopwords\n");
+    if (load_stopwords("assets/stopwords.txt")) {
       return 1;
     }
 
@@ -281,7 +279,9 @@ int main(int argc, char *argv[]) {
     printf("Estruturas carregadas com sucesso.\n");
 
     // Carregar stopwords para processar queries
-    load_stopwords("assets/stopwords.txt");
+    if (load_stopwords("assets/stopwords.txt")) {
+      return 1;
+    }
   }
 
   /* --------------- Consulta do Usuário --------------- */
@@ -291,9 +291,7 @@ int main(int argc, char *argv[]) {
 
     // Carregar stopwords se não estiverem carregadas
     if (!global_stopwords) {
-      load_stopwords("assets/stopwords.txt");
-      if (!global_stopwords) {
-        fprintf(stderr, "Falha ao carregar stopwords para processar query\n");
+      if (load_stopwords("assets/stopwords.txt")) {
         return 1;
       }
     }
