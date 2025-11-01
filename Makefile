@@ -59,19 +59,22 @@ all: $(TARGET)
 
 help:
 	@echo "Targets disponíveis:"
-	@echo "  make all          - Compila o projeto (padrão)"
-	@echo "  make run          - Limpa, compila e executa o programa"
-	@echo "                      Variáveis default: ENTRIES=$(ENTRIES) VERBOSE=$(VERBOSE)"
-	@echo "  make clean        - Remove arquivos de compilação (.o e executável)"
-	@echo "  make clean_models - Remove arquivos binários em ./models/"
-	@echo "  make lint         - Executa clang-tidy para análise estática"
-	@echo "  make format       - Formata código com clang-format"
-	@echo "  make check        - Executa lint + format"
-	@echo "  make help         - Exibe esta mensagem"
+	@echo "  make all             - Compila o projeto (padrão)"
+	@echo "  make run             - Limpa, compila e executa o programa"
+	@echo "                         Variáveis default: ENTRIES=$(ENTRIES) VERBOSE=$(VERBOSE)"
+	@echo "  make test-correctness - Executa todos os testes de corretude do banco de dados"
+	@echo "  make clean           - Remove arquivos de compilação (.o e executável)"
+	@echo "  make clean_models    - Remove arquivos binários em ./models/"
+	@echo "  make lint            - Executa clang-tidy para análise estática"
+	@echo "  make format          - Formata código com clang-format"
+	@echo "  make check           - Executa lint + format"
+	@echo "  make help            - Exibe esta mensagem"
 	@echo ""
 	@echo "Exemplos:"
 	@echo "  make run ENTRIES=50 VERBOSE=0"
+	@echo "  make run TEST=0 QUERY=\"marine sea species\""
 	@echo "  make run MANUAL=1"
+	@echo "  make test-correctness"
 
 $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS)
@@ -110,4 +113,37 @@ else
 endif
 	@echo 'Models cleaned..'
 
-.PHONY: all clean clean_models lint format check run help
+test-correctness: $(TARGET)
+	@echo "=========================================="
+	@echo "Executando testes de corretude TF-IDF"
+	@echo "=========================================="
+	@echo ""
+	@sqlite3 data/wiki-small.db "SELECT \"table\", query_id, query FROM queries ORDER BY \"table\", query_id" | while IFS='|' read -r tbl qid query; do \
+		if [ -z "$$tbl" ] || [ -z "$$qid" ] || [ -z "$$query" ]; then \
+			continue; \
+		fi; \
+		table_name="test_tbl_$$tbl"; \
+		table_exists=$$(sqlite3 data/wiki-small.db "SELECT name FROM sqlite_master WHERE type='table' AND name='$$table_name';" 2>/dev/null); \
+		if [ -z "$$table_exists" ]; then \
+			echo "=========================================="; \
+			echo "Tabela: $$table_name"; \
+			echo "Query ID: $$qid"; \
+			echo "Query: $$query"; \
+			echo "AVISO: Tabela não existe no banco de dados. Ignorando..."; \
+			echo "=========================================="; \
+			echo ""; \
+			continue; \
+		fi; \
+		echo "=========================================="; \
+		echo "Tabela: $$table_name"; \
+		echo "Query ID: $$qid"; \
+		echo "Query: $$query"; \
+		echo "=========================================="; \
+		./$(TARGET) --table "$$table_name" --query_user "$$query" --entries $(ENTRIES) --nthreads $(NTHR) $(if $(filter 1,$(VERBOSE)),--verbose,); \
+		echo ""; \
+	done
+	@echo "=========================================="
+	@echo "Testes concluídos!"
+	@echo "=========================================="
+
+.PHONY: all clean clean_models lint format check run help test-correctness

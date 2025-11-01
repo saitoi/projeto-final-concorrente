@@ -132,7 +132,6 @@ class MatrizFrequencia:
 
         conn = sqlite3.connect(db_filename)
         cursor = conn.cursor()
-
         cursor.execute(f"select article_id, article_text from {tablename} order by article_id")
         rows = cursor.fetchall()
         conn.close()
@@ -144,7 +143,6 @@ class MatrizFrequencia:
         stopwords = stopwords or list(nltk.corpus.stopwords.words('english'))
         stemmer = stemmer or SnowballStemmer("english")
         return cls._build(docs, separadores, stopwords, stemmer)
-        
 
     @classmethod
     def from_dir(cls, base_dir, stopwords=None, stemmer=None, separadores_filename='./assets/separadores.txt', docs_dir='documentos', encoding='utf-8'):
@@ -175,20 +173,82 @@ class MatrizFrequencia:
             raise ValueError("Consulta vazia")
         return query
 
-    def print_weight_matrix(self, zero='.'):
-        table = PrettyTable()
-        table.field_names = ["word"] + [str(d) for d in range(self.ndocs)]
-        table.hrules = HRuleStyle.ALL
-        table.vrules = VRuleStyle.NONE
-        for w in self.words:
-            row = [zero if self.weight(w, d) == 0 else self.weight(w, d) for d in range(self.ndocs)]
-            table.add_row([w] + row)
-        print(table)
+    def print_weight_matrix_summary(self, top_words=10, max_docs=5):
+        print("\n=== Resumo Matriz TF-IDF (Top palavras por documento) ===")
+        docs_to_show = min(max_docs, self.ndocs)
+
+        for doc_id in range(docs_to_show):
+            print(f"\n--- Documento {doc_id} ---")
+            word_weights = [(w, self.weight(w, doc_id)) for w in self.words]
+            word_weights = [(w, wt) for w, wt in word_weights if wt > 0]
+            word_weights.sort(key=lambda x: x[1], reverse=True)
+
+            t = PrettyTable()
+            t.field_names = ["Palavra", "TF-IDF"]
+            t.border = True
+            t.hrules = HRuleStyle.ALL
+            t.vrules = VRuleStyle.NONE
+
+            for w, wt in word_weights[:top_words]:
+                t.add_row([w, f"{wt:.4f}"])
+            print(t)
+
+        if self.ndocs > docs_to_show:
+            print(f"\n... e mais {self.ndocs - docs_to_show} documentos")
+
+    def print_idf(self):
+        print("\nIDF")
+        t = PrettyTable()
+        t.field_names = ["Palavra", "IDF"]
+        t.border = True
+        t.hrules = HRuleStyle.ALL
+        t.vrules = VRuleStyle.NONE
+
+        for i, w in enumerate(self.words[:20]):
+            t.add_row([w, f"{self.idf[w]:.4f}"])
+        print(t)
+
+    def print_vectors(self):
+        print("\nVetores TF-IDF dos Documentos")
+        t = PrettyTable()
+        t.field_names = ["Doc"] + [f"w{i}" for i in range(min(10, len(self.words)))]
+        if len(self.words) > 10:
+            t.field_names += ["..."]
+        t.border = True
+        t.hrules = HRuleStyle.ALL
+        t.vrules = VRuleStyle.NONE
+
+        for d in range(self.ndocs):
+            vec = self.doc_vecs[d]
+            row = [f"{v:.4f}" for v in (vec[:10] if len(vec) > 10 else vec)]
+            if len(vec) > 10:
+                row.append("...")
+            t.add_row([d] + row)
+        print(t)
+
+    def print_norms(self):
+        print("\nNormas dos Vetores")
+        t = PrettyTable()
+        t.field_names = ["Doc", "Norma"]
+        t.border = True
+        t.hrules = HRuleStyle.ALL
+        t.vrules = VRuleStyle.NONE
+
+        for d in range(self.ndocs):
+            t.add_row([d, f"{self.doc_norms[d]:.4f}"])
+        print(t)
+
+    def print_info(self):
+        self.print_idf()
+        self.print_vectors()
+        self.print_norms()
+        print("Matriz TF")
+        self.print_weight_matrix_summary()
 
 if __name__ == "__main__":
     import argparse
 
-    nltk.download('stopwords')
+    nltk.download('stopwords', quiet=True)
 
     parser = argparse.ArgumentParser(description='TF-IDF Vector Search')
     parser.add_argument('-d', '--database', type=str, default='./data/wiki-small.db', help='Nome do arquivo de banco de dados')
