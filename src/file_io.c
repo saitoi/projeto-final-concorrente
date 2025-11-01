@@ -103,7 +103,7 @@ int save_hash(const hash_t *gh, const char *filename) {
   }
 
   fclose(fp);
-  LOG(stdout, "global_idf salvo em %s (%zu entradas)\n", filename, entries_written);
+  LOG(stdout, "global_idf salvo em %s (%zu entradas)", filename, entries_written);
   return 0;
 }
 
@@ -156,7 +156,7 @@ int save_hash_array(hash_t **hashes, long int num_hashes, const char *filename) 
   }
 
   fclose(fp);
-  LOG(stdout, "global_tf salvo em %s (%ld hashes)\n", filename, num_hashes);
+  LOG(stdout, "global_tf salvo em %s (%ld hashes)", filename, num_hashes);
   return 0;
 }
 
@@ -180,7 +180,7 @@ int save_doc_norms(const double *norms, long int num_docs,
   fwrite(norms, sizeof(double), num_docs, fp);
 
   fclose(fp);
-  printf("global_doc_norms salvo em %s (%ld normas)\n", filename, num_docs);
+  printf("global_doc_norms salvo em %s (%ld normas)", filename, num_docs);
   return 0;
 }
 
@@ -319,7 +319,7 @@ hash_t *load_hash(const char *filename) {
   }
 
   fclose(fp);
-  LOG(stdout, "global_idf carregado de %s (%zu entradas)\n", filename, entries_read);
+  LOG(stdout, "global_idf carregado de %s (%zu entradas)", filename, entries_read);
   return gh;
 }
 
@@ -432,7 +432,7 @@ hash_t **load_hash_array(const char *filename, long int *num_hashes_out) {
   }
 
   fclose(fp);
-  LOG(stdout, "global_tf carregado de %s (%ld hashes)\n", filename, num_hashes);
+  LOG(stdout, "global_tf carregado de %s (%ld hashes)", filename, num_hashes);
   return hashes;
 }
 
@@ -469,7 +469,7 @@ double *load_doc_norms(const char *filename, long int *num_docs_out) {
   fread(norms, sizeof(double), num_docs, fp);
 
   fclose(fp);
-  LOG(stdout, "global_doc_norms carregado de %s (%ld normas)\n", filename, num_docs);
+  LOG(stdout, "global_doc_norms carregado de %s (%ld normas)", filename, num_docs);
 
   if (num_docs_out)
     *num_docs_out = num_docs;

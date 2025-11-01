@@ -334,7 +334,7 @@ int main(int argc, char *argv[]) {
     save_hash(global_idf, filename_idf);
     save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
 
-    // Liberar stopwords (usado apenas no pré-processamento)
+    // Liberar stopwords
     free_stopwords();
 
     // Liberar array de thread IDs
@@ -520,6 +520,9 @@ int main(int argc, char *argv[]) {
   // Liberar normas
   if (global_doc_norms)
     free(global_doc_norms);
+
+  // Liberar stopwords
+  free_stopwords();
 
   clock_gettime(CLOCK_MONOTONIC, &t_end_total);
   double elapsed_total = get_elapsed_time(&t_start_total, &t_end_total);

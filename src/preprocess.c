@@ -334,8 +334,7 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long in
         const char *stemmed = (const char *)sb_stemmer_stem(
             stemmer, (const sb_symbol *)article_vecs[i][j],
             strlen(article_vecs[i][j]));
-	char *new_w = strdup(stemmed);
-        hash_add(tf[global_idx], new_w, 1.0);
+        hash_add(tf[global_idx], stemmed, 1.0);
 	free(article_vecs[i][j]);
 	article_vecs[i][j] = NULL;  // Evitar double free
       } else {
