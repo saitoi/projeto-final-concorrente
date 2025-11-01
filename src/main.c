@@ -91,7 +91,7 @@ static inline double get_elapsed_time(struct timespec *start, struct timespec *e
       double similarity;
     } DocSim;
     
-    int parse_cli(int argc, char **argv, Config *cfg);
+    int parse_cli(int argc, char **argv);
     int compare_sim(const void *a, const void *b);
     void *preprocess_1(void *args);
     void *preprocess_2(void *args);
@@ -135,9 +135,8 @@ int main(int argc, char *argv[]) {
   struct timespec t_start_total, t_end_total;
   clock_gettime(CLOCK_MONOTONIC, &t_start_total);
   
-  
   // [1]
-  if (parse_cli(argc, argv, &cfg) != 0) {
+  if (parse_cli(argc, argv) != 0) {
     return 1;
   }
   
@@ -446,10 +445,9 @@ int main(int argc, char *argv[]) {
  *
  * @param argc Número de argumentos
  * @param argv Array de argumentos
- * @param cfg Ponteiro para estrutura Config a ser preenchida
  * @return 0 em sucesso, 1 em erro (argumento inválido)
  */
-int parse_cli(int argc, char **argv, Config *cfg) {
+int parse_cli(int argc, char **argv) {
   LOG(stderr, "Processando %d argumentos", argc);
   fflush(stderr);
 
@@ -458,23 +456,23 @@ int parse_cli(int argc, char **argv, Config *cfg) {
     fflush(stderr);
 
     if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc) 
-      cfg->nthreads = atoi(argv[++i]);
+      cfg.nthreads = atoi(argv[++i]);
     else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc) 
-      cfg->entries = atol(argv[++i]);
+      cfg.entries = atol(argv[++i]);
     else if (strcmp(argv[i], "--db") == 0 && i + 1 < argc) 
-      cfg->db = argv[++i];
+      cfg.db = argv[++i];
     else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
-      cfg->query_user = argv[++i];
+      cfg.query_user = argv[++i];
     else if (strcmp(argv[i], "--query_filename") == 0 && i + 1 < argc)
-      cfg->query_filename = argv[++i];
+      cfg.query_filename = argv[++i];
     else if (strcmp(argv[i], "--table") == 0 && i + 1 < argc)
-      cfg->table= argv[++i];
+      cfg.table= argv[++i];
     else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
-      cfg->k = atoi(argv[++i]);
+      cfg.k = atoi(argv[++i]);
     else if (strcmp(argv[i], "--test") == 0 && i + 1 < argc)
-      cfg->test = atoi(argv[++i]);
+      cfg.test = atoi(argv[++i]);
     else if (strcmp(argv[i], "--verbose") == 0)
-      cfg->verbose = 1;
+      cfg.verbose = 1;
     else {
       fprintf(stderr,
         "Uso: %s <parametros nomeados>\n"
