@@ -37,79 +37,95 @@ static inline double get_elapsed_time(struct timespec *start, struct timespec *e
 /** @defgroup global_data Estruturas Globais de Dados
  *  Hashes e vetores compartilhados entre threads
  *  @{
- */
-hash_t **global_tf;              /**< Array de hashes TF (Term Frequency) por documento */
-hash_t *global_idf;              /**< Hash IDF (Inverse Document Frequency) global */
-double *global_doc_norms;        /**< Array com normas dos vetores de documentos */
-size_t global_vocab_size;        /**< Tamanho do vocabulário (palavras únicas) */
-long int global_entries = 0;     /**< Número total de documentos processados */
-/** @} */
+  */
+ hash_t **global_tf;              /**< Array de hashes TF (Term Frequency) por documento */
+ hash_t *global_idf;              /**< Hash IDF (Inverse Document Frequency) global */
+ double *global_doc_norms;        /**< Array com normas dos vetores de documentos */
+ size_t global_vocab_size;        /**< Tamanho do vocabulário (palavras únicas) */
+ long int global_entries = 0;     /**< Número total de documentos processados */
+ /** @} */
+ 
+ /** @defgroup config Variáveis de Configuração
+  *  @{
+    */
+   int VERBOSE = 0;                 /**< Flag de verbosidade (0=desabilitado, 1=habilitado) */
+   /** @} */
+   
+   /* --------------- Macros --------------- */
+   
+   #define MAX_THREADS 16           /**< Número máximo de threads suportadas */
+   
+   /**
+    * @struct thread_args
+    * @brief Argumentos passados para cada thread de pré-processamento
+    */
+   typedef struct {
+     long int start;                /**< Índice inicial do intervalo de documentos */
+     long int end;                  /**< Índice final do intervalo de documentos */
+     long int nthreads;             /**< Número total de threads */
+     long int id;                   /**< ID da thread (0 a nthreads-1) */
+     const char *db;                /**< Caminho para o arquivo SQLite */
+     const char *table;             /**< Nome da tabela no banco de dados */
+    } thread_args;
+    
+    /**
+     * @struct Config
+     * @brief Estrutura de configuração do programa
+     *
+     * Agrupa todos os parâmetros de linha de comando em uma única estrutura.
+     */
+    typedef struct {
+      long int entries;              /**< Quantidade de entradas a processar (0=todas) */
+      const char *db;                /**< Arquivo SQLite com os documentos */
+      const char *query_user;        /**< Query do usuário (string direta) */
+      const char *query_filename;    /**< Arquivo contendo a query do usuário */
+      const char *table;             /**< Nome da tabela no banco de dados */
+      int nthreads;                  /**< Número de threads para pré-processamento */
+      int k;                         /**< Número de documentos top-k a retornar */
+      int test;                      /**< Modo de teste (0=desabilitado) */
+      int verbose;                   /**< Verbosidade (0=desabilitado, 1=habilitado) */
+    } Config;
+    
+    typedef struct {
+      long int doc_id;
+      double similarity;
+    } DocSim;
+    
+    int parse_cli(int argc, char **argv);
+    int compare_sim(const void *a, const void *b);
+    void *preprocess_1(void *args);
+    void *preprocess_2(void *args);
+    void format_filenames(char *filename_tf, char *filename_idf,
+      char *filename_doc_norms, const char *table,
+      long int entries);
+    int phase1();
+    int phase2();
+    void free_global_tf();
+      
+      // Inicializar configuração com valores padrão
+      Config cfg = {
+        .nthreads = 4,
+        .entries = 0,
+        .db = "./data/wiki-small.db",
+        .query_user = "shakespeare english literature",
+        .query_filename = NULL,
+        .table= "sample_articles",
+        .k = 10,
+        .test = 0,
+        .verbose = 0
+      };
 
-/** @defgroup config Variáveis de Configuração
- *  @{
- */
-int VERBOSE = 0;                 /**< Flag de verbosidade (0=desabilitado, 1=habilitado) */
-/** @} */
-
-/* --------------- Macros --------------- */
-
-#define MAX_THREADS 16           /**< Número máximo de threads suportadas */
-
-/**
- * @struct thread_args
- * @brief Argumentos passados para cada thread de pré-processamento
- */
-typedef struct {
-  long int start;                /**< Índice inicial do intervalo de documentos */
-  long int end;                  /**< Índice final do intervalo de documentos */
-  long int nthreads;             /**< Número total de threads */
-  long int id;                   /**< ID da thread (0 a nthreads-1) */
-  const char *db;                /**< Caminho para o arquivo SQLite */
-  const char *table;             /**< Nome da tabela no banco de dados */
-} thread_args;
-
-/**
- * @struct Config
- * @brief Estrutura de configuração do programa
- *
- * Agrupa todos os parâmetros de linha de comando em uma única estrutura.
- */
-typedef struct {
-  long int entries;              /**< Quantidade de entradas a processar (0=todas) */
-  const char *db;                /**< Arquivo SQLite com os documentos */
-  const char *query_user;        /**< Query do usuário (string direta) */
-  const char *query_filename;    /**< Arquivo contendo a query do usuário */
-  const char *table;             /**< Nome da tabela no banco de dados */
-  int nthreads;                  /**< Número de threads para pré-processamento */
-  int k;                         /**< Número de documentos top-k a retornar */
-  int test;                      /**< Modo de teste (0=desabilitado) */
-  int verbose;                   /**< Verbosidade (0=desabilitado, 1=habilitado) */
-} Config;
-
-typedef struct {
-  long int doc_id;
-  double similarity;
-} DocSim;
-
-int parse_cli(int argc, char **argv, Config *cfg);
-int compare_sim(const void *a, const void *b);
-void *preprocess_1(void *args);
-void *preprocess_2(void *args);
-void format_filenames(char *filename_tf, char *filename_idf,
-                      char *filename_doc_norms, const char *table,
-                      long int entries);
-
-/* --------------- Fluxo Principal --------------- */
-
-/**
- * @brief Função principal do programa
- *
- * Fluxo de execução:
- * 1. Parseia argumentos de linha de comando
- * 2. Verifica existência de modelos pré-processados em models/
- * 3. Se não existirem: Executa pré-processamento paralelo com threads
- * 4. Se existirem: Carrega estruturas dos arquivos binários
- * 5. Processa query do usuário e calcula similaridades
+      /* --------------- Fluxo Principal --------------- */
+  
+  /**
+   * @brief Função principal do programa
+   *
+   * Fluxo de execução:
+   * 1. Parseia argumentos de linha de comando
+   * 2. Verifica existência de modelos pré-processados em models/
+   * 3. Se não existirem: Executa pré-processamento paralelo com threads
+   * 4. Se existirem: Carrega estruturas dos arquivos binários
+   * 5. Processa query do usuário e calcula similaridades
  * 6. Retorna top-k documentos mais similares
  *
  * @param argc Número de argumentos
@@ -119,35 +135,23 @@ void format_filenames(char *filename_tf, char *filename_idf,
 int main(int argc, char *argv[]) {
   struct timespec t_start_total, t_end_total;
   clock_gettime(CLOCK_MONOTONIC, &t_start_total);
-
-  // Inicializar configuração com valores padrão
-  Config cfg = {
-    .nthreads = 4,
-    .entries = 0,
-    .db = "./data/wiki-small.db",
-    .query_user = "shakespeare english literature",
-    .query_filename = NULL,
-    .table= "sample_articles",
-    .k = 10,
-    .test = 0,
-    .verbose = 0
-  };
-
+  
   // [1]
-  if (parse_cli(argc, argv, &cfg) != 0) {
+  if (parse_cli(argc, argv) != 0) {
     return 1;
   }
-
+  
   // Ler query de arquivo se fornecido
-  if (cfg.query_filename && strlen(cfg.query_filename) > 3)
+  if (cfg.query_filename && strlen(cfg.query_filename) > 3) {
     cfg.query_user = get_filecontent(cfg.query_filename);
-
+  }
+  
   // Atualiza variável global de verbosidade
   VERBOSE = cfg.verbose;
-
+  
   LOG(stdout,
-      "Parâmetros nomeados:\n"
-      "\targc: %d\n"
+    "Parâmetros nomeados:\n"
+    "\targc: %d\n"
       "\tnthreads: %d\n"
       "\tentries: %ld\n"
       "\tdb: %s\n"
@@ -184,131 +188,37 @@ int main(int argc, char *argv[]) {
       access(filename_idf, F_OK) == -1 ||
       access(filename_doc_norms, F_OK) == -1) {
 
-    pthread_t *tids = (pthread_t*) malloc(sizeof(pthread_t) * cfg.nthreads);
-    if (!tids) {
-      fprintf(stderr, "Falha ao alocar memória para tids\n");
-      return 1;
-    }
-
-    thread_args args[MAX_THREADS];
-
     // Inicializar estruturas globais
     global_idf = hash_new();
+
     global_tf = (hash_t **)calloc(cfg.entries, sizeof(hash_t *));
     if (!global_tf) {
       fprintf(stderr, "Falha ao alocar memória para global_tf\n");
       return 1;
     }
 
-    // Inicializar cada hash TF individual
     for (long int i = 0; i < cfg.entries; i++) {
       global_tf[i] = hash_new();
-      if (!global_tf[i]) {
-        fprintf(stderr, "Falha ao alocar hash TF para documento %ld\n", i);
-        return 1;
-      }
     }
 
     global_entries = cfg.entries;
-
-    // Carregar stopwords (compartilhado por todas threads)
-    load_stopwords("assets/stopwords.txt");
-    if (!global_stopwords) {
-      fprintf(stderr, "Falha ao carregar stopwords\n");
+    if (load_stopwords("assets/stopwords.txt")) {
       return 1;
     }
 
     printf("Qtd. artigos: %ld\n", cfg.entries);
 
-    // Calcular divisão de trabalho
-    long int base = cfg.entries / cfg.nthreads;
-    long int rem = cfg.entries % cfg.nthreads;
-
     /* ---------- FASE 1: Construir Vocabulário ---------- */
 
-    struct timespec t_start_fase1, t_end_fase1;
-    clock_gettime(CLOCK_MONOTONIC, &t_start_fase1);
-
-    printf("\n[FASE 1] Construindo vocabulário...\n");
-
-    for (long int i = 0; i < cfg.nthreads; ++i) {
-      args[i].id = i;
-      args[i].nthreads = cfg.nthreads;
-      args[i].db = cfg.db;
-      args[i].table= cfg.table;
-      args[i].start = i * base + (i < rem ? i : rem);
-      args[i].end = args[i].start + base + (i < rem);
-
-      if (pthread_create(&tids[i], NULL, preprocess_1, (void *)&args[i])) {
-        fprintf(stderr, "Erro ao criar thread %ld\n", i);
-        return 1;
-      }
-    }
-
-    // Aguardar conclusão da Fase 1 e coletar IDFs locais
-    hash_t *local_idfs[MAX_THREADS];
-    for (long int i = 0; i < cfg.nthreads; ++i) {
-      void *ret_val;
-      if (pthread_join(tids[i], &ret_val)) {
-        fprintf(stderr, "Erro ao esperar thread %ld\n", i);
-        return 1;
-      }
-      local_idfs[i] = (hash_t *)ret_val;
-    }
-
-    // Merge dos IDFs locais no global (fora da seção crítica)
-    printf("[FASE 1] Fazendo merge dos vocabulários locais...\n");
-    for (long int i = 0; i < cfg.nthreads; ++i) {
-      if (local_idfs[i]) {
-        hash_merge(global_idf, local_idfs[i]);
-        hash_free(local_idfs[i]);
-      }
-    }
-
-    printf("[FASE 1] Vocabulário construído: %zu palavras\n", hash_size(global_idf));
-
-    // Calcular IDF global (single-threaded, entre as fases)
-    printf("[FASE 1] Calculando IDF global...\n");
-    set_idf_value(global_idf, global_tf, (double)global_entries, global_entries);
-    global_vocab_size = hash_size(global_idf);
-
-    // Alocar normas
-    global_doc_norms = (double *)calloc(global_entries, sizeof(double));
-    if (!global_doc_norms) {
-      fprintf(stderr, "Erro ao alocar memória para global_doc_norms\n");
+    if (phase1()) {
       return 1;
     }
 
-    clock_gettime(CLOCK_MONOTONIC, &t_end_fase1);
-    double elapsed_fase1 = get_elapsed_time(&t_start_fase1, &t_end_fase1);
-    printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n", global_vocab_size);
-    printf("[FASE 1] Tempo: %.3f segundos\n", elapsed_fase1);
-
     /* ========== FASE 2: Calcular TF-IDF ========== */
-    struct timespec t_start_fase2, t_end_fase2;
-    clock_gettime(CLOCK_MONOTONIC, &t_start_fase2);
 
-    printf("\n[FASE 2] Calculando TF-IDF e normas...\n");
-
-    for (long int i = 0; i < cfg.nthreads; ++i) {
-      if (pthread_create(&tids[i], NULL, preprocess_2, (void *)&args[i])) {
-        fprintf(stderr, "Erro ao criar thread %ld\n", i);
-        return 1;
-      }
+    if (phase2()) {
+      return 1;
     }
-
-    // Aguardar conclusão da Fase 2
-    for (long int i = 0; i < cfg.nthreads; ++i) {
-      if (pthread_join(tids[i], NULL)) {
-        fprintf(stderr, "Erro ao esperar thread %ld\n", i);
-        return 1;
-      }
-    }
-
-    clock_gettime(CLOCK_MONOTONIC, &t_end_fase2);
-    double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);
-    printf("[FASE 2] TF-IDF e normas calculados!\n");
-    printf("[FASE 2] Tempo: %.3f segundos\n", elapsed_fase2);
 
     // Imprimir TF hash global final
     LOG(stdout, "=== TF Hash Global Final ===");
@@ -326,9 +236,6 @@ int main(int argc, char *argv[]) {
     // Liberar stopwords (usado apenas no pré-processamento)
     free_stopwords();
 
-    // Liberar array de thread IDs
-    free(tids);
-
   } else {
 
     /* --------------- Carregamento dos Binários --------------- */
@@ -344,12 +251,7 @@ int main(int argc, char *argv[]) {
     global_idf = load_hash(filename_idf);
     if (!global_idf) {
       fprintf(stderr, "Erro ao carregar global_idf de %s\n", filename_idf);
-      // Liberar global_tf
-      for (long int i = 0; i < global_entries; i++) {
-        if (global_tf[i])
-          hash_free(global_tf[i]);
-      }
-      free(global_tf);
+      free_global_tf();
       return 1;
     }
 
@@ -357,11 +259,7 @@ int main(int argc, char *argv[]) {
     if (!global_doc_norms) {
       fprintf(stderr, "Erro ao carregar global_doc_norms\n");
       hash_free(global_idf);
-      for (long int i = 0; i < global_entries; i++) {
-        if (global_tf[i])
-          hash_free(global_tf[i]);
-      }
-      free(global_tf);
+      free_global_tf();
       return 1;
     }
 
@@ -370,7 +268,9 @@ int main(int argc, char *argv[]) {
     printf("Estruturas carregadas com sucesso.\n");
 
     // Carregar stopwords para processar queries
-    load_stopwords("assets/stopwords.txt");
+    if (load_stopwords("assets/stopwords.txt")) {
+      return 1;
+    }
   }
 
   /* --------------- Consulta do Usuário --------------- */
@@ -380,9 +280,7 @@ int main(int argc, char *argv[]) {
 
     // Carregar stopwords se não estiverem carregadas
     if (!global_stopwords) {
-      load_stopwords("assets/stopwords.txt");
-      if (!global_stopwords) {
-        fprintf(stderr, "Falha ao carregar stopwords para processar query\n");
+      if (load_stopwords("assets/stopwords.txt")) {
         return 1;
       }
     }
@@ -537,10 +435,9 @@ int main(int argc, char *argv[]) {
  *
  * @param argc Número de argumentos
  * @param argv Array de argumentos
- * @param cfg Ponteiro para estrutura Config a ser preenchida
  * @return 0 em sucesso, 1 em erro (argumento inválido)
  */
-int parse_cli(int argc, char **argv, Config *cfg) {
+int parse_cli(int argc, char **argv) {
   LOG(stderr, "Processando %d argumentos", argc);
   fflush(stderr);
 
@@ -549,23 +446,23 @@ int parse_cli(int argc, char **argv, Config *cfg) {
     fflush(stderr);
 
     if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc) 
-      cfg->nthreads = atoi(argv[++i]);
+      cfg.nthreads = atoi(argv[++i]);
     else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc) 
-      cfg->entries = atol(argv[++i]);
+      cfg.entries = atol(argv[++i]);
     else if (strcmp(argv[i], "--db") == 0 && i + 1 < argc) 
-      cfg->db = argv[++i];
+      cfg.db = argv[++i];
     else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
-      cfg->query_user = argv[++i];
+      cfg.query_user = argv[++i];
     else if (strcmp(argv[i], "--query_filename") == 0 && i + 1 < argc)
-      cfg->query_filename = argv[++i];
+      cfg.query_filename = argv[++i];
     else if (strcmp(argv[i], "--table") == 0 && i + 1 < argc)
-      cfg->table= argv[++i];
+      cfg.table= argv[++i];
     else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
-      cfg->k = atoi(argv[++i]);
+      cfg.k = atoi(argv[++i]);
     else if (strcmp(argv[i], "--test") == 0 && i + 1 < argc)
-      cfg->test = atoi(argv[++i]);
+      cfg.test = atoi(argv[++i]);
     else if (strcmp(argv[i], "--verbose") == 0)
-      cfg->verbose = 1;
+      cfg.verbose = 1;
     else {
       fprintf(stderr,
         "Uso: %s <parametros nomeados>\n"
@@ -718,4 +615,113 @@ int compare_sim(const void *a, const void *b) {
     const DocSim *doc1 = (const DocSim *)a;
     const DocSim *doc2 = (const DocSim *)b;
     return doc1->similarity > doc2->similarity ? -1 : doc1->similarity < doc2->similarity;
+}
+
+int phase1() {
+  struct timespec t_start_fase1, t_end_fase1;
+  clock_gettime(CLOCK_MONOTONIC, &t_start_fase1);
+
+  printf("\n[FASE 1] Construindo vocabulário...\n");
+
+  pthread_t tids[MAX_THREADS];
+  thread_args args[MAX_THREADS];
+  // Calcular divisão de trabalho
+  int base = cfg.entries / cfg.nthreads;
+  int rem = cfg.entries % cfg.nthreads;
+
+  for (int i = 0; i < cfg.nthreads; ++i) {
+    args[i].id = i;
+    args[i].nthreads = cfg.nthreads;
+    args[i].db = cfg.db;
+    args[i].table = cfg.table;
+    args[i].start = i * base + (i < rem ? i : rem);
+    args[i].end = args[i].start + base + (i < rem);
+
+    if (pthread_create(&tids[i], NULL, preprocess_1, (void *)&args[i])) {
+      fprintf(stderr, "Erro ao criar thread %d\n", i);
+      return 1;
+    }
+  }
+
+  // Aguardar conclusão da Fase 1 e coletar IDFs locais
+  hash_t *local_idfs[MAX_THREADS];
+
+  for (int i = 0; i < cfg.nthreads; ++i) {
+    void *ret_val;
+    if (pthread_join(tids[i], &ret_val)) {
+      fprintf(stderr, "Erro ao esperar thread %d\n", i);
+      return 1;
+    }
+    local_idfs[i] = (hash_t *)ret_val;
+  }
+
+  // Merge dos IDFs locais no global (fora da seção crítica)
+  printf("[FASE 1] Fazendo merge dos vocabulários locais...\n");
+  for (int i = 0; i < cfg.nthreads; ++i) {
+    if (local_idfs[i]) {
+      hash_merge(global_idf, local_idfs[i]);
+      hash_free(local_idfs[i]);
+    }
+  }
+
+  printf("[FASE 1] Vocabulário construído: %zu palavras\n", hash_size(global_idf));
+
+  // Calcular IDF global (single-threaded, entre as fases)
+  printf("[FASE 1] Calculando IDF global...\n");
+  set_idf_value(global_idf, global_tf, (double)global_entries, global_entries);
+  global_vocab_size = hash_size(global_idf);
+
+  // Alocar normas
+  global_doc_norms = (double *)calloc(global_entries, sizeof(double));
+  if (!global_doc_norms) {
+    fprintf(stderr, "Erro ao alocar memória para global_doc_norms\n");
+    return 1;
+  }
+
+  clock_gettime(CLOCK_MONOTONIC, &t_end_fase1);
+  double elapsed_fase1 = get_elapsed_time(&t_start_fase1, &t_end_fase1);
+  printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n", global_vocab_size);
+  printf("[FASE 1] Tempo: %.3f segundos\n", elapsed_fase1);
+
+  return 0;
+}
+
+int phase2() {
+  struct timespec t_start_fase2, t_end_fase2;
+  clock_gettime(CLOCK_MONOTONIC, &t_start_fase2);
+
+  printf("\n[FASE 2] Calculando TF-IDF e normas...\n");
+
+  pthread_t tids[MAX_THREADS];
+  thread_args args[MAX_THREADS];
+
+  for (int i = 0; i < cfg.nthreads; ++i) {
+    if (pthread_create(&tids[i], NULL, preprocess_2, (void *)&args[i])) {
+      fprintf(stderr, "Erro ao criar thread %d\n", i);
+      return 1;
+    }
+  }
+
+  // Aguardar conclusão da Fase 2
+  for (int i = 0; i < cfg.nthreads; ++i) {
+    if (pthread_join(tids[i], NULL)) {
+      fprintf(stderr, "Erro ao esperar thread %d\n", i);
+      return 1;
+    }
+  }
+
+  clock_gettime(CLOCK_MONOTONIC, &t_end_fase2);
+  double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);
+  printf("[FASE 2] TF-IDF e normas calculados!\n");
+  printf("[FASE 2] Tempo: %.3f segundos\n", elapsed_fase2);
+
+  return 0;
+}
+
+void free_global_tf() {
+  for (long int i = 0; i < global_entries; i++) {
+    if (global_tf[i])
+      hash_free(global_tf[i]);
+  }
+  free(global_tf);
 }

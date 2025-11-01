@@ -8,7 +8,7 @@
 
 extern hash_t *global_stopwords;
 
-void load_stopwords(const char *filename);
+int load_stopwords(const char *filename);
 void free_stopwords(void);
 
 /* -------------------- Funções de Serialização -------------------- */
