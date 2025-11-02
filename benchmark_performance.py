@@ -36,6 +36,7 @@ class BenchmarkConfig:
     threads: int        # número de threads (1 para sequential)
     entries: int        # número de entradas (article_id)
     manual: bool        # linkar manualmente bibliotecas externas
+    db: str
 
 def get_size_thresholds(db_file: str) -> dict[str, Optional[int]]:
     """Executa query SQL para obter IDs nos diferentes thresholds de tamanho."""
@@ -128,7 +129,7 @@ def clean_models() -> bool:
         print(f"\033[31mERRO: Erro ao limpar modelos: {e}\033[0m")
         return False
 
-def run_single_benchmark(entries: int, table: str, nthreads: int = 4, *, manual: bool = False, log_file: Optional[Path] = None) -> Optional[float]:
+def run_single_benchmark(entries: int, table: str, nthreads: int = 4, db: str = './data/wiki-full.db', *, manual: bool = False, log_file: Optional[Path] = None) -> Optional[float]:
     """Executa o app uma vez e retorna o tempo total em segundos."""
 
     # Limpar modelos antes de cada execução para forçar recálculo
@@ -138,7 +139,8 @@ def run_single_benchmark(entries: int, table: str, nthreads: int = 4, *, manual:
     cmd = ["make", "run",
            f"ENTRIES={str(entries)}",
            f"TBL={table}",
-           f"NTHR={str(nthreads)}"]
+           f"NTHR={str(nthreads)}",
+           f"DB={str(db)}"]
 
     if manual:
         cmd.append("MANUAL=1")
@@ -201,7 +203,7 @@ def run_benchmark_config(config: BenchmarkConfig, table: str, iterations: int, s
     # Executar N vezes
     times = []
     for i in range(iterations):
-        time = run_single_benchmark(config.entries, table, config.threads, manual=config.manual, log_file=log_file)
+        time = run_single_benchmark(config.entries, table, config.threads, manual=config.manual, log_file=log_file, db=config.db)
         if time is not None:
             times.append(time)
 
@@ -291,6 +293,7 @@ def main():
             threads=1,
             entries=num_entries,
             manual=args.manual,
+            db=args.db,
         ))
 
         # Paralelo com diferentes threads
@@ -301,6 +304,7 @@ def main():
                 threads=nthreads,
                 entries=num_entries,
                 manual=args.manual,
+                db=args.db,
             ))
 
     print(f"Total de configurações: {len(configs)}")
