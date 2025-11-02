@@ -344,7 +344,7 @@ int main(int argc, char *argv[]) {
 
     /* --------------- Carregamento dos Binários --------------- */
 
-    printf("Arquivos binários encontrados, carregando estruturas...\n");
+    printf("Arquivos binários encontrados.. ");
 
     global_tf = load_hash_array(filename_tf, &global_entries);
     if (!global_tf) {
@@ -414,7 +414,8 @@ int main(int argc, char *argv[]) {
           printf("Palavras na query (após processamento):\n");
           for (size_t i = 0; i < query_tf->cap; i++) {
             for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
-              printf("  '%s': TF-IDF=%.6f\n", e->word, e->value);
+              double idf = hash_find(global_idf, e->word);
+              printf("  '%s': IDF=%.6f, TF-IDF=%.6f\n", e->word, idf, e->value);
             }
           }
       }
@@ -433,7 +434,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Erro ao calcular similaridades\n");
         return 1;
       }
-      printf("\n[SIMILARIDADE] Tempo: %.3f segundos\n", elapsed_sim);
+      LOG(stdout, "\n[SIMILARIDADE] Tempo: %.3f segundos\n", elapsed_sim);
 
       // Encontrar os top-k documentos mais similares
       // Criar array de índices
@@ -582,17 +583,17 @@ int parse_cli(int argc, char **argv, Config *cfg) {
     else {
       fprintf(stderr,
         "Uso: %s <parametros nomeados>\n"
-        "--verbose: Verbosidade (default: 0)\n"
-        "--nthreads: Número de threads (default: 4)\n"
-        "--entries: Quantidade de entradas para pré-processamento (default: "
+        "  --verbose: Verbosidade (default: 0)\n"
+        "  --nthreads: Número de threads (default: 4)\n"
+        "  --entries: Quantidade de entradas para pré-processamento (default: "
         "Toda tabela 'sample_articles')\n"
-        "--db: Nome do arquivo Sqlite (default: './data/wiki-small.db')\n"
-        "--query_user: Consulta do usuário (default: 'shakespeare english literature')\n"
-        "--query_filename: Arquivo com a consulta do usuário\n"
-        "--table: Nome da tabela consultada (default: "
+        "  --db: Nome do arquivo Sqlite (default: './data/wiki-small.db')\n"
+        "  --query_user: Consulta do usuário (default: 'shakespeare english literature')\n"
+        "  --query_filename: Arquivo com a consulta do usuário\n"
+        "  --table: Nome da tabela consultada (default: "
         "'sample_articles')\n"
-        "--k: Top-k documentos mais similares (default: 10)\n"
-        "--test: Modo de teste (default: 0)\n",
+        "  --k: Top-k documentos mais similares (default: 10)\n"
+        "  --test: Modo de teste (default: 0)\n",
         argv[0]);
       return 1;
     }

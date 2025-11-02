@@ -7,7 +7,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <ctype.h>
 #include <pthread.h>
 #include "../include/hash_t.h"
 #include "../include/preprocess.h"
@@ -85,11 +84,6 @@ int preprocess_query(const char *query_user, const hash_t *global_idf,
     return -1;
   }
 
-  // Lowercase manual
-  for (long int i = 0; tokens[0][i] != NULL; i++) {
-    for (char *p = tokens[0][i]; *p; p++) *p = tolower(*p);
-  }
-
   remove_stopwords(tokens, 1);
   stem(tokens, 1);
 
@@ -100,6 +94,7 @@ int preprocess_query(const char *query_user, const hash_t *global_idf,
   }
 
   // Calcular TF-IDF
+  // Não posso usar populate_tf_hash pois ele recebe um vetor de hashes
   for (size_t i = 0; i < query_tf->cap; i++) {
     for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
       if (e->value > 0) {

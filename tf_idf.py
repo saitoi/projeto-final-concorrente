@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.13"
+# requires-python = ">=3.10"
 # dependencies = [
 #     "nltk",
 #     "prettytable",
@@ -17,6 +17,7 @@ from collections import Counter
 class MatrizFrequencia:
     def __init__(
         self,
+        corpus: list[str],
         word_freq: dict[str, dict[int, int]],
         stopwords: list[str] | None = None,
         stemmer: SnowballStemmer | None = None,
@@ -24,6 +25,7 @@ class MatrizFrequencia:
         words: list[str] | None = None,
         idf: dict[str, float] | None = None,
     ) -> None:
+        self.corpus = corpus
         self.word_freq = word_freq
         self.words = words or sorted(word_freq.keys())
         self.stopwords = list(nltk.corpus.stopwords.words('english')) if stopwords is None else stopwords
@@ -31,7 +33,7 @@ class MatrizFrequencia:
         self.separadores = separadores or []
 
         self.docs = {d for m in self.word_freq.values() for d in m}
-        self.ndocs = len(self.docs)
+        self.ndocs = len(corpus) if corpus else len(self.docs)
 
         self.idf = idf or self._compute_idf()
         self.doc_vecs = self._compute_vecs()
@@ -74,34 +76,49 @@ class MatrizFrequencia:
 
     def vec_search(
         self,
+        k: int = 10,
         query_id: int | None = None,
         query: str | None = None,
         query_filepath: str | None = None,
         query_filename: str = 'consulta.txt',
-        token: str = ' ',
     ) -> list[tuple[int, float]]:
         if query_id is None or (query_id >= len(self.queries)):
             query_id = len(self.queries)
-            self._process_query(query, query_filepath, query_filename, token)
+            _  = self._process_query(query, query_filepath, query_filename)
         res = [(doc_id, self.sim(doc_id, query_id)) for doc_id in range(self.ndocs)]
-        return sorted(res, key=lambda x: x[1], reverse=True)
+        return sorted(res, key=lambda x: x[1], reverse=True)[:k]
+
+    # Função anterior com prettytable (substitui para parsear melhor)
+    # def show_vec_search(
+    #     self,
+    #     k: int = 10,
+    #     query_id: int | None = None,
+    #     query: str | None = None,
+    #     query_filepath: str | None = None,
+    #     query_filename: str = 'consulta.txt',
+    # ) -> None:
+    #     res = self.vec_search(k, query_id, query, query_filepath, query_filename)
+    #     table = PrettyTable()
+    #     table.field_names = ["DocId", "TF-IDF"]
+    #     table.hrules = HRuleStyle.ALL
+    #     table.vrules = VRuleStyle.NONE
+    #     for i, r in res:
+    #         table.add_row([i, r])
+    #     print(table)
 
     def show_vec_search(
         self,
+        k: int = 10,
         query_id: int | None = None,
         query: str | None = None,
         query_filepath: str | None = None,
         query_filename: str = 'consulta.txt',
-        token: str = ' ',
     ) -> None:
-        res = self.vec_search(query_id, query, query_filepath, query_filename, token)
-        table = PrettyTable()
-        table.field_names = ["DocId", "TF-IDF"]
-        table.hrules = HRuleStyle.ALL
-        table.vrules = VRuleStyle.NONE
+        res = self.vec_search(k, query_id, query, query_filepath, query_filename)
+        print(f"Top {k} documentos mais similares")
+        print("-" * 33)
         for i, r in res:
-            table.add_row([i, r])
-        print(table)
+            print(f"[{i}] {r:.6f} {self.corpus[i][:70] + '...' if len(self.corpus[i]) > 70 else self.corpus[i]}")
 
     @staticmethod
     def _preprocess_docs(docs, separadores, stopwords, stemmer):
@@ -120,21 +137,19 @@ class MatrizFrequencia:
                 word_doc.setdefault(word, {})[doc_id] = freq
         return word_doc
 
-    def _process_query(self, query=None, query_filepath=None, query_filename='consulta.txt', token=' '):
+    def _process_query(self, query=None, query_filepath=None, query_filename='consulta.txt') -> None:
         q = self._read_query(query, query_filepath, query_filename)
         query_mf = MatrizFrequencia._build([q], self.separadores, self.stopwords, self.stemmer, self.words, self.idf)
         self.queries.append(query_mf)
         print(f"Consulta adicionada com id={len(self.queries)-1}")
 
     @classmethod
-    def from_db(cls, stopwords=None, stemmer=None, separadores_filename='./assets/separadores.txt', db_filename='wiki-small.db', tablename='test_tbl_2', entries=100, encoding='utf-8'):
+    def from_db(cls, stopwords=None, stemmer=None, separadores_filename='./assets/separadores.txt', db_filename='test.db', table='test_tbl_2', encoding='utf-8'):
         import sqlite3
 
         conn = sqlite3.connect(db_filename)
         cursor = conn.cursor()
-
-        cursor.execute(f"select article_id, article_text from {tablename} order by article_id limit {entries}")
-        rows = cursor.fetchall()
+        rows = cursor.execute(f"select article_id, article_text from {table} order by article_id").fetchall()
         conn.close()
 
         docs = [row[1] for row in rows]
@@ -144,7 +159,6 @@ class MatrizFrequencia:
         stopwords = stopwords or list(nltk.corpus.stopwords.words('english'))
         stemmer = stemmer or SnowballStemmer("english")
         return cls._build(docs, separadores, stopwords, stemmer)
-        
 
     @classmethod
     def from_dir(cls, base_dir, stopwords=None, stemmer=None, separadores_filename='./assets/separadores.txt', docs_dir='documentos', encoding='utf-8'):
@@ -164,7 +178,7 @@ class MatrizFrequencia:
     def _build(cls, docs, separadores, stopwords, stemmer, words=None, idf=None):
         docs_stemmizados = cls._preprocess_docs(docs, separadores, stopwords, stemmer)
         word_freq = cls._get_word_freq(docs_stemmizados)
-        return cls(word_freq, stopwords, stemmer, separadores, words, idf)
+        return cls(docs, word_freq, stopwords, stemmer, separadores, words, idf)
 
     @staticmethod
     def _read_query(query=None, query_filepath=None, query_filename='consulta.txt', encoding='utf-8'):
@@ -175,31 +189,12 @@ class MatrizFrequencia:
             raise ValueError("Consulta vazia")
         return query
 
-    def _print_matrix(self, zero='.', cell_fn=None) -> None:
-        t = PrettyTable()
-        t.field_names = ["word"] + [str(d) for d in range(self.ndocs)]
-        t.border = True
-        t.hrules = HRuleStyle.ALL
-        t.vrules = VRuleStyle.NONE
-
-        for w in self.words:
-            row = ([self[w].get(d, zero) for d in self.docs]
-                  if cell_fn is None
-                  else [zero if (x == 0 or x is None) else x for x in (cell_fn(w, d) for d in self.docs)])
-            t.add_row([w] + row)
-
-        print(t)
-
     def print_weight_matrix_summary(self, top_words=10, max_docs=5):
-        """Imprime um resumo da matriz TF-IDF mostrando as top palavras por documento"""
         print("\n=== Resumo Matriz TF-IDF (Top palavras por documento) ===")
-
         docs_to_show = min(max_docs, self.ndocs)
 
         for doc_id in range(docs_to_show):
             print(f"\n--- Documento {doc_id} ---")
-
-            # Pega as palavras com maior peso para este documento
             word_weights = [(w, self.weight(w, doc_id)) for w in self.words]
             word_weights = [(w, wt) for w, wt in word_weights if wt > 0]
             word_weights.sort(key=lambda x: x[1], reverse=True)
@@ -212,7 +207,6 @@ class MatrizFrequencia:
 
             for w, wt in word_weights[:top_words]:
                 t.add_row([w, f"{wt:.4f}"])
-
             print(t)
 
         if self.ndocs > docs_to_show:
@@ -226,12 +220,8 @@ class MatrizFrequencia:
         t.hrules = HRuleStyle.ALL
         t.vrules = VRuleStyle.NONE
 
-        i = 0
-        for w in self.words:
-            if i > 20:
-                break
+        for i, w in enumerate(self.words[:20]):
             t.add_row([w, f"{self.idf[w]:.4f}"])
-
         print(t)
 
     def print_vectors(self):
@@ -246,12 +236,10 @@ class MatrizFrequencia:
 
         for d in range(self.ndocs):
             vec = self.doc_vecs[d]
+            row = [f"{v:.4f}" for v in (vec[:10] if len(vec) > 10 else vec)]
             if len(vec) > 10:
-                row = [f"{v:.4f}" for v in vec[:10]] + ["..."]
-            else:
-                row = [f"{v:.4f}" for v in vec]
+                row.append("...")
             t.add_row([d] + row)
-
         print(t)
 
     def print_norms(self):
@@ -264,44 +252,42 @@ class MatrizFrequencia:
 
         for d in range(self.ndocs):
             t.add_row([d, f"{self.doc_norms[d]:.4f}"])
-
         print(t)
 
     def print_info(self):
         self.print_idf()
         self.print_vectors()
         self.print_norms()
-        self.print_weight_matrix_summary()
+        # print("Matriz TF")
+        # self.print_weight_matrix_summary()
 
 if __name__ == "__main__":
     import argparse
 
-    nltk.download('stopwords')
+    nltk.download('stopwords', quiet=True)
 
     parser = argparse.ArgumentParser(description='TF-IDF Vector Search')
-    parser.add_argument('-d', '--database', type=str, default='./data/wiki-small.db', help='Nome do arquivo de banco de dados')
-    parser.add_argument('-t', '--tablename', type=str, default='test_tbl_2', help='Nome da tabela no banco de dados')
-    parser.add_argument('-e', '--entries', type=int, default=100, help='Quantidade de entradas para recuperar da base')
-    parser.add_argument('-s', '--separadores', type=str, default='./assets/separadores.txt', help='Arquivo de separadores')
-    parser.add_argument('-q', '--query', type=str, help='Consulta a ser processada')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Imprime informações detalhadas (IDF, vetores, normas, matriz TF-IDF)')
+    _ = parser.add_argument('-d', '--database', type=str, default='./data/test.db', help='Nome do arquivo de banco de dados')
+    _ = parser.add_argument('-t', '--table', type=str, default='test_tbl_2', help='Nome da tabela no banco de dados')
+    _ = parser.add_argument('-s', '--separadores', type=str, default='./assets/separadores.txt', help='Arquivo de separadores')
+    _ = parser.add_argument('-q', '--query', type=str, help='Consulta a ser processada')
+    _ = parser.add_argument('-k', '--top_k', type=int, default=10, help='Quantidade de documentos a serem retornados')
+    _ = parser.add_argument('-v', '--verbose', action='store_true', help='Modo verboso (exibe informações adicionais)')
 
     args = parser.parse_args()
 
     mf = MatrizFrequencia.from_db(
         db_filename=args.database,
-        tablename=args.tablename,
-        entries=args.entries,
+        table=args.table,
         separadores_filename=args.separadores
     )
 
-    if args.verbose:
-        print(f"Matriz de frequência carregada: {mf.ndocs} documentos, {len(mf.words)} palavras únicas")
-        mf.print_info()
-
     if args.query:
-        mf.show_vec_search(query=args.query)
-    elif not args.verbose:
+        if args.verbose:
+            print(f"\n=== Carregado: {mf.ndocs} documentos, {len(mf.words)} palavras únicas ===")
+        mf.show_vec_search(k=args.top_k, query=args.query)
+        if args.verbose:
+            mf.print_info()
+    else:
         print(f"Matriz de frequência carregada: {mf.ndocs} documentos, {len(mf.words)} palavras únicas")
         print("Use -q/--query para executar uma busca")
-        print("Use -v/--verbose para ver informações detalhadas")

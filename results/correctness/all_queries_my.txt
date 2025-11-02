@@ -1,0 +1,713 @@
+Cleaning old binaries..
+Running..
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.001 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[69] 0.095024  helsingr classically known in english as elsinore is a city in eastern denmark.helsingr municipality...
+[36] 0.016947  the leopard from the 13th-century bestiary known as the rochester bestiary detail from the 12th cent...
+[78] 0.015641  eth in arial and times new roman eth uppercase lowercase also spelled edh or e is a letter used in o...
+[70] 0.013900  elizabeth barrett browning nee moulton-barrett 6 march 1806 29 june 1861 was one of the most promine...
+[41] 0.010939  tim wiles director of research at the baseball hall of fame library in cooperstown frequently dresse...
+[51] 0.010623  rhyming slang is a form of slang word construction in the english language that uses rhyme it is esp...
+[89] 0.010174  881 pope john viii crowns charles the fat the king of italy holy roman emperor 1429 english forces u...
+[65] 0.009966  devanagari a compound of deva and nagari hindi pronunciation also called nagari nagari is an abugida...
+[37] 0.009609  burrhus frederic skinner march 20 1904 august 18 1990 commonly known as b f skinner was an american ...
+[77] 0.008320  a symbolics lisp machine an early platform for expert systems note the unusual space-cadet keyboard ...
+
+[TEMPO TOTAL] 0.468 segundos
+==========================================
+Executando testes de corretude TF-IDF
+==========================================
+
+==========================================
+Tabela: test_tbl_0
+Query ID: 1
+Query: marine sea species new
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[1] 0.474040  marine biologists discover new species of deep sea jellyfish glowing in the dark
+[9] 0.262340  new expedition explores the mariana trench revealing unknown marine creatures
+[7] 0.135381  researchers find microplastics inside the stomachs of arctic fish species
+[8] 0.130512  sea otters help maintain kelp forest ecosystems by controlling sea urchin populations
+[2] 0.068080  sea turtles return to nesting beaches earlier than expected due to warmer waters
+[0] 0.000000  giant blue whale spotted near the coast of california during migration season
+[3] 0.000000  coral reefs show signs of recovery after years of bleaching in the great barrier reef
+[4] 0.000000  humpback whales communicate through complex songs that can travel across oceans
+[5] 0.000000  scientists tag great white sharks to study their hunting patterns near south africa
+[6] 0.000000  dolphins use unique whistles to identify each other similar to human names
+
+[TEMPO TOTAL] 0.001 segundos
+
+==========================================
+Tabela: test_tbl_0
+Query ID: 2
+Query: whale whales migration oceans
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[4] 0.363331  humpback whales communicate through complex songs that can travel across oceans
+[0] 0.352029  giant blue whale spotted near the coast of california during migration season
+[1] 0.000000  marine biologists discover new species of deep sea jellyfish glowing in the dark
+[2] 0.000000  sea turtles return to nesting beaches earlier than expected due to warmer waters
+[3] 0.000000  coral reefs show signs of recovery after years of bleaching in the great barrier reef
+[5] 0.000000  scientists tag great white sharks to study their hunting patterns near south africa
+[6] 0.000000  dolphins use unique whistles to identify each other similar to human names
+[7] 0.000000  researchers find microplastics inside the stomachs of arctic fish species
+[8] 0.000000  sea otters help maintain kelp forest ecosystems by controlling sea urchin populations
+[9] 0.000000  new expedition explores the mariana trench revealing unknown marine creatures
+
+[TEMPO TOTAL] 0.001 segundos
+
+==========================================
+Tabela: test_tbl_0
+Query ID: 3
+Query: scientists researchers marine sea
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[7] 0.219883  researchers find microplastics inside the stomachs of arctic fish species
+[5] 0.190497  scientists tag great white sharks to study their hunting patterns near south africa
+[1] 0.164808  marine biologists discover new species of deep sea jellyfish glowing in the dark
+[9] 0.104084  new expedition explores the mariana trench revealing unknown marine creatures
+[8] 0.103562  sea otters help maintain kelp forest ecosystems by controlling sea urchin populations
+[2] 0.054022  sea turtles return to nesting beaches earlier than expected due to warmer waters
+[0] 0.000000  giant blue whale spotted near the coast of california during migration season
+[3] 0.000000  coral reefs show signs of recovery after years of bleaching in the great barrier reef
+[4] 0.000000  humpback whales communicate through complex songs that can travel across oceans
+[6] 0.000000  dolphins use unique whistles to identify each other similar to human names
+
+[TEMPO TOTAL] 0.001 segundos
+
+==========================================
+Tabela: test_tbl_0
+Query ID: 4
+Query: deep sea expedition mariana trench marine
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[9] 0.566018  new expedition explores the mariana trench revealing unknown marine creatures
+[1] 0.290241  marine biologists discover new species of deep sea jellyfish glowing in the dark
+[8] 0.078871  sea otters help maintain kelp forest ecosystems by controlling sea urchin populations
+[2] 0.041142  sea turtles return to nesting beaches earlier than expected due to warmer waters
+[0] 0.000000  giant blue whale spotted near the coast of california during migration season
+[3] 0.000000  coral reefs show signs of recovery after years of bleaching in the great barrier reef
+[4] 0.000000  humpback whales communicate through complex songs that can travel across oceans
+[5] 0.000000  scientists tag great white sharks to study their hunting patterns near south africa
+[6] 0.000000  dolphins use unique whistles to identify each other similar to human names
+[7] 0.000000  researchers find microplastics inside the stomachs of arctic fish species
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_0
+Query ID: 5
+Query: coral reef recovery sea
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[3] 0.652270  coral reefs show signs of recovery after years of bleaching in the great barrier reef
+[8] 0.095128  sea otters help maintain kelp forest ecosystems by controlling sea urchin populations
+[1] 0.054320  marine biologists discover new species of deep sea jellyfish glowing in the dark
+[2] 0.049623  sea turtles return to nesting beaches earlier than expected due to warmer waters
+[0] 0.000000  giant blue whale spotted near the coast of california during migration season
+[4] 0.000000  humpback whales communicate through complex songs that can travel across oceans
+[5] 0.000000  scientists tag great white sharks to study their hunting patterns near south africa
+[6] 0.000000  dolphins use unique whistles to identify each other similar to human names
+[7] 0.000000  researchers find microplastics inside the stomachs of arctic fish species
+[9] 0.000000  new expedition explores the mariana trench revealing unknown marine creatures
+
+[TEMPO TOTAL] 0.001 segundos
+
+==========================================
+Tabela: test_tbl_1
+Query ID: 1
+Query: pawn knight rook king
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 5 documentos mais similares:
+---------------------------------
+[1] 0.589126  the move involves the rook the pawn and the king
+[0] 0.419157  the pawn and the knight are chess pieces the knight is the best in the game
+[2] 0.039471  the pawn lassoed the ox
+[3] 0.000000  rodeo horse
+[4] 0.000000  police officers threw him in jail
+
+[TEMPO TOTAL] 0.001 segundos
+
+==========================================
+Tabela: test_tbl_1
+Query ID: 2
+Query: knight move chess
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 5 documentos mais similares:
+---------------------------------
+[0] 0.608553  the pawn and the knight are chess pieces the knight is the best in the game
+[1] 0.285107  the move involves the rook the pawn and the king
+[2] 0.000000  the pawn lassoed the ox
+[3] 0.000000  rodeo horse
+[4] 0.000000  police officers threw him in jail
+
+[TEMPO TOTAL] 0.001 segundos
+
+==========================================
+Tabela: test_tbl_1
+Query ID: 3
+Query: rook king move
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 5 documentos mais similares:
+---------------------------------
+[1] 0.855322  the move involves the rook the pawn and the king
+[0] 0.000000  the pawn and the knight are chess pieces the knight is the best in the game
+[2] 0.000000  the pawn lassoed the ox
+[3] 0.000000  rodeo horse
+[4] 0.000000  police officers threw him in jail
+
+[TEMPO TOTAL] 0.001 segundos
+
+==========================================
+Tabela: test_tbl_1
+Query ID: 4
+Query: rodeo horse ox
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 5 documentos mais similares:
+---------------------------------
+[3] 0.816497  rodeo horse
+[2] 0.398339  the pawn lassoed the ox
+[0] 0.000000  the pawn and the knight are chess pieces the knight is the best in the game
+[1] 0.000000  the move involves the rook the pawn and the king
+[4] 0.000000  police officers threw him in jail
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_1
+Query ID: 5
+Query: pawn police jail move
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 5 documentos mais similares:
+---------------------------------
+[4] 0.567894  police officers threw him in jail
+[1] 0.308689  the move involves the rook the pawn and the king
+[2] 0.039471  the pawn lassoed the ox
+[0] 0.020100  the pawn and the knight are chess pieces the knight is the best in the game
+[3] 0.000000  rodeo horse
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_2
+Query ID: 1
+Query: 2020 oscars winners list parasite 1917
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[8] 0.675458  2020 oscars check the full list of winners parasite and 1917 were the big winners of the night
+[0] 0.308700  parasite is the big winner at the 2020 oscars with four awards
+[4] 0.172066  parasite is the winner of the palme dor at the cannes film festival
+[2] 0.083014  arrascaeta and matias vina are called up by uruguay for the world cup qualifiers besides them there ...
+[14] 0.079000  bem amigos discusses the national team list and galvao sends tite a message where is luan
+[7] 0.076804  green book roma and bohemian rhapsody are the main winners of the 2019 oscars
+[13] 0.056732  2020 oscars learn how the judges are selected and how they vote
+[10] 0.044675  meet the nominees for the 2020 oscars the awards ceremony takes place in february
+[6] 0.029723  september has arrived check out the 2020 2021 european football season calendar
+[5] 0.028442  statistics brasileirao serie a the top scorers and assist leaders of the 2020 season
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_2
+Query ID: 2
+Query: oscars nominees ceremony 2020 february
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[10] 0.686546  meet the nominees for the 2020 oscars the awards ceremony takes place in february
+[0] 0.055864  parasite is the big winner at the 2020 oscars with four awards
+[13] 0.046330  2020 oscars learn how the judges are selected and how they vote
+[8] 0.039500  2020 oscars check the full list of winners parasite and 1917 were the big winners of the night
+[6] 0.024273  september has arrived check out the 2020 2021 european football season calendar
+[5] 0.023227  statistics brasileirao serie a the top scorers and assist leaders of the 2020 season
+[3] 0.013591  wine oscars check out the standout labels from the 2018 vintage
+[9] 0.012196  in good form oscar dreams of playing the world cup in russia
+[7] 0.011570  green book roma and bohemian rhapsody are the main winners of the 2019 oscars
+[11] 0.008680  oscar schmidt will receive a trophy at the 2019 premio brasil olimpico the basketball player with th...
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_2
+Query ID: 3
+Query: parasite palme dor cannes oscars
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[4] 0.768258  parasite is the winner of the palme dor at the cannes film festival
+[0] 0.130253  parasite is the big winner at the 2020 oscars with four awards
+[8] 0.092099  2020 oscars check the full list of winners parasite and 1917 were the big winners of the night
+[13] 0.014298  2020 oscars learn how the judges are selected and how they vote
+[3] 0.013106  wine oscars check out the standout labels from the 2018 vintage
+[9] 0.011761  in good form oscar dreams of playing the world cup in russia
+[10] 0.011259  meet the nominees for the 2020 oscars the awards ceremony takes place in february
+[7] 0.011157  green book roma and bohemian rhapsody are the main winners of the 2019 oscars
+[11] 0.008371  oscar schmidt will receive a trophy at the 2019 premio brasil olimpico the basketball player with th...
+[1] 0.000000  ifalmaceio calls sisu waitlisted candidates for an in-person roll call
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_2
+Query ID: 4
+Query: national team list copa america world cup qualifiers
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[12] 0.423670  the brazilian national team will monitor 35 to 40 players to finalize the copa america roster
+[2] 0.356240  arrascaeta and matias vina are called up by uruguay for the world cup qualifiers besides them there ...
+[14] 0.201227  bem amigos discusses the national team list and galvao sends tite a message where is luan
+[9] 0.189044  in good form oscar dreams of playing the world cup in russia
+[8] 0.062510  2020 oscars check the full list of winners parasite and 1917 were the big winners of the night
+[0] 0.000000  parasite is the big winner at the 2020 oscars with four awards
+[1] 0.000000  ifalmaceio calls sisu waitlisted candidates for an in-person roll call
+[3] 0.000000  wine oscars check out the standout labels from the 2018 vintage
+[4] 0.000000  parasite is the winner of the palme dor at the cannes film festival
+[5] 0.000000  statistics brasileirao serie a the top scorers and assist leaders of the 2020 season
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_2
+Query ID: 5
+Query: brasileirao 2020 top scorers assist leaders season calendar
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[5] 0.792670  statistics brasileirao serie a the top scorers and assist leaders of the 2020 season
+[6] 0.243786  september has arrived check out the 2020 2021 european football season calendar
+[0] 0.026184  parasite is the big winner at the 2020 oscars with four awards
+[13] 0.021715  2020 oscars learn how the judges are selected and how they vote
+[8] 0.018514  2020 oscars check the full list of winners parasite and 1917 were the big winners of the night
+[10] 0.017100  meet the nominees for the 2020 oscars the awards ceremony takes place in february
+[1] 0.000000  ifalmaceio calls sisu waitlisted candidates for an in-person roll call
+[2] 0.000000  arrascaeta and matias vina are called up by uruguay for the world cup qualifiers besides them there ...
+[3] 0.000000  wine oscars check out the standout labels from the 2018 vintage
+[4] 0.000000  parasite is the winner of the palme dor at the cannes film festival
+
+[TEMPO TOTAL] 0.001 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 1
+Query: kim il sung juche ideology leadership
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[3] 0.587137  kim il sung introduced the juche ideology focused on self reliance
+[0] 0.411555  north korea was founded in 1948 under the leadership of kim il sung
+[4] 0.256294  after kim il sung died in 1994 his son kim jong il took power
+[19] 0.121408  mount paektu is considered a sacred symbol of korean heritage and leadership
+[18] 0.101357  kim jong il was known for his interest in film and arts as tools of propaganda
+[6] 0.039920  kim jong un became the supreme leader of north korea in 2011
+[12] 0.028955  the 2018 singapore summit marked a rare meeting between kim jong un and donald trump
+[1] 0.000000  the korean war began in 1950 when north korea invaded the south
+[2] 0.000000  pyongyang became the capital of north korea after world war ii
+[5] 0.000000  north korea suffered a severe famine in the 1990s known as the arduous march
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 2
+Query: famine 1990s arduous march food shortage
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.001 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[5] 0.782923  north korea suffered a severe famine in the 1990s known as the arduous march
+[0] 0.000000  north korea was founded in 1948 under the leadership of kim il sung
+[1] 0.000000  the korean war began in 1950 when north korea invaded the south
+[2] 0.000000  pyongyang became the capital of north korea after world war ii
+[3] 0.000000  kim il sung introduced the juche ideology focused on self reliance
+[4] 0.000000  after kim il sung died in 1994 his son kim jong il took power
+[6] 0.000000  kim jong un became the supreme leader of north korea in 2011
+[7] 0.000000  the country has conducted multiple nuclear tests since 2006
+[8] 0.000000  north korea remains under heavy international sanctions due to its weapons program
+[9] 0.000000  the demilitarized zone separates north and south korea since the 1953 armistice
+
+[TEMPO TOTAL] 0.003 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 3
+Query: kim jong un nuclear tests diplomacy sanctions
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[7] 0.393246  the country has conducted multiple nuclear tests since 2006
+[6] 0.237436  kim jong un became the supreme leader of north korea in 2011
+[8] 0.194737  north korea remains under heavy international sanctions due to its weapons program
+[12] 0.172216  the 2018 singapore summit marked a rare meeting between kim jong un and donald trump
+[4] 0.111181  after kim il sung died in 1994 his son kim jong il took power
+[18] 0.093544  kim jong il was known for his interest in film and arts as tools of propaganda
+[0] 0.042546  north korea was founded in 1948 under the leadership of kim il sung
+[3] 0.030698  kim il sung introduced the juche ideology focused on self reliance
+[1] 0.000000  the korean war began in 1950 when north korea invaded the south
+[2] 0.000000  pyongyang became the capital of north korea after world war ii
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 4
+Query: pyongyang capital parade military
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[10] 0.611937  pyongyang is known for its large parades and military demonstrations
+[2] 0.386933  pyongyang became the capital of north korea after world war ii
+[0] 0.000000  north korea was founded in 1948 under the leadership of kim il sung
+[1] 0.000000  the korean war began in 1950 when north korea invaded the south
+[3] 0.000000  kim il sung introduced the juche ideology focused on self reliance
+[4] 0.000000  after kim il sung died in 1994 his son kim jong il took power
+[5] 0.000000  north korea suffered a severe famine in the 1990s known as the arduous march
+[6] 0.000000  kim jong un became the supreme leader of north korea in 2011
+[7] 0.000000  the country has conducted multiple nuclear tests since 2006
+[8] 0.000000  north korea remains under heavy international sanctions due to its weapons program
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 5
+Query: north korea china relations ally trade
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[15] 0.405845  china remains north korea’s main political and economic ally
+[11] 0.314283  relations between north korea and the united states have fluctuated for decades
+[16] 0.163114  defectors often escape through china before seeking asylum in south korea
+[0] 0.040034  north korea was founded in 1948 under the leadership of kim il sung
+[1] 0.036824  the korean war began in 1950 when north korea invaded the south
+[2] 0.034847  pyongyang became the capital of north korea after world war ii
+[6] 0.034667  kim jong un became the supreme leader of north korea in 2011
+[9] 0.031056  the demilitarized zone separates north and south korea since the 1953 armistice
+[5] 0.029596  north korea suffered a severe famine in the 1990s known as the arduous march
+[8] 0.029596  north korea remains under heavy international sanctions due to its weapons program
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 6
+Query: demilitarized zone border south korea
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[9] 0.645843  the demilitarized zone separates north and south korea since the 1953 armistice
+[1] 0.146243  the korean war began in 1950 when north korea invaded the south
+[16] 0.121941  defectors often escape through china before seeking asylum in south korea
+[0] 0.023927  north korea was founded in 1948 under the leadership of kim il sung
+[2] 0.020828  pyongyang became the capital of north korea after world war ii
+[11] 0.020810  relations between north korea and the united states have fluctuated for decades
+[6] 0.020720  kim jong un became the supreme leader of north korea in 2011
+[5] 0.017689  north korea suffered a severe famine in the 1990s known as the arduous march
+[8] 0.017689  north korea remains under heavy international sanctions due to its weapons program
+[3] 0.000000  kim il sung introduced the juche ideology focused on self reliance
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 7
+Query: propaganda media control mass games
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[14] 0.470998  the regime promotes loyalty through mass games and propaganda imagery
+[13] 0.470682  north korean media is tightly controlled by the state
+[18] 0.115181  kim jong il was known for his interest in film and arts as tools of propaganda
+[0] 0.000000  north korea was founded in 1948 under the leadership of kim il sung
+[1] 0.000000  the korean war began in 1950 when north korea invaded the south
+[2] 0.000000  pyongyang became the capital of north korea after world war ii
+[3] 0.000000  kim il sung introduced the juche ideology focused on self reliance
+[4] 0.000000  after kim il sung died in 1994 his son kim jong il took power
+[5] 0.000000  north korea suffered a severe famine in the 1990s known as the arduous march
+[6] 0.000000  kim jong un became the supreme leader of north korea in 2011
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 8
+Query: defectors escape asylum south korea
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[16] 0.756757  defectors often escape through china before seeking asylum in south korea
+[1] 0.123399  the korean war began in 1950 when north korea invaded the south
+[9] 0.104069  the demilitarized zone separates north and south korea since the 1953 armistice
+[0] 0.020190  north korea was founded in 1948 under the leadership of kim il sung
+[2] 0.017574  pyongyang became the capital of north korea after world war ii
+[11] 0.017559  relations between north korea and the united states have fluctuated for decades
+[6] 0.017483  kim jong un became the supreme leader of north korea in 2011
+[5] 0.014926  north korea suffered a severe famine in the 1990s known as the arduous march
+[8] 0.014926  north korea remains under heavy international sanctions due to its weapons program
+[3] 0.000000  kim il sung introduced the juche ideology focused on self reliance
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 9
+Query: kim jong il cinema propaganda films
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[18] 0.637584  kim jong il was known for his interest in film and arts as tools of propaganda
+[4] 0.284624  after kim il sung died in 1994 his son kim jong il took power
+[0] 0.156170  north korea was founded in 1948 under the leadership of kim il sung
+[14] 0.150772  the regime promotes loyalty through mass games and propaganda imagery
+[6] 0.135234  kim jong un became the supreme leader of north korea in 2011
+[3] 0.112678  kim il sung introduced the juche ideology focused on self reliance
+[12] 0.098088  the 2018 singapore summit marked a rare meeting between kim jong un and donald trump
+[1] 0.000000  the korean war began in 1950 when north korea invaded the south
+[2] 0.000000  pyongyang became the capital of north korea after world war ii
+[5] 0.000000  north korea suffered a severe famine in the 1990s known as the arduous march
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 10
+Query: united states negotiations nuclear weapons
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[11] 0.386597  relations between north korea and the united states have fluctuated for decades
+[7] 0.208584  the country has conducted multiple nuclear tests since 2006
+[8] 0.206583  north korea remains under heavy international sanctions due to its weapons program
+[13] 0.157207  north korean media is tightly controlled by the state
+[0] 0.000000  north korea was founded in 1948 under the leadership of kim il sung
+[1] 0.000000  the korean war began in 1950 when north korea invaded the south
+[2] 0.000000  pyongyang became the capital of north korea after world war ii
+[3] 0.000000  kim il sung introduced the juche ideology focused on self reliance
+[4] 0.000000  after kim il sung died in 1994 his son kim jong il took power
+[5] 0.000000  north korea suffered a severe famine in the 1990s known as the arduous march
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 11
+Query: political ideology juche socialism independence
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[3] 0.441150  kim il sung introduced the juche ideology focused on self reliance
+[15] 0.234816  china remains north korea’s main political and economic ally
+[0] 0.000000  north korea was founded in 1948 under the leadership of kim il sung
+[1] 0.000000  the korean war began in 1950 when north korea invaded the south
+[2] 0.000000  pyongyang became the capital of north korea after world war ii
+[4] 0.000000  after kim il sung died in 1994 his son kim jong il took power
+[5] 0.000000  north korea suffered a severe famine in the 1990s known as the arduous march
+[6] 0.000000  kim jong un became the supreme leader of north korea in 2011
+[7] 0.000000  the country has conducted multiple nuclear tests since 2006
+[8] 0.000000  north korea remains under heavy international sanctions due to its weapons program
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_3
+Query ID: 12
+Query: korean war invasion 1950 armistice
+==========================================
+Arquivos binários encontrados, carregando estruturas...
+Estruturas carregadas com sucesso.
+
+[SIMILARIDADE] Tempo: 0.000 segundos
+
+Top 10 documentos mais similares:
+---------------------------------
+[1] 0.501809  the korean war began in 1950 when north korea invaded the south
+[9] 0.250464  the demilitarized zone separates north and south korea since the 1953 armistice
+[17] 0.165048  the korean peninsula technically remains at war since no peace treaty was signed
+[2] 0.112708  pyongyang became the capital of north korea after world war ii
+[13] 0.088743  north korean media is tightly controlled by the state
+[19] 0.067099  mount paektu is considered a sacred symbol of korean heritage and leadership
+[0] 0.000000  north korea was founded in 1948 under the leadership of kim il sung
+[3] 0.000000  kim il sung introduced the juche ideology focused on self reliance
+[4] 0.000000  after kim il sung died in 1994 his son kim jong il took power
+[5] 0.000000  north korea suffered a severe famine in the 1990s known as the arduous march
+
+[TEMPO TOTAL] 0.002 segundos
+
+==========================================
+Tabela: test_tbl_4
+Query ID: 1
+Query: volcano national monument united states
+AVISO: Tabela não existe no banco de dados. Ignorando...
+==========================================
+
+==========================================
+Tabela: test_tbl_4
+Query ID: 2
+Query: bishop of constantinople thessalonica arian
+AVISO: Tabela não existe no banco de dados. Ignorando...
+==========================================
+
+==========================================
+Tabela: test_tbl_4
+Query ID: 3
+Query: bounded entire holomorphic function liouville theorem
+AVISO: Tabela não existe no banco de dados. Ignorando...
+==========================================
+
+==========================================
+Tabela: test_tbl_4
+Query ID: 4
+Query: british actor television films 20th century
+AVISO: Tabela não existe no banco de dados. Ignorando...
+==========================================
+
+==========================================
+Tabela: test_tbl_4
+Query ID: 5
+Query: australian rules footballer victorian football league
+AVISO: Tabela não existe no banco de dados. Ignorando...
+==========================================
+
+==========================================
+Testes concluídos!
+==========================================
