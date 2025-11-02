@@ -32,11 +32,11 @@ hash_t *global_stopwords = NULL; /**< Hash global de stopwords */
  * @param filename Caminho para arquivo de stopwords
  * @note Define global_stopwords
  */
-void load_stopwords(const char *filename) {
+int load_stopwords(const char *filename) {
   FILE *f = fopen(filename, "r");
   if (!f) {
     fprintf(stderr, "Erro ao abrir arquivo de stopwords: %s\n", filename);
-    return;
+    return 1;
   }
 
   global_stopwords = hash_new();
@@ -52,6 +52,8 @@ void load_stopwords(const char *filename) {
   }
 
   fclose(f);
+
+  return 0;
 }
 
 /**
