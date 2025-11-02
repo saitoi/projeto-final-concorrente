@@ -30,6 +30,7 @@ class BenchmarkConfig:
     approach: str       # "sequential" ou "threaded"
     threads: int        # número de threads (1 para sequential)
     entries: int        # número de entradas (article_id)
+    manual: bool        # linkar manualmente bibliotecas externas
 
 def get_size_thresholds(db_file: str) -> dict[str, Optional[int]]:
     """Executa query SQL para obter IDs nos diferentes thresholds de tamanho."""
@@ -82,10 +83,13 @@ def get_size_thresholds(db_file: str) -> dict[str, Optional[int]]:
             "100kb": 1000,
         }
 
-def compile_app(sequential: bool = False, nthreads: int = 4) -> bool:
+def compile_app(sequential: bool = False, nthreads: int = 4, *, manual: bool = False) -> bool:
     """Compila o app C com configurações específicas."""
 
     make_cmd = ["make", "clean", "all", "VERBOSE=0"]
+
+    if manual:
+        make_cmd.append("MANUAL=1")
 
     if sequential:
         make_cmd.append("SEQ=1")
@@ -159,7 +163,7 @@ def run_benchmark_config(config: BenchmarkConfig, table: str, iterations: int, s
 
     # Compilar
     is_seq = config.approach == "sequential"
-    if not compile_app(sequential=is_seq, nthreads=config.threads):
+    if not compile_app(sequential=is_seq, nthreads=config.threads, manual=config.manual):
         tqdm.write(f"\033[31mERRO: Falha na compilação para {config.data_size} {config.approach} threads={config.threads}\033[0m")
         return [], 0.0
 
@@ -200,6 +204,8 @@ def main():
                         help='Nome da tabela no banco de dados (default: sample_articles)')
     parser.add_argument('--iter', type=int, default=30,
                         help='Número de iterações por configuração (default: 30)')
+    parser.add_argument('--manual', action='store_true', default=False,
+                        help='Linkar manualmente bibliotecas externas (default: False)')
 
     args = parser.parse_args()
 
@@ -251,7 +257,8 @@ def main():
             data_size=size,
             approach="sequential",
             threads=1,
-            entries=num_entries
+            entries=num_entries,
+            manual=args.manual,
         ))
 
         # Paralelo com diferentes threads
@@ -260,7 +267,8 @@ def main():
                 data_size=size,
                 approach="threaded",
                 threads=nthreads,
-                entries=num_entries
+                entries=num_entries,
+                manual=args.manual,
             ))
 
     print(f"Total de configurações: {len(configs)}")
