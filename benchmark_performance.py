@@ -19,10 +19,15 @@ import re
 import csv
 import sys
 import argparse
+import os
+from pathlib import Path
 from statistics import mean, stdev
 from dataclasses import dataclass
 from typing import Optional
 from tqdm import tqdm
+
+# Diretório para salvar logs
+LOG_DIR = Path("benchmark_logs")
 
 @dataclass
 class BenchmarkConfig:
@@ -123,7 +128,7 @@ def clean_models() -> bool:
         print(f"\033[31mERRO: Erro ao limpar modelos: {e}\033[0m")
         return False
 
-def run_single_benchmark(entries: int, table: str, nthreads: int = 4, *, manual: bool = False) -> Optional[float]:
+def run_single_benchmark(entries: int, table: str, nthreads: int = 4, *, manual: bool = False, log_file: Optional[Path] = None) -> Optional[float]:
     """Executa o app uma vez e retorna o tempo total em segundos."""
 
     # Limpar modelos antes de cada execução para forçar recálculo
@@ -143,6 +148,18 @@ def run_single_benchmark(entries: int, table: str, nthreads: int = 4, *, manual:
                               capture_output=True,
                               text=True,
                               timeout=300)
+
+        # Salvar output em arquivo de log se especificado
+        if log_file:
+            with open(log_file, 'a') as f:
+                f.write(f"{'='*80}\n")
+                f.write(f"Command: {' '.join(cmd)}\n")
+                f.write(f"{'='*80}\n")
+                f.write("STDOUT:\n")
+                f.write(result.stdout)
+                f.write("\nSTDERR:\n")
+                f.write(result.stderr)
+                f.write(f"\n{'='*80}\n\n")
 
         # Parsear: [TEMPO TOTAL] 0.464 segundos
         match = re.search(r'\[TEMPO TOTAL\]\s+([\d.]+)\s+segundos', result.stdout)
@@ -172,10 +189,19 @@ def run_benchmark_config(config: BenchmarkConfig, table: str, iterations: int, s
         tqdm.write(f"\033[31mERRO: Falha na compilação para {config.data_size} {config.approach} threads={config.threads}\033[0m")
         return [], 0.0
 
+    # Criar arquivo de log para esta configuração
+    LOG_DIR.mkdir(exist_ok=True)
+    log_filename = f"{config.data_size}_{config.approach}_t{config.threads}.txt"
+    log_file = LOG_DIR / log_filename
+
+    # Limpar arquivo de log anterior se existir
+    if log_file.exists():
+        log_file.unlink()
+
     # Executar N vezes
     times = []
     for i in range(iterations):
-        time = run_single_benchmark(config.entries, table, config.threads, manual=config.manual)
+        time = run_single_benchmark(config.entries, table, config.threads, manual=config.manual, log_file=log_file)
         if time is not None:
             times.append(time)
 
@@ -220,6 +246,7 @@ def main():
     print(f"Banco de dados: {args.db}")
     print(f"Tabela: {args.table}")
     print(f"Iterações por configuração: {args.iter}")
+    print(f"Logs serão salvos em: {LOG_DIR}/")
     print()
 
     # Verificar se app existe
