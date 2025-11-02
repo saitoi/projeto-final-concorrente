@@ -103,7 +103,7 @@ static inline double get_elapsed_time(struct timespec *start, struct timespec *e
     void free_global_tf();
       
       // Inicializar configuração com valores padrão
-      Config cfg = {
+      static Config cfg = {
         .nthreads = 4,
         .entries = 0,
         .db = "./data/wiki-small.db",
@@ -627,8 +627,8 @@ int phase1() {
   pthread_t tids[MAX_THREADS];
   thread_args args[MAX_THREADS];
   // Calcular divisão de trabalho
-  int base = cfg.entries / cfg.nthreads;
-  int rem = cfg.entries % cfg.nthreads;
+  long int base = cfg.entries / cfg.nthreads;
+  long int rem = cfg.entries % cfg.nthreads;
 
   for (int i = 0; i < cfg.nthreads; ++i) {
     args[i].id = i;
@@ -695,8 +695,17 @@ int phase2() {
 
   pthread_t tids[MAX_THREADS];
   thread_args args[MAX_THREADS];
+  // Calcular divisão de trabalho
+  long int base = cfg.entries / cfg.nthreads;
+  long int rem = cfg.entries % cfg.nthreads;
 
   for (int i = 0; i < cfg.nthreads; ++i) {
+    args[i].id = i;
+    args[i].nthreads = cfg.nthreads;
+    args[i].db = cfg.db;
+    args[i].table = cfg.table;
+    args[i].start = i * base + (i < rem ? i : rem);
+    args[i].end = args[i].start + base + (i < rem);
     if (pthread_create(&tids[i], NULL, preprocess_2, (void *)&args[i])) {
       fprintf(stderr, "Erro ao criar thread %d\n", i);
       return 1;
