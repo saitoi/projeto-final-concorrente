@@ -457,7 +457,7 @@ int parse_cli(int argc, char **argv) {
     else if (strcmp(argv[i], "--query_filename") == 0 && i + 1 < argc)
       cfg.query_filename = argv[++i];
     else if (strcmp(argv[i], "--table") == 0 && i + 1 < argc)
-      cfg.table= argv[++i];
+      cfg.table = argv[++i];
     else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
       cfg.k = atoi(argv[++i]);
     else if (strcmp(argv[i], "--test") == 0 && i + 1 < argc)
