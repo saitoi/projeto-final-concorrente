@@ -37,10 +37,12 @@ def parse_output(output: str) -> dict[int, float]:
         similarities[doc_id] = similarity
     return similarities
 
-def run_app_c(table: str, query: str, k: int = 10, entries: int | None = None) -> str:
+def run_app_c(table: str, query: str, k: int = 10, entries: int | None = None, *, sequential: bool = False) -> str:
     cmd = ['./app', '--table', table, '--query_user', query, '--k', str(k), "--db", DB_FILE]
     if entries:
         cmd.extend(['--entries', str(entries)])
+    if sequential:
+        cmd[0] = './app_seq'
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout
@@ -88,11 +90,13 @@ def main():
     _ = parser.add_argument('-k', '--top-k', type=int, default=10, help='Número de documentos top-k a comparar (default: 10)')
     _ = parser.add_argument('-t', '--tables', type=int, nargs='+', help='Lista de IDs de tabelas para testar (ex: 0 1 2). Se não especificado, testa todas.')
     _ = parser.add_argument('-tol', '--tolerance', type=float, default=1e-3, help='Tolerância para comparação de similaridades (default: 1e-3)')
+    _ = parser.add_argument('-s', '--sequential', action='store_true', default=False, help='Comparar output sequencial (default: False)')
 
     args = parser.parse_args()
 
+    adversario = "Beta Sequential C" if args.sequential else "Beta tf_idf.py"
     print("-" * 57)
-    print("CORRETUDE: Chad Multithreaded C TF-IDF vs Beta tf_idf.py")
+    print(f"CORRETUDE: Chad Multithreaded C vs {adversario}")
     print("-" * 57)
     if args.tables:
         print(f"Tabelas selecionadas: {args.tables}")
@@ -139,7 +143,10 @@ def main():
         # Executar ambos os programas
         try:
             c_output = run_app_c(table_name, query, k=args.top_k)
-            py_output = run_tf_idf_py(table_name, query, k=args.top_k)
+            if args.sequential:
+                py_output = run_app_c(table_name, query, k=args.top_k, sequential=True)
+            else:
+                py_output = run_tf_idf_py(table_name, query, k=args.top_k)
 
             # Parse das saídas
             c_sims = parse_output(c_output)
