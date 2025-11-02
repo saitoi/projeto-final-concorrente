@@ -230,7 +230,7 @@ void stem(char ***article_vecs, long int count) {
           stemmer, (const sb_symbol *)article_vecs[i][j],
           strlen(article_vecs[i][j]));
       free(article_vecs[i][j]);
-      article_vecs[i][j] = strdup(stemmed); // Não é seguro
+      article_vecs[i][j] = strdup(stemmed);
     }
   }
   sb_stemmer_delete(stemmer);
@@ -274,61 +274,64 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long in
  * @note Caller deve liberar usando free_article_vecs()
  */
 char ***tokenize(char **article_texts, long int count) {
-  char ***article_vecs;
-
-  article_vecs = malloc(count * sizeof(char **));
-  if (!article_vecs) {
-    fprintf(stderr, "Erro ao alocar article_vecs\n");
-    return NULL;
-  }
-
-  for (long int i = 0; i < count; ++i) {
-    if (!article_texts[i]) {
-      article_vecs[i] = NULL;
-      continue;
+    char ***article_vecs = malloc(count * sizeof(char **));
+    if (!article_vecs) {
+        fprintf(stderr, "Erro ao alocar article_vecs\n");
+        return NULL;
     }
-
-    // Estimativa mais conservadora: assume palavras curtas (média 3 chars +
-    // espaço) Adiciona margem de segurança de 100 tokens
-    long int estimated_tokens = strlen(article_texts[i]) / 3 + 100;
-    article_vecs[i] = malloc(estimated_tokens * sizeof(char *));
-    if (!article_vecs[i]) {
-      article_vecs[i] = NULL;
-      continue;
-    }
-
-    char *text_copy = strdup(article_texts[i]);
-    if (!text_copy) {
-      free(article_vecs[i]);
-      article_vecs[i] = NULL;
-      continue;
-    }
-
-    long int j = 0;
-    char *saveptr; // (thread-safe)
-    char *token = strtok_r(text_copy, " \t\n\r", &saveptr);
-    while (token != NULL) {
-      if (j >= estimated_tokens - 1) {
-        // Buffer cheio, aumentar tamanho
-        long int new_size = estimated_tokens * 2;
-        char **new_vec = realloc(article_vecs[i], new_size * sizeof(char *));
-        if (!new_vec) {
-          // Falha no realloc, truncar tokens restantes
-          break;
+    
+    const char *delimiters = " \t\n\r,.:;!?/";
+    
+    for (long int i = 0; i < count; ++i) {
+        if (!article_texts[i]) {
+            article_vecs[i] = NULL;
+            continue;
         }
-        article_vecs[i] = new_vec;
-        estimated_tokens = new_size;
-      }
-      article_vecs[i][j] = strdup(token);
-      j++;
-      token = strtok_r(NULL, " \t\n\r", &saveptr);
+        
+        // Contar tokens sem modificar a string original
+        long int token_count = 0;
+        const char *ptr = article_texts[i];
+        int in_token = 0;
+        
+        while (*ptr) {
+            if (strchr(delimiters, *ptr)) {
+                in_token = 0;
+            } else if (!in_token) {
+                token_count++;
+                in_token = 1;
+            }
+            ptr++;
+        }
+        
+        // Alocar array de ponteiros
+        article_vecs[i] = malloc((token_count + 1) * sizeof(char *));
+        if (!article_vecs[i]) {
+            continue;
+        }
+        
+        // Uma única cópia para tokenização
+        char *text_copy = strdup(article_texts[i]);
+        if (!text_copy) {
+            free(article_vecs[i]);
+            article_vecs[i] = NULL;
+            continue;
+        }
+        
+        // Tokenizar e copiar
+        long int j = 0;
+        char *saveptr;
+        char *token = strtok_r(text_copy, delimiters, &saveptr);
+        while (token != NULL) {
+            article_vecs[i][j] = strdup(token);
+            j++;
+            token = strtok_r(NULL, delimiters, &saveptr);
+        }
+        article_vecs[i][j] = NULL;
+        
+        free(text_copy);
     }
-    article_vecs[i][j] = NULL;
-
-    free(text_copy);
-  }
-
-  return article_vecs;
+    
+    return article_vecs;
 }
 
 /**
