@@ -249,7 +249,7 @@ def run_single_benchmark(
         cmd.append("MANUAL=1")
 
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+        result = subprocess.run(cmd, capture_output=True, text=True)
 
         # Salvar output em arquivo de log se especificado
         if log_file:
