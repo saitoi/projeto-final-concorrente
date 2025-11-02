@@ -3,7 +3,22 @@
 # Script para executar consultas de testes de corretude
 # Lê queries do banco de dados e executa tf_idf.py para cada consulta
 
-DB_FILE="data/wiki-small.db"
+DB_FILE="data/test.db"
+VERBOSE=""
+
+# Processar argumentos
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -v|--verbose)
+            VERBOSE="-v"
+            shift
+            ;;
+        *)
+            echo "Uso: $0 [-v|--verbose]"
+            exit 1
+            ;;
+    esac
+done
 
 # Verifica se o banco de dados existe
 if [ ! -f "$DB_FILE" ]; then
@@ -13,11 +28,14 @@ fi
 
 echo "=========================================="
 echo "Executando testes de corretude TF-IDF"
+if [ -n "$VERBOSE" ]; then
+    echo "Modo: VERBOSE"
+fi
 echo "=========================================="
 echo ""
 
 # Lê queries do banco de dados
-sqlite3 "$DB_FILE" "SELECT \"table\", query_id, query FROM queries ORDER BY \"table\", query_id" | while IFS='|' read -r table query_id query; do
+sqlite3 "$DB_FILE" "SELECT table_id, query_id, query FROM queries ORDER BY table_id, query_id" | while IFS='|' read -r table query_id query; do
     # Ignora linhas vazias
     if [ -z "$table" ] || [ -z "$query_id" ] || [ -z "$query" ]; then
         continue
@@ -46,7 +64,7 @@ sqlite3 "$DB_FILE" "SELECT \"table\", query_id, query FROM queries ORDER BY \"ta
     echo "=========================================="
 
     # Executa o tf_idf.py
-    uv run tf_idf.py -d "$DB_FILE" -t "$TABLE_NAME" -q "$query"
+    uv run tf_idf.py -d "$DB_FILE" -t "$TABLE_NAME" -q "$query" $VERBOSE
 
     echo ""
 done
