@@ -58,9 +58,14 @@ ifeq ($(MANUAL),1)
     LDFLAGS = -L./libstemmer/usr/lib/x86_64-linux-gnu -L./libsqlite3/usr/lib/x86_64-linux-gnu -lstemmer -lsqlite3 -lpthread -lm
 endif
 
+ifeq ($(MANUAL),2)
+    CFLAGS += -I/opt/homebrew/include -I./libsqlite3/usr/include
+	LDFLAGS = -L/opt/homebrew/lib -lstemmer -lsqlite3 -lpthread -lm
+endif
+
 ifeq ($(SEQ),0)
     MAIN_SRC = src$(PATH_SEP)main.c
-    TARGET = app_seq
+    TARGET = app
 else
     MAIN_SRC = src$(PATH_SEP)main_seq.c
     TARGET = app_seq
