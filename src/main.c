@@ -38,22 +38,22 @@ static inline double get_elapsed_time(struct timespec *start, struct timespec *e
  *  Hashes e vetores compartilhados entre threads
  *  @{
   */
- hash_t **global_tf;              /**< Array de hashes TF (Term Frequency) por documento */
- hash_t *global_idf;              /**< Hash IDF (Inverse Document Frequency) global */
- double *global_doc_norms;        /**< Array com normas dos vetores de documentos */
- size_t global_vocab_size;        /**< Tamanho do vocabulário (palavras únicas) */
- long int global_entries = 0;     /**< Número total de documentos processados */
- /** @} */
- 
- /** @defgroup config Variáveis de Configuração
-  *  @{
-    */
-   int VERBOSE = 0;                 /**< Flag de verbosidade (0=desabilitado, 1=habilitado) */
-   /** @} */
-   
-   /* --------------- Macros --------------- */
-   
-   #define MAX_THREADS 16           /**< Número máximo de threads suportadas */
+hash_t **global_tf;              /**< Array de hashes TF (Term Frequency) por documento */
+hash_t *global_idf;              /**< Hash IDF (Inverse Document Frequency) global */
+double *global_doc_norms;        /**< Array com normas dos vetores de documentos */
+size_t global_vocab_size;        /**< Tamanho do vocabulário (palavras únicas) */
+long int global_entries = 0;     /**< Número total de documentos processados */
+/** @} */
+
+/** @defgroup config Variáveis de Configuração
+ *  @{
+ */
+int VERBOSE = 0;                 /**< Flag de verbosidade (0=desabilitado, 1=habilitado) */
+/** @} */
+
+/* --------------- Macros --------------- */
+
+#define MAX_THREADS 16           /**< Número máximo de threads suportadas */
    
    /**
     * @struct thread_args
