@@ -60,8 +60,10 @@ endif
 
 ifeq ($(SEQ),0)
     MAIN_SRC = src$(PATH_SEP)main.c
+    TARGET = app_seq
 else
     MAIN_SRC = src$(PATH_SEP)main_seq.c
+    TARGET = app_seq
 endif
 
 SRC = $(MAIN_SRC) src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c
