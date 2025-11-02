@@ -37,12 +37,14 @@ def parse_output(output: str) -> dict[int, float]:
         similarities[doc_id] = similarity
     return similarities
 
-def run_app_c(table: str, query: str, k: int = 10, entries: int | None = None, *, sequential: bool = False) -> str:
+def run_app_c(table: str, query: str, k: int = 10, entries: int | None = None, *, sequential: bool = False, nthreads: int = 4) -> str:
     cmd = ['./app', '--table', table, '--query_user', query, '--k', str(k), "--db", DB_FILE]
     if entries:
         cmd.extend(['--entries', str(entries)])
     if sequential:
         cmd[0] = './app_seq'
+    else:
+        cmd.extend(['--nthreads', str(nthreads)])
 
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout
@@ -91,18 +93,21 @@ def main():
     _ = parser.add_argument('-t', '--tables', type=int, nargs='+', help='Lista de IDs de tabelas para testar (ex: 0 1 2). Se não especificado, testa todas.')
     _ = parser.add_argument('-tol', '--tolerance', type=float, default=1e-3, help='Tolerância para comparação de similaridades (default: 1e-3)')
     _ = parser.add_argument('-s', '--sequential', action='store_true', default=False, help='Comparar output sequencial (default: False)')
+    _ = parser.add_argument('--nthreads', type=int, nargs='+', default=[1, 2, 4, 8, 16], help='Lista de números de threads para testar (default: 1 2 4 8 16)')
 
     args = parser.parse_args()
 
     adversario = "Beta Sequential C" if args.sequential else "Beta tf_idf.py"
-    print("-" * 57)
-    print(f"CORRETUDE: Chad Multithreaded C vs {adversario}")
-    print("-" * 57)
+    print("-" * 70)
+    print(f"CORRETUDE: C Multithreaded vs {adversario}")
+    print("-" * 70)
     if args.tables:
         print(f"Tabelas selecionadas: {args.tables}")
     else:
         print("Testando todas as tabelas")
     print(f"Top-K: {args.top_k}")
+    if not args.sequential:
+        print(f"Threads a testar: {args.nthreads}")
     print()
 
     # Verificando se binário 'app' existe ?
@@ -135,37 +140,41 @@ def main():
             continue
         conn.close()
 
-        total_tests += 1
+        print(f"Testando: {table_name} - Query ID {query_id}")
+        print(f"  Consulta: \"{query}\"")
 
-        print(f"[{total_tests}] Testando: {table_name} - Query ID {query_id}")
-        print(f"    Consulta: \"{query}\"")
-
-        # Executar ambos os programas
+        # Executar baseline (Python ou Sequential C)
         try:
-            c_output = run_app_c(table_name, query, k=args.top_k)
             if args.sequential:
-                py_output = run_app_c(table_name, query, k=args.top_k, sequential=True)
+                baseline_output = run_app_c(table_name, query, k=args.top_k, sequential=True)
             else:
-                py_output = run_tf_idf_py(table_name, query, k=args.top_k)
+                baseline_output = run_tf_idf_py(table_name, query, k=args.top_k)
 
-            # Parse das saídas
-            c_sims = parse_output(c_output)
-            py_sims = parse_output(py_output)
+            baseline_sims = parse_output(baseline_output)
 
-            # Comparar
-            is_equal, message = compare_results(c_sims, py_sims, k=args.top_k, tolerance=args.tolerance)
-            if is_equal:
-                print(f"\033[32m    PASSOU: {message}\033[0m")
-                passed_tests += 1
-            else:
-                print("\033[31m    FALHOU:\033[0m")
-                for line in message.split('\n'):
-                    print(f"      {line}")
-                failed_tests += 1
+            # Testar C com diferentes números de threads
+            for nthreads in args.nthreads:
+                total_tests += 1
+
+                c_output = run_app_c(table_name, query, k=args.top_k, nthreads=nthreads)
+                c_sims = parse_output(c_output)
+
+                # Comparar
+                is_equal, message = compare_results(c_sims, baseline_sims, k=args.top_k, tolerance=args.tolerance)
+
+                if is_equal:
+                    print(f"  [t={nthreads:2}] \033[32mPASSOU\033[0m: {message}")
+                    passed_tests += 1
+                else:
+                    print(f"  [t={nthreads:2}] \033[31mFALHOU\033[0m:")
+                    for line in message.split('\n'):
+                        print(f"         {line}")
+                    failed_tests += 1
 
         except Exception as e:
-            print(f"\033[31m    ERRO: {e}\033[0m")
+            print(f"  \033[31mERRO: {e}\033[0m")
             failed_tests += 1
+
         print()
 
     # Sumário
