@@ -49,6 +49,8 @@ def get_size_thresholds(db_file: str) -> dict[str, Optional[int]]:
       MIN(CASE WHEN running_total >= 500 * 1024 * 1024 THEN article_id END)       AS id_at_500mb,
       MIN(CASE WHEN running_total >= 1 * 1024 * 1024 * 1024 THEN article_id END)  AS id_at_1gb,
       MIN(CASE WHEN running_total >= 5 * 1024 * 1024 * 1024 THEN article_id END)  AS id_at_5gb,
+      MIN(CASE WHEN running_total >= 6 * 1024 * 1024 * 1024 THEN article_id END)  AS id_at_6gb,
+      MIN(CASE WHEN running_total >= 7 * 1024 * 1024 * 1024 THEN article_id END)  AS id_at_7gb,
       MIN(CASE WHEN running_total >= 8 * 1024 * 1024 * 1024 THEN article_id END)  AS id_at_8gb,
       MIN(CASE WHEN running_total >= 9 * 1024 * 1024 * 1024 THEN article_id END)  AS id_at_9gb,
       MIN(CASE WHEN running_total >= 10 * 1024 * 1024 * 1024 THEN article_id END) AS id_at_10gb,
@@ -67,7 +69,7 @@ def get_size_thresholds(db_file: str) -> dict[str, Optional[int]]:
             return {}
 
         sizes = ["5kb", "10kb", "50kb", "100kb", "500kb", "1mb", "10mb", "50mb",
-                 "100mb", "500mb", "1gb", "5gb", "8gb", "9gb", "10gb", "maximum"]
+                 "100mb", "500mb", "1gb", "5gb", "6gb", "7gb", "8gb", "9gb", "10gb", "maximum"]
 
         return {size: int(val) if val is not None else None
                 for size, val in zip(sizes, row)}
@@ -121,17 +123,20 @@ def clean_models() -> bool:
         print(f"\033[31mERRO: Erro ao limpar modelos: {e}\033[0m")
         return False
 
-def run_single_benchmark(entries: int, table: str, nthreads: int = 4) -> Optional[float]:
+def run_single_benchmark(entries: int, table: str, nthreads: int = 4, *, manual: bool = False) -> Optional[float]:
     """Executa o app uma vez e retorna o tempo total em segundos."""
 
     # Limpar modelos antes de cada execução para forçar recálculo
     if not clean_models():
         print(f"\033[33mAVISO: Falha ao limpar modelos\033[0m")
 
-    cmd = ["./app",
-           "--entries", str(entries),
-           "--table", table,
-           "--nthreads", str(nthreads)]
+    cmd = ["make", "run",
+           f"ENTRIES={str(entries)}",
+           f"TBL={table}",
+           f"NTHR={str(nthreads)}"]
+
+    if manual:
+        cmd.append("MANUAL=1")
 
     try:
         result = subprocess.run(cmd,
@@ -170,7 +175,7 @@ def run_benchmark_config(config: BenchmarkConfig, table: str, iterations: int, s
     # Executar N vezes
     times = []
     for i in range(iterations):
-        time = run_single_benchmark(config.entries, table, config.threads)
+        time = run_single_benchmark(config.entries, table, config.threads, manual=config.manual)
         if time is not None:
             times.append(time)
 
