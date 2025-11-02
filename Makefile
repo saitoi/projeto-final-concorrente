@@ -28,17 +28,24 @@ ENTRIES ?= 100
 VERBOSE ?= 1
 MANUAL ?= 0
 NTHR ?= 4
+SEQ ?= 0
 
 # Mapeamento TEST para TBL_NAME
 ifeq ($(TEST),0)
+	DB = ./data/test.db
     TBL = test_tbl_0
 else ifeq ($(TEST),1)
+	DB = ./data/test.db
     TBL = test_tbl_1
 else ifeq ($(TEST),2)
+	DB = ./data/test.db
     TBL = test_tbl_2
 else ifeq ($(TEST),3)
-    QUERY_FILENAME = ./t/perf/shakespeares_work.txt
+	DB = ./data/test.db
+    TBL = test_tbl_3
 else ifeq ($(TEST),4)
+    QUERY_FILENAME = ./t/perf/shakespeares_work.txt
+else ifeq ($(TEST),5)
     DB = ./book-corpus.db
 else
     TBL = sample_articles
@@ -51,7 +58,13 @@ ifeq ($(MANUAL),1)
     LDFLAGS = -L./libstemmer/usr/lib/x86_64-linux-gnu -L./libsqlite3/usr/lib/x86_64-linux-gnu -lstemmer -lsqlite3 -lpthread -lm
 endif
 
-SRC = src$(PATH_SEP)main.c src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c
+ifeq ($(SEQ),0)
+    MAIN_SRC = src$(PATH_SEP)main.c
+else
+    MAIN_SRC = src$(PATH_SEP)main_seq.c
+endif
+
+SRC = $(MAIN_SRC) src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c
 OBJ = $(SRC:.c=.o)
 HEADERS = include$(PATH_SEP)hash_t.h include$(PATH_SEP)file_io.h include$(PATH_SEP)preprocess.h include$(PATH_SEP)sqlite_helper.h include$(PATH_SEP)preprocess_query.h include$(PATH_SEP)log.h
 
@@ -118,12 +131,12 @@ test-correctness: $(TARGET)
 	@echo "Executando testes de corretude TF-IDF"
 	@echo "=========================================="
 	@echo ""
-	@sqlite3 data/wiki-small.db "SELECT \"table\", query_id, query FROM queries ORDER BY \"table\", query_id" | while IFS='|' read -r tbl qid query; do \
+	@sqlite3 data/test.db "SELECT table_id, query_id, query FROM queries ORDER BY \"table\", query_id" | while IFS='|' read -r tbl qid query; do \
 		if [ -z "$$tbl" ] || [ -z "$$qid" ] || [ -z "$$query" ]; then \
 			continue; \
 		fi; \
 		table_name="test_tbl_$$tbl"; \
-		table_exists=$$(sqlite3 data/wiki-small.db "SELECT name FROM sqlite_master WHERE type='table' AND name='$$table_name';" 2>/dev/null); \
+		table_exists=$$(sqlite3 data/test.db "SELECT name FROM sqlite_master WHERE type='table' AND name='$$table_name';" 2>/dev/null); \
 		if [ -z "$$table_exists" ]; then \
 			echo "=========================================="; \
 			echo "Tabela: $$table_name"; \
