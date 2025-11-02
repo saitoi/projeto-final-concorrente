@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +19,8 @@ static inline double get_elapsed_time(struct timespec *start,
 }
 
 /* --------------- Variáveis globais --------------- */
+
+#define PRINT_IDF_WORDS 20
 
 hash_t **global_tf = NULL;
 hash_t *global_idf = NULL;
@@ -180,6 +183,15 @@ int main(int argc, char *argv[]) {
       LOG(stdout, "Norma da query: %.6f\n", query_norm);
       LOG(stdout, "Tamanho do vetor TF-IDF da query: %zu palavras\n",
           hash_size(query_tf));
+      if (VERBOSE) {
+        printf("Palavras na query (após processamento):\n");
+        for (size_t i = 0; i < query_tf->cap; i++) {
+          for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
+            double idf = hash_find(global_idf, e->word);
+            printf("  '%s': IDF=%.6f, TF-IDF=%.6f\n", e->word, idf, e->value);
+          }
+        }
+      }
 
       struct timespec t_start_sim, t_end_sim;
       clock_gettime(CLOCK_MONOTONIC, &t_start_sim);
@@ -250,10 +262,10 @@ int main(int argc, char *argv[]) {
   }
 
   if (VERBOSE) {
-    printf("\nTop 5 palavras (IDF):\n");
+    printf("\nTop %d palavras (IDF):\n", PRINT_IDF_WORDS);
     printf("---------------------\n");
-    for (size_t i = 0, c = 0; i < global_idf->cap && c < 5; i++)
-      for (HashEntry *e = global_idf->buckets[i]; e && c < 5;
+    for (size_t i = 0, c = 0; i < global_idf->cap && c < PRINT_IDF_WORDS; i++)
+      for (HashEntry *e = global_idf->buckets[i]; e && c < PRINT_IDF_WORDS;
            e = e->next, c++)
         printf("%-15s %.2f\n", e->word, e->value);
   }
@@ -313,8 +325,16 @@ static int preprocess_documents_sequential(const Config *cfg,
   printf("[FASE 1] Vocabulário construído: %zu palavras\n",
          hash_size(global_idf));
   printf("[FASE 1] Calculando IDF global...\n");
-  set_idf_value(global_idf, global_tf, (double)global_entries,
-                global_entries);
+  for (size_t i = 0; i < global_idf->cap; i++) {
+    HashEntry *e = global_idf->buckets[i];
+    while (e) {
+      if (e->value > 0)
+        e->value = log2((double)global_entries / e->value);
+      else
+        e->value = 0.0;
+      e = e->next;
+    }
+  }
   global_vocab_size = hash_size(global_idf);
 
   global_doc_norms = calloc(global_entries, sizeof(double));
@@ -375,6 +395,7 @@ static hash_t *preprocess_phase1(const Config *cfg, long int start,
     return NULL;
   }
 
+  LOG(stdout, "[FASE 1][SEQ]: Tokenizando textos..");
   char ***article_vecs = tokenize(article_texts, count);
   if (!article_vecs) {
     for (long int i = 0; i < count; i++) {
@@ -385,11 +406,11 @@ static hash_t *preprocess_phase1(const Config *cfg, long int start,
     return NULL;
   }
 
-  remove_stopwords(article_vecs, count);
-  stem(article_vecs, count);
-
+  LOG(stdout, "[FASE 1][SEQ]: Removendo stopwords e Stemmizando..");
+  LOG(stdout, "[FASE 1][SEQ]: Populando hash TF..");
   populate_tf_hash(global_tf, article_vecs, count, start);
-  set_idf_words(idf, article_vecs, count);
+  LOG(stdout, "[FASE 1][SEQ]: Populando vocabulário..");
+  set_idf_words(idf, global_tf, start, count);
 
   for (long int i = 0; i < count; i++) {
     free(article_texts[i]);
@@ -463,6 +484,8 @@ static void free_global_structures(void) {
     free(global_doc_norms);
     global_doc_norms = NULL;
   }
+
+  free_stopwords();
 
   global_vocab_size = 0;
   global_entries = 0;
