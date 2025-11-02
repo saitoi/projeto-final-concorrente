@@ -9,8 +9,15 @@ import sqlite3
 import re
 import sys
 import argparse
+import csv
+from pathlib import Path
 
 DB_FILE = "data/test.db"
+
+def get_csv_filename(db_path: str) -> str:
+    """Gera nome do CSV baseado no nome do banco de dados."""
+    db_name = Path(db_path).stem
+    return f"correctness_results_{db_name}.csv"
 
 def get_queries(table_ids: list[int] | None = None) -> list[tuple[str, int, str]]:
     conn = sqlite3.connect(DB_FILE)
@@ -54,35 +61,42 @@ def run_tf_idf_py(table: str, query: str, k: int = 10) -> str:
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     return result.stdout
 
-def compare_results(c_sims: dict[int, float], py_sims: dict[int, float], k: int = 10, tolerance: float = 1e-3) -> tuple[bool, str]:
-    """Compara resultados com tolerância para erros de ponto flutuante."""
+def compare_results(c_sims: dict[int, float], py_sims: dict[int, float], k: int = 10, tolerance: float = 1e-3) -> tuple[bool, str, float]:
+    """Compara resultados com tolerância para erros de ponto flutuante.
+
+    Returns:
+        tuple: (passou, mensagem, max_diff)
+    """
 
     if not c_sims and not py_sims:
-        return True, "Ambos retornaram resultados vazios"
+        return True, "Ambos retornaram resultados vazios", 0.0
 
     if not c_sims:
-        return False, f"App C não retornou resultados, Python retornou {len(py_sims)} docs"
+        return False, f"App C não retornou resultados, Python retornou {len(py_sims)} docs", -1.0
 
     if not py_sims:
-        return False, f"Python não retornou resultados, App C retornou {len(c_sims)} docs"
+        return False, f"Python não retornou resultados, App C retornou {len(c_sims)} docs", -1.0
 
     # Comparar top-k documentos
     c_sorted = sorted(c_sims.items(), key=lambda x: x[1], reverse=True)[:k]
     py_sorted = sorted(py_sims.items(), key=lambda x: x[1], reverse=True)[:k]
 
     errors: list[str] = []
+    max_diff = 0.0
 
     for i, ((c_id, c_sim), (py_id, py_sim)) in enumerate(zip(c_sorted, py_sorted)):
         diff = abs(c_sim - py_sim)
+        max_diff = max(max_diff, diff)
+
         if c_id != py_id:
             errors.append(f"  Pos {i}: Ordem diferente - C=[{c_id}], Python=[{py_id}]")
         elif diff > tolerance:
             errors.append(f"  Doc [{c_id}]: Diferença - C={c_sim:.6f}, Python={py_sim:.6f}, diff={diff:.10f} (tol={tolerance})")
 
     if errors:
-        return False, "\n".join(errors)
+        return False, "\n".join(errors), max_diff
 
-    return True, f"Top-{len(c_sorted)} documentos correspondem com tolerância {tolerance}"
+    return True, f"Top-{len(c_sorted)} documentos correspondem com tolerância {tolerance}", max_diff
 
 def main():
     parser = argparse.ArgumentParser(
@@ -97,6 +111,9 @@ def main():
 
     args = parser.parse_args()
 
+    # Gerar nome do CSV
+    csv_filename = get_csv_filename(DB_FILE)
+
     adversario = "Beta Sequential C" if args.sequential else "Beta tf_idf.py"
     print("-" * 70)
     print(f"CORRETUDE: C Multithreaded vs {adversario}")
@@ -108,6 +125,7 @@ def main():
     print(f"Top-K: {args.top_k}")
     if not args.sequential:
         print(f"Threads a testar: {args.nthreads}")
+    print(f"Resultados serão salvos em: {csv_filename}")
     print()
 
     # Verificando se binário 'app' existe ?
@@ -126,6 +144,7 @@ def main():
     total_tests = 0
     passed_tests = 0
     failed_tests = 0
+    results = []  # Lista para armazenar resultados para CSV
 
     for table, query_id, query in queries:
         table_name = f"test_tbl_{table}"
@@ -160,7 +179,21 @@ def main():
                 c_sims = parse_output(c_output)
 
                 # Comparar
-                is_equal, message = compare_results(c_sims, baseline_sims, k=args.top_k, tolerance=args.tolerance)
+                is_equal, message, max_diff = compare_results(c_sims, baseline_sims, k=args.top_k, tolerance=args.tolerance)
+
+                # Armazenar resultado
+                results.append({
+                    'table': table_name,
+                    'query_id': query_id,
+                    'query': query,
+                    'nthreads': nthreads,
+                    'baseline': 'sequential' if args.sequential else 'python',
+                    'passed': 'PASS' if is_equal else 'FAIL',
+                    'max_diff': f"{max_diff:.10f}" if max_diff >= 0 else "N/A",
+                    'tolerance': args.tolerance,
+                    'top_k': args.top_k,
+                    'error_details': message if not is_equal else ""
+                })
 
                 if is_equal:
                     print(f"  [t={nthreads:2}] \033[32mPASSOU\033[0m: {message}")
@@ -173,9 +206,35 @@ def main():
 
         except Exception as e:
             print(f"  \033[31mERRO: {e}\033[0m")
+            # Adicionar erro ao CSV também
+            for nthreads in args.nthreads:
+                results.append({
+                    'table': table_name,
+                    'query_id': query_id,
+                    'query': query,
+                    'nthreads': nthreads,
+                    'baseline': 'sequential' if args.sequential else 'python',
+                    'passed': 'ERROR',
+                    'max_diff': 'N/A',
+                    'tolerance': args.tolerance,
+                    'top_k': args.top_k,
+                    'error_details': str(e)
+                })
             failed_tests += 1
 
         print()
+
+    # Salvar CSV
+    print(f"\nSalvando resultados em {csv_filename}...")
+    csv_fieldnames = ['table', 'query_id', 'query', 'nthreads', 'baseline', 'passed', 'max_diff', 'tolerance', 'top_k', 'error_details']
+
+    with open(csv_filename, 'w', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=csv_fieldnames)
+        writer.writeheader()
+        for result in results:
+            writer.writerow(result)
+
+    print(f"\033[32mOK:\033[0m CSV salvo com {len(results)} testes")
 
     # Sumário
     print(f"\nTotal de testes: {total_tests}")
