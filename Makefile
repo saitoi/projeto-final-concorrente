@@ -66,13 +66,25 @@ endif
 
 SRC = $(MAIN_SRC) src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c
 OBJ = $(SRC:.c=.o)
-HEADERS = include$(PATH_SEP)hash_t.h include$(PATH_SEP)file_io.h include$(PATH_SEP)preprocess.h include$(PATH_SEP)sqlite_helper.h include$(PATH_SEP)preprocess_query.h include$(PATH_SEP)log.h
+HEADERS = include$(PATH_SEP)hash_t.h include$(PATH_SEP)file_io.h include$(PATH_SEP)preprocess.h include$(PATH_SEP)sqlite_helper.h include$(PATH_SEP)preprocess_query.h include$(PATH_SEP)log.h include$(PATH_SEP)clay.h
+
+# UI com Clay + Raylib
+UI_TARGET = app_ui
+UI_SRC = src$(PATH_SEP)ui_clay.c
+UI_MENU_TARGET = app_menu
+UI_MENU_SRC = src$(PATH_SEP)ui_clay_menu.c
+UI_LDFLAGS = -lraylib -lm
 
 all: $(TARGET)
 
 help:
 	@echo "Targets disponíveis:"
 	@echo "  make all             - Compila o projeto (padrão)"
+	@echo "  make ui              - Compila e executa a interface visual (Clay + Raylib)"
+	@echo "  make menu            - Compila e executa o menu interativo completo"
+	@echo "  make setup           - Configura o projeto (gera modelos se necessário)"
+	@echo "  make models          - Gera todos os modelos TF-IDF necessários"
+	@echo "  make demo            - Executa demo da interface (com verificações)"
 	@echo "  make run             - Limpa, compila e executa o programa"
 	@echo "                         Variáveis default: ENTRIES=$(ENTRIES) VERBOSE=$(VERBOSE)"
 	@echo "  make test-correctness - Executa todos os testes de corretude do banco de dados"
@@ -84,13 +96,58 @@ help:
 	@echo "  make help            - Exibe esta mensagem"
 	@echo ""
 	@echo "Exemplos:"
+	@echo "  make setup           - Primeira vez: compila e gera modelos"
+	@echo "  make demo            - Demonstração completa da interface ⭐"
 	@echo "  make run ENTRIES=50 VERBOSE=0"
 	@echo "  make run TEST=0 QUERY=\"marine sea species\""
 	@echo "  make run MANUAL=1"
 	@echo "  make test-correctness"
+	@echo "  make ui              - Abre interface gráfica simples"
+	@echo "  make menu            - Abre menu interativo completo"
 
 $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS)
+
+$(UI_TARGET): $(UI_SRC) $(HEADERS) src/sqlite_helper.c src/preprocess_query.c
+	@echo "Compilando interface visual com Clay..."
+	$(CC) $(CFLAGS) $(UI_SRC) src/sqlite_helper.c src/preprocess_query.c src/preprocess.c src/hash_t.c src/file_io.c -o $(UI_TARGET) $(UI_LDFLAGS) -lsqlite3 -lstemmer
+
+$(UI_MENU_TARGET): $(UI_MENU_SRC) $(HEADERS)
+	@echo "Compilando menu interativo com Clay..."
+	$(CC) $(CFLAGS) $(UI_MENU_SRC) -o $(UI_MENU_TARGET) $(UI_LDFLAGS)
+
+ui: $(UI_TARGET)
+	@echo "Iniciando interface visual..."
+	./$(UI_TARGET)
+
+menu: $(UI_MENU_TARGET)
+	@echo "Iniciando menu interativo..."
+	./$(UI_MENU_TARGET)
+
+# Gera todos os modelos TF-IDF
+models:
+	@echo "Gerando modelos TF-IDF..."
+	@chmod +x generate_models.sh
+	@./generate_models.sh
+
+# Demonstração completa da interface
+demo:
+	@echo "Executando demonstração da interface..."
+	@chmod +x demo_interface.sh
+	@./demo_interface.sh
+
+# Setup inicial: compila e gera modelos se necessário
+setup: all
+	@echo "Configurando projeto..."
+	@if [ ! -d "models" ]; then mkdir -p models; fi
+	@MODEL_COUNT=$$(ls -1 models/*.bin 2>/dev/null | wc -l); \
+	if [ "$$MODEL_COUNT" -lt 3 ]; then \
+		echo "Modelos não encontrados. Gerando..."; \
+		$(MAKE) models; \
+	else \
+		echo "Modelos já existem ($$MODEL_COUNT arquivos)"; \
+	fi
+	@echo "✓ Setup concluído!"
 
 lint:
 	@command -v clang-tidy >$(NULL_DEVICE) 2>&1 && clang-tidy $(SRC) $(FCLANG) -- $(CFLAGS) || echo "clang-tidy not found, skipping"
@@ -116,7 +173,7 @@ run:
 
 clean:
 	@echo 'Cleaning old binaries..'
-	@$(RM) $(OBJ) $(TARGET)
+	@$(RM) $(OBJ) $(TARGET) $(UI_TARGET) $(UI_MENU_TARGET)
 
 clean_models:
 ifeq ($(OS),Windows_NT)
@@ -141,7 +198,8 @@ test-correctness: $(TARGET)
 			echo "=========================================="; \
 			echo "Tabela: $$table_name"; \
 			echo "Query ID: $$qid"; \
-			echo "Query: $$query"; \
+			echo "Query: $$query"; \🔍 Buscar - Interface para realizar buscas TF-IDF
+
 			echo "AVISO: Tabela não existe no banco de dados. Ignorando..."; \
 			echo "=========================================="; \
 			echo ""; \
@@ -159,4 +217,4 @@ test-correctness: $(TARGET)
 	@echo "Testes concluídos!"
 	@echo "=========================================="
 
-.PHONY: all clean clean_models lint format check run help test-correctness
+.PHONY: all clean clean_models lint format check run help test-correctness ui menu models demo setup
