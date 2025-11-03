@@ -12,15 +12,13 @@ import argparse
 import csv
 from pathlib import Path
 
-DB_FILE = "data/test.db"
-
 def get_csv_filename(db_path: str) -> str:
     """Gera nome do CSV baseado no nome do banco de dados."""
     db_name = Path(db_path).stem
     return f"correctness_results_{db_name}.csv"
 
-def get_queries(table_ids: list[int] | None = None) -> list[tuple[str, int, str]]:
-    conn = sqlite3.connect(DB_FILE)
+def get_queries(db_path: str, table_ids: list[int] | None = None) -> list[tuple[str, int, str]]:
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
     if table_ids is not None:
@@ -37,16 +35,17 @@ def get_queries(table_ids: list[int] | None = None) -> list[tuple[str, int, str]
 def parse_output(output: str) -> dict[int, float]:
     similarities: dict[int, float] = {}
     # Procura linhas no formato: [<doc_id>] <similarity> <doc_txt>...
-    pattern = r'\[(\d+)\]\s+([\d.]+)\s+'
+    # Suporta ANSI color codes ao redor do similarity score
+    pattern = r'\[(\d+)\]\s+(?:\x1b\[[0-9;]+m)*([\d.]+)(?:\x1b\[[0-9;]+m)*\s+'
     for match in re.finditer(pattern, output):
         doc_id = int(match.group(1))
         similarity = float(match.group(2))
         similarities[doc_id] = similarity
     return similarities
 
-def run_app_c(table: str, query: str, k: int = 10, entries: int | None = None, *, sequential: bool = False, nthreads: int = 4) -> str:
-    cmd = ['./app', '--table', table, '--query_user', query, '--k', str(k), "--db", DB_FILE]
-    if entries:
+def run_app_c(table: str, query: str, k: int = 10, entries: int | None = None, db: str = './data/test.db', *, sequential: bool = False, nthreads: int = 4) -> str:
+    cmd = ['./app', '--table', table, '--query_user', query, '--k', str(k), "--db", db]
+    if entries is not None:
         cmd.extend(['--entries', str(entries)])
     if sequential:
         cmd[0] = './app_seq'
@@ -56,8 +55,10 @@ def run_app_c(table: str, query: str, k: int = 10, entries: int | None = None, *
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout
 
-def run_tf_idf_py(table: str, query: str, k: int = 10) -> str:
-    cmd = ['uv', 'run', 'tf_idf.py', '-d', DB_FILE, '-t', table, '-q', query, '-k', str(k)]
+def run_tf_idf_py(table: str, query: str, k: int = 10, *, db: str = './data/test.db', entries: int | None = None) -> str:
+    cmd = ['uv', 'run', 'tf_idf.py', '-d', db, '-t', table, '-q', query, '-k', str(k)]
+    if entries is not None:
+        cmd.extend(['--entries', str(entries)])
     result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
     return result.stdout
 
@@ -108,11 +109,15 @@ def main():
     _ = parser.add_argument('-tol', '--tolerance', type=float, default=1e-3, help='Tolerância para comparação de similaridades (default: 1e-3)')
     _ = parser.add_argument('-s', '--sequential', action='store_true', default=False, help='Comparar output sequencial (default: False)')
     _ = parser.add_argument('--nthreads', type=int, nargs='+', default=[1, 2, 4, 8, 16], help='Lista de números de threads para testar (default: 1 2 4 8 16)')
+    _ = parser.add_argument('--db', type=str, default='./data/test.db', help='Filepath do banco escolhido para corretude.')
+    _ = parser.add_argument('-e', '--entries', type=int, help='Limita a quantidade de documentos carregados pelo app e baseline.')
+    _ = parser.add_argument('--tablename', type=str, help='Nome da tabela a ser usado em vez de test_tbl_<id>.')
 
     args = parser.parse_args()
 
     # Gerar nome do CSV
-    csv_filename = get_csv_filename(DB_FILE)
+    print(args.db)
+    csv_filename = get_csv_filename(args.db)
 
     adversario = "Beta Sequential C" if args.sequential else "Beta tf_idf.py"
     print("-" * 70)
@@ -125,6 +130,10 @@ def main():
     print(f"Top-K: {args.top_k}")
     if not args.sequential:
         print(f"Threads a testar: {args.nthreads}")
+    if args.entries is not None:
+        print(f"Entries: {args.entries}")
+    if args.tablename:
+        print(f"Tabela fixa: {args.tablename}")
     print(f"Resultados serão salvos em: {csv_filename}")
     print()
 
@@ -135,7 +144,7 @@ def main():
         print("\033[31mERRO: ./app não encontrado. Execute 'make' primeiro.\033[0m")
         sys.exit(1)
 
-    queries = get_queries(args.tables)
+    queries = get_queries(db_path=args.db, table_ids=args.tables)
 
     if not queries:
         print("\033[33mNenhuma query encontrada no banco de dados.\033[0m")
@@ -147,10 +156,10 @@ def main():
     results = []  # Lista para armazenar resultados para CSV
 
     for table, query_id, query in queries:
-        table_name = f"test_tbl_{table}"
+        table_name = args.tablename if args.tablename else f"test_tbl_{table}"
 
         # Verificar se tabela existe
-        conn = sqlite3.connect(DB_FILE)
+        conn = sqlite3.connect(args.db)
         cursor = conn.cursor()
         _ = cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{table_name}'")
         if not cursor.fetchone():
@@ -165,9 +174,9 @@ def main():
         # Executar baseline (Python ou Sequential C)
         try:
             if args.sequential:
-                baseline_output = run_app_c(table_name, query, k=args.top_k, sequential=True)
+                baseline_output = run_app_c(table_name, query, k=args.top_k, sequential=True, db=args.db, entries=args.entries)
             else:
-                baseline_output = run_tf_idf_py(table_name, query, k=args.top_k)
+                baseline_output = run_tf_idf_py(table_name, query, k=args.top_k, db=args.db, entries=args.entries)
 
             baseline_sims = parse_output(baseline_output)
 
@@ -175,7 +184,7 @@ def main():
             for nthreads in args.nthreads:
                 total_tests += 1
 
-                c_output = run_app_c(table_name, query, k=args.top_k, nthreads=nthreads)
+                c_output = run_app_c(table_name, query, k=args.top_k, nthreads=nthreads, db=args.db, entries=args.entries)
                 c_sims = parse_output(c_output)
 
                 # Comparar
