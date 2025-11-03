@@ -15,14 +15,25 @@
  * Projetado para execução paralela com múltiplas threads.
  */
 
+#include "../include/preprocess.h"
 #include "../include/file_io.h"
 #include "../include/hash_t.h"
+#include "../include/log.h"
+#include "../include/sqlite_helper.h"
 #include <libstemmer.h>
 #include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+// External global variables from main.c
+extern hash_t **global_tf;
+extern hash_t *global_idf;
+extern double *global_doc_norms;
+extern size_t global_vocab_size;
+extern long int global_entries;
 
 /**
  * @brief Popula vocabulário com palavras únicas dos documentos
@@ -483,4 +494,307 @@ void free_article_vecs(char ***article_vecs, long int count) {
     }
   }
   free(article_vecs);
+}
+
+/**
+ * @brief FASE 1: Construir vocabulário e TF local
+ *
+ * Pipeline:
+ * 1. Extrair textos do SQLite
+ * 2. Tokenizar
+ * 3. Remover stopwords
+ * 4. Stemming
+ * 5. Popular TF local (global_tf)
+ * 6. Popular vocabulário local (IDF)
+ *
+ * @param arg Ponteiro para thread_args
+ * @return IDF local (hash_t*) para merge posterior no thread principal
+ */
+void *preprocess_1(void *arg) {
+  thread_args *t = (thread_args *)arg;
+  long int count = t->end - t->start;
+
+  log_info("[FASE 1] T%02ld: Processando %ld documentos [%ld, %ld]", t->id,
+           count, t->start, t->end - 1);
+
+  if (count <= 0) {
+    pthread_exit(NULL);
+  }
+
+  hash_t *idf = hash_new();
+
+  // [1] Recuperar textos
+  char **article_texts = get_str_arr(t->db,
+                                     "select article_text from \"%w\" "
+                                     "where article_id between ? and ? "
+                                     "order by article_id asc",
+                                     t->start, t->end - 1, t->table);
+  if (!article_texts) {
+    fprintf(stderr, "Thread %02ld: Erro ao obter dados do banco\n", t->id);
+    pthread_exit(NULL);
+  }
+
+  // [2] Tokenizar
+  log_info("[FASE 1] T%02ld: Tokenizando textos..", t->id);
+  char ***article_vecs = tokenize(article_texts, count);
+  if (!article_vecs) {
+    fprintf(stderr, "Thread %02ld: Erro ao tokenizar\n", t->id);
+    pthread_exit(NULL);
+  }
+
+  // [3] Popular TF local (já faz stopwords+stemming internamente)
+  log_info("[FASE 1] T%02ld: Removendo stopwords e Stemmizando..", t->id);
+  log_info("[FASE 1] T%02ld: Populando hash TF..", t->id);
+  populate_tf_hash(global_tf, article_vecs, count, t->start);
+
+  // [4] Popular vocabulário local com n_i (usa os hashes TF já processados)
+  log_info("[FASE 1] T%02ld: Populando vocabulário..", t->id);
+  set_idf_words(idf, global_tf, t->start, count);
+
+  log_info("[FASE 1] T%02ld: Concluída", t->id);
+
+  // Limpar memória local
+  for (long int i = 0; i < count; i++) {
+    if (article_texts[i])
+      free(article_texts[i]);
+  }
+
+  free(article_texts);
+  free_article_vecs(article_vecs, count);
+
+  // Retornar IDF local para merge no thread principal
+  pthread_exit((void *)idf);
+}
+
+/**
+ * @brief FASE 2: Calcular TF-IDF e normas
+ *
+ * Usa IDF global já calculado para:
+ * 1. Transformar TF em TF-IDF
+ * 2. Calcular normas dos vetores
+ *
+ * @param arg Ponteiro para thread_args
+ * @return NULL
+ */
+void *preprocess_2(void *arg) {
+  thread_args *t = (thread_args *)arg;
+  long int count = t->end - t->start;
+
+  log_info("[FASE 2] T%02ld: Calculando TF-IDF e normas", t->id);
+
+  if (count <= 0) {
+    pthread_exit(NULL);
+  }
+
+  // [1] Converter TF para TF-IDF usando IDF global
+  compute_tf_idf(global_tf, global_idf, count, t->start);
+
+  // [2] Calcular normas dos documentos
+  compute_doc_norms(global_doc_norms, global_tf, count, global_vocab_size,
+                    t->start);
+
+  log_info("[FASE 2] T%02ld: Concluída", t->id);
+  pthread_exit(NULL);
+}
+
+/**
+ * @brief Função de comparação para ordenar documentos por similaridade
+ *
+ * @param a Ponteiro para primeiro DocSim
+ * @param b Ponteiro para segundo DocSim
+ * @return -1 se a > b, 1 se a < b, 0 se iguais (ordem decrescente)
+ */
+int compare_sim(const void *a, const void *b) {
+  const DocSim *doc1 = (const DocSim *)a;
+  const DocSim *doc2 = (const DocSim *)b;
+  return doc1->similarity > doc2->similarity
+             ? -1
+             : doc1->similarity < doc2->similarity;
+}
+
+/**
+ * @brief Função auxiliar para calcular tempo decorrido
+ */
+static inline double get_elapsed_time(struct timespec *start,
+                                      struct timespec *end) {
+  return (end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec) / 1e9;
+}
+
+/**
+ * @brief Executa pré-processamento completo (FASE 1 e FASE 2)
+ *
+ * @param nthreads Número de threads para processamento paralelo
+ * @param entries Número de documentos a processar
+ * @param db Caminho para o banco de dados SQLite
+ * @param table Nome da tabela no banco de dados
+ * @param filename_tf Nome do arquivo TF para salvar
+ * @param filename_idf Nome do arquivo IDF para salvar
+ * @param filename_doc_norms Nome do arquivo de normas para salvar
+ * @return 0 em sucesso, 1 em erro
+ */
+int run_preprocessing(int nthreads, long int entries, const char *db,
+                      const char *table, const char *filename_tf,
+                      const char *filename_idf,
+                      const char *filename_doc_norms) {
+  const int MAX_THREADS = 16;
+
+  pthread_t *tids = (pthread_t *)malloc(sizeof(pthread_t) * nthreads);
+  if (!tids) {
+    fprintf(stderr, "Falha ao alocar memória para tids\n");
+    return 1;
+  }
+
+  thread_args args[MAX_THREADS];
+
+  // Inicializar estruturas globais
+  global_idf = hash_new();
+  global_tf = (hash_t **)calloc(entries, sizeof(hash_t *));
+  if (!global_tf) {
+    fprintf(stderr, "Falha ao alocar memória para global_tf\n");
+    free(tids);
+    return 1;
+  }
+
+  // Inicializar cada hash TF individual
+  for (long int i = 0; i < entries; i++) {
+    global_tf[i] = hash_new();
+    if (!global_tf[i]) {
+      fprintf(stderr, "Falha ao alocar hash TF para documento %ld\n", i);
+      free(tids);
+      return 1;
+    }
+  }
+
+  global_entries = entries;
+
+  // Carregar stopwords (compartilhado por todas threads)
+  load_stopwords("assets/stopwords.txt");
+  if (!global_stopwords) {
+    fprintf(stderr, "Falha ao carregar stopwords\n");
+    free(tids);
+    return 1;
+  }
+
+  printf("Qtd. artigos: %ld\n", entries);
+
+  // Calcular divisão de trabalho
+  long int base = entries / nthreads;
+  long int rem = entries % nthreads;
+
+  /* ---------- FASE 1: Construir Vocabulário ---------- */
+
+  struct timespec t_start_fase1, t_end_fase1;
+  clock_gettime(CLOCK_MONOTONIC, &t_start_fase1);
+
+  printf("\n[FASE 1] Construindo vocabulário...\n");
+
+  for (long int i = 0; i < nthreads; ++i) {
+    args[i].id = i;
+    args[i].nthreads = nthreads;
+    args[i].db = db;
+    args[i].table = table;
+    args[i].start = i * base + (i < rem ? i : rem);
+    args[i].end = args[i].start + base + (i < rem);
+
+    if (pthread_create(&tids[i], NULL, preprocess_1, (void *)&args[i])) {
+      fprintf(stderr, "Erro ao criar thread %ld\n", i);
+      free(tids);
+      return 1;
+    }
+  }
+
+  // Aguardar conclusão da Fase 1 e coletar IDFs locais
+  hash_t *local_idfs[MAX_THREADS];
+  for (long int i = 0; i < nthreads; ++i) {
+    void *ret_val;
+    if (pthread_join(tids[i], &ret_val)) {
+      fprintf(stderr, "Erro ao esperar thread %ld\n", i);
+      free(tids);
+      return 1;
+    }
+    local_idfs[i] = (hash_t *)ret_val;
+  }
+
+  // Merge dos IDFs locais no global (fora da seção crítica)
+  printf("[FASE 1] Fazendo merge dos vocabulários locais...\n");
+  for (long int i = 0; i < nthreads; ++i) {
+    if (local_idfs[i]) {
+      hash_merge(global_idf, local_idfs[i]);
+      hash_free(local_idfs[i]);
+    }
+  }
+
+  printf("[FASE 1] Vocabulário construído: %zu palavras\n",
+         hash_size(global_idf));
+
+  // Aplicar log2(N / n_i) em todos os valores
+  printf("[FASE 1] Calculando IDF global...\n");
+  for (size_t i = 0; i < global_idf->cap; i++) {
+    HashEntry *e = global_idf->buckets[i];
+    while (e) {
+      if (e->value > 0)
+        e->value = log2((double)global_entries / e->value);
+      else
+        e->value = 0.0;
+      e = e->next;
+    }
+  }
+  global_vocab_size = hash_size(global_idf);
+
+  // Alocar normas
+  global_doc_norms = (double *)calloc(global_entries, sizeof(double));
+  if (!global_doc_norms) {
+    fprintf(stderr, "Erro ao alocar memória para global_doc_norms\n");
+    free(tids);
+    return 1;
+  }
+
+  clock_gettime(CLOCK_MONOTONIC, &t_end_fase1);
+  double elapsed_fase1 = get_elapsed_time(&t_start_fase1, &t_end_fase1);
+  printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n",
+         global_vocab_size);
+  printf("[FASE 1] Tempo: %.3f segundos\n", elapsed_fase1);
+
+  /* ========== FASE 2: Calcular TF-IDF ========== */
+  struct timespec t_start_fase2, t_end_fase2;
+  clock_gettime(CLOCK_MONOTONIC, &t_start_fase2);
+
+  printf("\n[FASE 2] Calculando TF-IDF e normas...\n");
+
+  for (long int i = 0; i < nthreads; ++i) {
+    if (pthread_create(&tids[i], NULL, preprocess_2, (void *)&args[i])) {
+      fprintf(stderr, "Erro ao criar thread %ld\n", i);
+      free(tids);
+      return 1;
+    }
+  }
+
+  // Aguardar conclusão da Fase 2
+  for (long int i = 0; i < nthreads; ++i) {
+    if (pthread_join(tids[i], NULL)) {
+      fprintf(stderr, "Erro ao esperar thread %ld\n", i);
+      free(tids);
+      return 1;
+    }
+  }
+
+  clock_gettime(CLOCK_MONOTONIC, &t_end_fase2);
+  double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);
+  printf("[FASE 2] TF-IDF e normas calculados!\n");
+  printf("[FASE 2] Tempo: %.3f segundos\n", elapsed_fase2);
+
+  // Salvar estruturas globais em arquivos binários
+  printf("\nSalvando estruturas em disco\n");
+
+  save_hash_array(global_tf, global_entries, filename_tf);
+  save_hash(global_idf, filename_idf);
+  save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
+
+  // Liberar stopwords
+  free_stopwords();
+
+  // Liberar array de thread IDs
+  free(tids);
+
+  return 0;
 }

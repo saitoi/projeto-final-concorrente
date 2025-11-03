@@ -16,7 +16,7 @@ else
 endif
 
 CC = cc
-CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include -g
+CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include -g -DLOG_USE_COLOR
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 # Parâmetros configuráveis
@@ -72,7 +72,7 @@ else
     TARGET = app_seq
 endif
 
-SRC = $(MAIN_SRC) src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c
+SRC = $(MAIN_SRC) src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c src$(PATH_SEP)log.c
 OBJ = $(SRC:.c=.o)
 HEADERS = include$(PATH_SEP)hash_t.h include$(PATH_SEP)file_io.h include$(PATH_SEP)preprocess.h include$(PATH_SEP)sqlite_helper.h include$(PATH_SEP)preprocess_query.h include$(PATH_SEP)log.h
 

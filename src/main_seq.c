@@ -42,11 +42,6 @@ typedef struct {
   int verbose;
 } Config;
 
-typedef struct {
-  long int doc_id;
-  double similarity;
-} DocSim;
-
 static int parse_cli(int argc, char **argv, Config *cfg);
 static void format_filenames(char *filename_tf, char *filename_idf,
                              char *filename_doc_norms, const char *table,
@@ -62,7 +57,6 @@ static double *compute_similarities_seq(const hash_t *query_tf,
                                         const double *global_doc_norms,
                                         long int num_docs);
 static void free_global_structures(void);
-static int compare_sim(const void *a, const void *b);
 
 int main(int argc, char *argv[]) {
   struct timespec t_start_total, t_end_total;
@@ -90,7 +84,14 @@ int main(int argc, char *argv[]) {
 
   VERBOSE = cfg.verbose;
 
-  LOG(stdout,
+  // Configurar nível de log baseado em VERBOSE
+  if (VERBOSE) {
+    log_set_level(LOG_INFO);
+  } else {
+    log_set_level(LOG_WARN);
+  }
+
+  log_info(
       "Parâmetros nomeados:\n"
       "\targc: %d\n"
       "\tnthreads (forçado): %d\n"
@@ -106,7 +107,7 @@ int main(int argc, char *argv[]) {
   const char *query_count = "select count(*) from \"%w\";";
   long int total = get_single_int(cfg.db, query_count, cfg.table);
   if (!cfg.entries || cfg.entries > total) {
-    LOG(stdout,
+    log_info(
         "Número de entradas %ld excedeu a quantidade total de documentos: %ld",
         cfg.entries, total);
     cfg.entries = total;
@@ -179,9 +180,9 @@ int main(int argc, char *argv[]) {
     if (result != 0) {
       fprintf(stderr, "Erro ao processar consulta do usuário\n");
     } else {
-      LOG(stdout, "Consulta processada com sucesso!\n");
-      LOG(stdout, "Norma da query: %.6f\n", query_norm);
-      LOG(stdout, "Tamanho do vetor TF-IDF da query: %zu palavras\n",
+      log_info( "Consulta processada com sucesso!\n");
+      log_info( "Norma da query: %.6f\n", query_norm);
+      log_info( "Tamanho do vetor TF-IDF da query: %zu palavras\n",
           hash_size(query_tf));
       if (VERBOSE) {
         printf("Palavras na query (após processamento):\n");
@@ -205,7 +206,7 @@ int main(int argc, char *argv[]) {
       if (!similarities) {
         fprintf(stderr, "Erro ao calcular similaridades\n");
       } else {
-        LOG(stdout, "\n[SIMILARIDADE] Tempo: %.3f segundos\n", elapsed_sim);
+        log_info( "\n[SIMILARIDADE] Tempo: %.3f segundos\n", elapsed_sim);
 
         DocSim *scores = malloc(global_entries * sizeof(DocSim));
         if (scores) {
@@ -395,7 +396,7 @@ static hash_t *preprocess_phase1(const Config *cfg, long int start,
     return NULL;
   }
 
-  LOG(stdout, "[FASE 1][SEQ]: Tokenizando textos..");
+  log_info( "[FASE 1][SEQ]: Tokenizando textos..");
   char ***article_vecs = tokenize(article_texts, count);
   if (!article_vecs) {
     for (long int i = 0; i < count; i++) {
@@ -406,10 +407,10 @@ static hash_t *preprocess_phase1(const Config *cfg, long int start,
     return NULL;
   }
 
-  LOG(stdout, "[FASE 1][SEQ]: Removendo stopwords e Stemmizando..");
-  LOG(stdout, "[FASE 1][SEQ]: Populando hash TF..");
+  log_info( "[FASE 1][SEQ]: Removendo stopwords e Stemmizando..");
+  log_info( "[FASE 1][SEQ]: Populando hash TF..");
   populate_tf_hash(global_tf, article_vecs, count, start);
-  LOG(stdout, "[FASE 1][SEQ]: Populando vocabulário..");
+  log_info( "[FASE 1][SEQ]: Populando vocabulário..");
   set_idf_words(idf, global_tf, start, count);
 
   for (long int i = 0; i < count; i++) {
@@ -492,11 +493,11 @@ static void free_global_structures(void) {
 }
 
 static int parse_cli(int argc, char **argv, Config *cfg) {
-  LOG(stderr, "Processando %d argumentos", argc);
+  log_debug( "Processando %d argumentos", argc);
   fflush(stderr);
 
   for (int i = 1; i < argc; ++i) {
-    LOG(stderr, "argv[%d]: %s", i, argv[i]);
+    log_debug( "argv[%d]: %s", i, argv[i]);
     fflush(stderr);
 
     if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc)
@@ -545,12 +546,4 @@ static void format_filenames(char *filename_tf, char *filename_idf,
   snprintf(filename_idf, 256, "models/idf_%s_%ld.bin", table, entries);
   snprintf(filename_doc_norms, 256, "models/doc_norms_%s_%ld.bin", table,
            entries);
-}
-
-static int compare_sim(const void *a, const void *b) {
-  const DocSim *doc1 = (const DocSim *)a;
-  const DocSim *doc2 = (const DocSim *)b;
-  return doc1->similarity > doc2->similarity
-             ? -1
-             : doc1->similarity < doc2->similarity;
 }

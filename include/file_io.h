@@ -25,4 +25,15 @@ hash_t *load_hash(const char *filename);
 hash_t **load_hash_array(const char *filename, long int *num_hashes_out);
 double *load_doc_norms(const char *filename, long int *num_docs_out);
 
+/**
+ * @brief Carrega modelos TF-IDF pré-processados dos arquivos binários
+ *
+ * @param filename_tf Nome do arquivo TF
+ * @param filename_idf Nome do arquivo IDF
+ * @param filename_doc_norms Nome do arquivo de normas
+ * @return 0 em sucesso, 1 em erro
+ */
+int load_models(const char *filename_tf, const char *filename_idf,
+                const char *filename_doc_norms);
+
 #endif

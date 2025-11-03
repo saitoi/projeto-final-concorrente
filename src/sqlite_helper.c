@@ -45,7 +45,7 @@ long int get_single_int(const char *filename, const char *query,
     return -1;
   }
 
-  LOG(stdout, "Executando query: %s\n", sql);
+  log_debug("Executando query: %s", sql);
 
   rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
@@ -98,7 +98,7 @@ char **get_str_arr(const char *filename, const char *query, long int start,
   }
 
   // aqui poderia imprimir a thread
-  LOG(stdout, "Executando query: %s\n", sql);
+  log_debug("Executando query: %s", sql);
 
   rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {

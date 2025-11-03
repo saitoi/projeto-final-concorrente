@@ -3,13 +3,25 @@
  * @brief Processamento de queries reutilizando funções de documentos
  */
 
+#include "../include/preprocess_query.h"
+#include "../include/file_io.h"
 #include "../include/hash_t.h"
+#include "../include/log.h"
 #include "../include/preprocess.h"
+#include "../include/sqlite_helper.h"
 #include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+
+// External global variables from main.c
+extern hash_t **global_tf;
+extern hash_t *global_idf;
+extern double *global_doc_norms;
+extern long int global_entries;
+extern int VERBOSE;
 
 /**
  * @brief Argumentos para threads de cálculo de similaridade
@@ -189,4 +201,139 @@ double *compute_similarities(const hash_t *query_tf, double query_norm,
   free(args);
 
   return similarities;
+}
+
+/**
+ * @brief Função auxiliar para calcular tempo decorrido
+ */
+static inline double get_elapsed_time(struct timespec *start,
+                                      struct timespec *end) {
+  return (end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec) / 1e9;
+}
+
+/**
+ * @brief Processa query do usuário, calcula similaridades e exibe resultados
+ *
+ * @param query_user String da query do usuário
+ * @param nthreads Número de threads para cálculo de similaridades
+ * @param k Número de documentos top-k a retornar
+ * @param db Caminho para o banco de dados SQLite
+ * @param table Nome da tabela no banco de dados
+ * @return 0 em sucesso, 1 em erro
+ */
+int process_and_display_query(const char *query_user, int nthreads, int k,
+                              const char *db, const char *table) {
+  if (!query_user) {
+    printf("Nenhuma consulta fornecida\n");
+    return 0;
+  }
+
+  // Carregar stopwords se não estiverem carregadas
+  if (!global_stopwords) {
+    load_stopwords("assets/stopwords.txt");
+    if (!global_stopwords) {
+      fprintf(stderr, "Falha ao carregar stopwords para processar query\n");
+      return 1;
+    }
+  }
+
+  // Processar query (single thread)
+  hash_t *query_tf;
+  double query_norm;
+
+  int result = preprocess_query(query_user, global_idf, &query_tf, &query_norm);
+  if (result != 0) {
+    fprintf(stderr, "Erro ao processar consulta do usuário\n");
+    return 1;
+  }
+
+  log_info("Consulta processada com sucesso!");
+  log_info("Norma da query: %.6f", query_norm);
+  log_info("Tamanho do vetor TF-IDF da query: %zu palavras",
+           hash_size(query_tf));
+
+  // DEBUG: Exibir palavras da query
+  if (VERBOSE) {
+    printf("Palavras na query (após processamento):\n");
+    for (size_t i = 0; i < query_tf->cap; i++) {
+      for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
+        double idf = hash_find(global_idf, e->word);
+        printf("  '%s': IDF=%.6f, TF-IDF=%.6f\n", e->word, idf, e->value);
+      }
+    }
+  }
+
+  // Calcular similaridade com todos os documentos
+  struct timespec t_start_sim, t_end_sim;
+  clock_gettime(CLOCK_MONOTONIC, &t_start_sim);
+
+  double *similarities =
+      compute_similarities(query_tf, query_norm, global_tf, global_doc_norms,
+                           global_entries, nthreads);
+
+  clock_gettime(CLOCK_MONOTONIC, &t_end_sim);
+  double elapsed_sim = get_elapsed_time(&t_start_sim, &t_end_sim);
+
+  if (!similarities) {
+    fprintf(stderr, "Erro ao calcular similaridades\n");
+    hash_free(query_tf);
+    return 1;
+  }
+  log_info("[SIMILARIDADE] Tempo: %.3f segundos", elapsed_sim);
+
+  // Encontrar os top-k documentos mais similares
+  DocSim *scores = (DocSim *)malloc(global_entries * sizeof(DocSim));
+  if (scores) {
+    for (long int i = 0; i < global_entries; i++) {
+      scores[i].doc_id = i;
+      scores[i].similarity = similarities[i];
+    }
+
+    qsort(scores, global_entries, sizeof(DocSim), compare_sim);
+
+    // Exibir top-k
+    long int top_k = global_entries < k ? global_entries : k;
+    printf("\nTop %ld documentos mais similares:\n", top_k);
+    printf("---------------------------------\n");
+
+    long int *top_ids = (long int *)malloc(top_k * sizeof(long int));
+    if (top_ids) {
+      for (long int i = 0; i < top_k; i++) {
+        top_ids[i] = scores[i].doc_id;
+      }
+
+      char **documents = get_documents_by_ids(db, table, top_ids, top_k);
+      if (documents) {
+        for (long int i = 0; i < top_k; i++) {
+          if (documents[i]) {
+            // Similarity score in green, content in white
+            printf("[%ld] \x1b[36m%.6f\x1b[90m  ", top_ids[i], scores[i].similarity);
+            // printf("[%ld] %.6f  ", top_ids[i], scores[i].similarity);
+            // Limitar a exibição a 100 caracteres
+            if (strlen(documents[i]) > 100) {
+              const char *p = documents[i];
+              int j = 0;
+              for (; *p && j < 100; ++j, p++)
+                putchar(*p);
+              if (*p)
+                printf("...\x1b[0m");
+              printf("\n");
+            } else {
+              printf("%s\n", documents[i]);
+            }
+            free(documents[i]);
+          }
+        }
+        free(documents);
+      }
+      free(top_ids);
+    }
+
+    free(scores);
+  }
+
+  free(similarities);
+  hash_free(query_tf);
+
+  return 0;
 }
