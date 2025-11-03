@@ -33,7 +33,7 @@ long int get_single_int(const char *filename, const char *query,
   sqlite3 *db;
   sqlite3_stmt *stmt;
 
-  rc = sqlite3_open(filename, &db);
+  rc = sqlite3_open_v2(filename, &db, SQLITE_OPEN_READONLY, NULL);
   if (rc) {
     fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
     return 1;
@@ -85,7 +85,7 @@ char **get_str_arr(const char *filename, const char *query, long int start,
   char **result = NULL;
   long int i = 0;
 
-  rc = sqlite3_open(filename, &db);
+  rc = sqlite3_open_v2(filename, &db, SQLITE_OPEN_READONLY, NULL);
   if (rc) {
     fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
     return NULL;
@@ -111,7 +111,7 @@ char **get_str_arr(const char *filename, const char *query, long int start,
   sqlite3_bind_int64(stmt, 2, end);
 
   long int array_size = end - start + 1;
-  result = calloc(array_size, sizeof(char *));
+  result = (char **)calloc(array_size, sizeof(char *));
   if (!result) {
     fprintf(stderr, "Erro ao alocar memória\n");
     sqlite3_finalize(stmt);
@@ -155,7 +155,7 @@ char **get_documents_by_ids(const char *filename, const char *table,
   sqlite3_stmt *stmt;
   char **result = NULL;
 
-  rc = sqlite3_open(filename, &db);
+  rc = sqlite3_open_v2(filename, &db, SQLITE_OPEN_READONLY, NULL);
   if (rc) {
     fprintf(stderr, "Erro ao abrir banco: %s\n", sqlite3_errmsg(db));
     return NULL;

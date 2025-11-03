@@ -27,11 +27,7 @@
 #include "../include/preprocess.h"
 #include "../include/preprocess_query.h"
 #include "../include/sqlite_helper.h"
-
-static inline double get_elapsed_time(struct timespec *start,
-                                      struct timespec *end) {
-  return (end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec) / 1e9;
-}
+#include "../include/time_utils.h"
 
 /* --------------- Variáveis globais --------------- */
 
@@ -42,7 +38,6 @@ static inline double get_elapsed_time(struct timespec *start,
 hash_t **global_tf; /**< Array de hashes TF (Term Frequency) por documento */
 hash_t *global_idf; /**< Hash IDF (Inverse Document Frequency) global */
 double *global_doc_norms;    /**< Array com normas dos vetores de documentos */
-size_t global_vocab_size;    /**< Tamanho do vocabulário (palavras únicas) */
 long int global_entries = 0; /**< Número total de documentos processados */
 /** @} */
 
@@ -54,7 +49,7 @@ int VERBOSE = 0; /**< Flag de verbosidade (0=desabilitado, 1=habilitado) */
 
 /* --------------- Macros --------------- */
 
-#define MAX_THREADS 16 /**< Número máximo de threads suportadas */
+#define MAX_THREADS 32 /**< Número máximo de threads suportadas */
 #define PRINT_IDF_WORDS 20
 
 /**
@@ -71,7 +66,6 @@ typedef struct {
   const char *table;          /**< Nome da tabela no banco de dados */
   int nthreads;               /**< Número de threads para pré-processamento */
   int k;                      /**< Número de documentos top-k a retornar */
-  int test;                   /**< Modo de teste (0=desabilitado) */
   int verbose;                /**< Verbosidade (0=desabilitado, 1=habilitado) */
 } Config;
 
@@ -105,29 +99,28 @@ int main(int argc, char *argv[]) {
   log_set_level(LOG_WARN);
 
   // Inicializar configuração com valores padrão
-  Config cfg = {.nthreads = 4,
-                .entries = 0,
-                .db = "./data/wiki-small.db",
-                .query_user = "shakespeare english literature",
-                .query_filename = NULL,
-                .table = "sample_articles",
-                .k = 10,
-                .test = 0,
-                .verbose = 0};
+  Config cfg = {
+      .nthreads = 4,
+      .entries = 100,
+      .db = "./data/wiki-small.db",
+      .query_user = "shakespeare english literature",
+      .query_filename = NULL,
+      .table = "sample_articles",
+      .k = 10,
+      .verbose = 0};
 
   // [1]
   if (parse_cli(argc, argv, &cfg) != 0) {
     return 1;
   }
 
-  // Ler query de arquivo se fornecido
   if (cfg.query_filename && strlen(cfg.query_filename) > 3)
     cfg.query_user = get_filecontent(cfg.query_filename);
 
-  // Atualiza variável global de verbosidade e reconfigura log level
+  // Configura verbosidade e log level
   VERBOSE = cfg.verbose;
   if (VERBOSE) {
-    log_set_level(LOG_INFO); // Mostra INFO, WARN, ERROR, FATAL
+    log_set_level(LOG_INFO);
   }
 
   log_info("Parâmetros nomeados:\n"
@@ -137,29 +130,39 @@ int main(int argc, char *argv[]) {
            "\tdb: %s\n"
            "\tquery_user: %s\n"
            "\ttable: %s\n"
-           "\ttest: %d\n"
            "\tk: %d",
-           argc, cfg.nthreads, cfg.entries, cfg.db, cfg.query_user, cfg.table,
-           cfg.test, cfg.k);
+           argc, cfg.nthreads, cfg.entries, cfg.db, cfg.query_user, cfg.table, cfg.k);
 
   if (cfg.nthreads <= 0 || cfg.nthreads > MAX_THREADS) {
-    fprintf(stderr,
-            "Número de threads inválido (%d). Deve estar entre 1 e %d\n",
+    log_error("Número de threads inválido (%d). Deve estar entre 1 e %d\n",
             cfg.nthreads, MAX_THREADS);
+    return 1;
+  }
+
+  if (cfg.entries <= 0) {
+    log_error("Número de entradas inválido (%ld). Deve ser > 0\n", cfg.entries);
+    return 1;
+  }
+
+  if (cfg.k <= 0) {
+    log_error("Valor de k inválido (%d). Deve ser > 0\n", cfg.k);
     return 1;
   }
 
   // Determinar número de entradas primeiro (para criar nomes de arquivo)
   const char *query_count = "select count(*) from \"%w\";";
   long int total = get_single_int(cfg.db, query_count, cfg.table);
-  if (!cfg.entries || cfg.entries > total) {
-    log_info(
+  if (total == -1) {
+    log_error("Banco de dados não encontrado ou tabela inválida.");
+    return 1;
+  } else if (cfg.entries > total) {
+    log_warn(
         "Número de entradas %ld excedeu a quantidade total de documentos: %ld",
         cfg.entries, total);
     cfg.entries = total;
   }
 
-  // Criar nomes de arquivo com table e número de entradas
+  // Criar nomes de arquivo: <estrutura>_<tabela>_<entradas>
   char filename_tf[256];
   char filename_idf[256];
   char filename_doc_norms[256];
@@ -240,7 +243,6 @@ int main(int argc, char *argv[]) {
  * - --query_filename: Arquivo contendo query
  * - --table: Nome da tabela no banco
  * - --k: Top-k documentos a retornar
- * - --test: Modo de teste
  * - --verbose: Ativa modo verboso
  *
  * @param argc Número de argumentos
@@ -270,13 +272,10 @@ int parse_cli(int argc, char **argv, Config *cfg) {
       cfg->table = argv[++i];
     else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
       cfg->k = atoi(argv[++i]);
-    else if (strcmp(argv[i], "--test") == 0 && i + 1 < argc)
-      cfg->test = atoi(argv[++i]);
     else if (strcmp(argv[i], "--verbose") == 0)
       cfg->verbose = 1;
     else {
-      fprintf(
-          stderr,
+      log_error(
           "Uso: %s <parametros nomeados>\n"
           "  --verbose: Verbosidade (default: 0)\n"
           "  --nthreads: Número de threads (default: 4)\n"
@@ -289,8 +288,7 @@ int parse_cli(int argc, char **argv, Config *cfg) {
           "  --query_filename: Arquivo com a consulta do usuário\n"
           "  --table: Nome da tabela consultada (default: "
           "'sample_articles')\n"
-          "  --k: Top-k documentos mais similares (default: 10)\n"
-          "  --test: Modo de teste (default: 0)\n",
+          "  --k: Top-k documentos mais similares (default: 10)\n",
           argv[0]);
       return 1;
     }

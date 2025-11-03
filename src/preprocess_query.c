@@ -9,6 +9,8 @@
 #include "../include/log.h"
 #include "../include/preprocess.h"
 #include "../include/sqlite_helper.h"
+#include "../include/time_utils.h"
+#include <libstemmer.h>
 #include <math.h>
 #include <pthread.h>
 #include <stdio.h>
@@ -16,7 +18,7 @@
 #include <string.h>
 #include <time.h>
 
-// External global variables from main.c
+// Variáveis externas globais da main.c
 extern hash_t **global_tf;
 extern hash_t *global_idf;
 extern double *global_doc_norms;
@@ -36,11 +38,17 @@ typedef struct {
   double *similarities;           // Array de similaridades (compartilhado)
 } similarity_args;
 
+#define MAX_THREADS 32 /**< Número máximo de threads suportadas */
+
 /**
  * @brief Função executada por cada thread para calcular similaridades
  */
 void *compute_similarities_thread(void *arg) {
   similarity_args *args = (similarity_args *)arg;
+
+  if (args->start < 0 || args->end - args->start <= 0) {
+    pthread_exit(NULL);
+  }
 
   for (long int doc_id = args->start; doc_id < args->end; doc_id++) {
     hash_t *doc_tf = args->global_tf[doc_id];
@@ -81,7 +89,7 @@ int preprocess_query(const char *query_user, const hash_t *global_idf,
   }
 
   // Converter query para formato char** (array de 1 string)
-  char **query_array = malloc(2 * sizeof(char *));
+  char **query_array = (char **)malloc(2 * sizeof(char *));
   if (!query_array)
     return -1;
   query_array[0] = strdup(query_user);
@@ -89,31 +97,56 @@ int preprocess_query(const char *query_user, const hash_t *global_idf,
 
   // Pipeline usando funções de documentos
   char ***tokens = tokenize(query_array, 1);
-  free(query_array[0]);
-  free(query_array);
 
   if (!tokens || !tokens[0]) {
+    free(query_array[0]);
+    free(query_array);
     if (tokens)
       free(tokens);
     return -1;
   }
 
-  remove_stopwords(tokens, 1);
-  stem(tokens, 1);
-
-  // Calcular TF
-  hash_t *query_tf = hash_new();
-  for (long int i = 0; tokens[0][i] != NULL; i++) {
-    hash_add(query_tf, tokens[0][i], 1.0);
+  // Criar stemmer para processar tokens
+  struct sb_stemmer *stemmer = sb_stemmer_new("english", NULL);
+  if (!stemmer) {
+    fprintf(stderr, "Erro ao criar stemmer para query\n");
+    free_article_vecs(tokens, 1);
+    free(query_array[0]);
+    free(query_array);
+    return -1;
   }
 
+  // Calcular TF com filtragem de stopwords e stemming em uma única passada
+  hash_t *query_tf = hash_new();
+  for (long int i = 0; tokens[0][i] != NULL; i++) {
+    const char *word = tokens[0][i];
+
+    // Filtrar stopwords
+    if (hash_contains(global_stopwords, word)) {
+      continue;
+    }
+
+    // Aplicar stemming
+    const char *stemmed = (const char *)sb_stemmer_stem(
+        stemmer, (const sb_symbol *)word, strlen(word));
+
+    // Adicionar ao TF apenas se palavra existe no vocabulário (IDF > 0)
+    double idf = hash_find(global_idf, stemmed);
+    if (idf > 0.0) {
+      hash_add(query_tf, stemmed, 1.0);
+    }
+  }
+
+  sb_stemmer_delete(stemmer);
+  free(query_array[0]);
+  free(query_array);
+
   // Calcular TF-IDF
-  // Não posso usar populate_tf_hash pois ele recebe um vetor de hashes
   for (size_t i = 0; i < query_tf->cap; i++) {
     for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
       if (e->value > 0) {
         double idf = hash_find(global_idf, e->word);
-        e->value = (idf == 0.0) ? 0.0 : (1.0 + log2(e->value)) * idf;
+        e->value = (1.0 + log2(e->value)) * idf;
       }
     }
   }
@@ -127,6 +160,7 @@ int preprocess_query(const char *query_user, const hash_t *global_idf,
   }
   norm = sqrt(norm);
 
+  // Liberar tokens (não precisa deep pois não foram duplicados)
   free_article_vecs(tokens, 1);
 
   *query_tf_out = query_tf;
@@ -146,15 +180,15 @@ double *compute_similarities(const hash_t *query_tf, double query_norm,
 
   if (nthreads <= 0)
     nthreads = 1;
-  if (nthreads > 16)
-    nthreads = 16;
+  if (nthreads > MAX_THREADS)
+    nthreads = MAX_THREADS;
 
   double *similarities = (double *)calloc(num_docs, sizeof(double));
   if (!similarities)
     return NULL;
 
-  pthread_t *threads = malloc(nthreads * sizeof(pthread_t));
-  similarity_args *args = malloc(nthreads * sizeof(similarity_args));
+  pthread_t *threads = (pthread_t *)malloc(nthreads * sizeof(pthread_t));
+  similarity_args *args = (similarity_args *)malloc(nthreads * sizeof(similarity_args));
 
   if (!threads || !args) {
     free(similarities);
@@ -181,10 +215,6 @@ double *compute_similarities(const hash_t *query_tf, double query_norm,
     if (pthread_create(&threads[i], NULL, compute_similarities_thread,
                        &args[i])) {
       fprintf(stderr, "Erro ao criar thread %d para similaridade\n", i);
-      // Cleanup
-      for (int j = 0; j < i; j++) {
-        pthread_join(threads[j], NULL);
-      }
       free(threads);
       free(args);
       free(similarities);
@@ -201,14 +231,6 @@ double *compute_similarities(const hash_t *query_tf, double query_norm,
   free(args);
 
   return similarities;
-}
-
-/**
- * @brief Função auxiliar para calcular tempo decorrido
- */
-static inline double get_elapsed_time(struct timespec *start,
-                                      struct timespec *end) {
-  return (end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec) / 1e9;
 }
 
 /**
@@ -249,10 +271,8 @@ int process_and_display_query(const char *query_user, int nthreads, int k,
 
   log_info("Consulta processada com sucesso!");
   log_info("Norma da query: %.6f", query_norm);
-  log_info("Tamanho do vetor TF-IDF da query: %zu palavras",
-           hash_size(query_tf));
+  log_info("Tamanho do vetor TF-IDF da query: %zu palavras", query_tf->size);
 
-  // DEBUG: Exibir palavras da query
   if (VERBOSE) {
     printf("Palavras na query (após processamento):\n");
     for (size_t i = 0; i < query_tf->cap; i++) {
@@ -263,7 +283,6 @@ int process_and_display_query(const char *query_user, int nthreads, int k,
     }
   }
 
-  // Calcular similaridade com todos os documentos
   struct timespec t_start_sim, t_end_sim;
   clock_gettime(CLOCK_MONOTONIC, &t_start_sim);
 
@@ -306,9 +325,7 @@ int process_and_display_query(const char *query_user, int nthreads, int k,
       if (documents) {
         for (long int i = 0; i < top_k; i++) {
           if (documents[i]) {
-            // Similarity score in green, content in white
             printf("[%ld] \x1b[36m%.6f\x1b[90m  ", top_ids[i], scores[i].similarity);
-            // printf("[%ld] %.6f  ", top_ids[i], scores[i].similarity);
             // Limitar a exibição a 100 caracteres
             if (strlen(documents[i]) > 100) {
               const char *p = documents[i];

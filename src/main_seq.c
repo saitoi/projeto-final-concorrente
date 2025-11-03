@@ -11,12 +11,7 @@
 #include "../include/preprocess.h"
 #include "../include/preprocess_query.h"
 #include "../include/sqlite_helper.h"
-
-static inline double get_elapsed_time(struct timespec *start,
-                                      struct timespec *end) {
-  return (end->tv_sec - start->tv_sec) +
-         (end->tv_nsec - start->tv_nsec) / 1e9;
-}
+#include "../include/time_utils.h"
 
 /* --------------- Variáveis globais --------------- */
 
@@ -25,7 +20,6 @@ static inline double get_elapsed_time(struct timespec *start,
 hash_t **global_tf = NULL;
 hash_t *global_idf = NULL;
 double *global_doc_norms = NULL;
-size_t global_vocab_size = 0;
 long int global_entries = 0;
 
 int VERBOSE = 0;
@@ -156,7 +150,6 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    global_vocab_size = hash_size(global_idf);
     printf("Estruturas carregadas com sucesso.\n");
 
     load_stopwords("assets/stopwords.txt");
@@ -182,8 +175,7 @@ int main(int argc, char *argv[]) {
     } else {
       log_info( "Consulta processada com sucesso!\n");
       log_info( "Norma da query: %.6f\n", query_norm);
-      log_info( "Tamanho do vetor TF-IDF da query: %zu palavras\n",
-          hash_size(query_tf));
+      log_info( "Tamanho do vetor TF-IDF da query: %zu palavras\n", query_tf->size);
       if (VERBOSE) {
         printf("Palavras na query (após processamento):\n");
         for (size_t i = 0; i < query_tf->cap; i++) {
@@ -208,7 +200,7 @@ int main(int argc, char *argv[]) {
       } else {
         log_info( "\n[SIMILARIDADE] Tempo: %.3f segundos\n", elapsed_sim);
 
-        DocSim *scores = malloc(global_entries * sizeof(DocSim));
+        DocSim *scores = (DocSim *)malloc(global_entries * sizeof(DocSim));
         if (scores) {
           for (long int i = 0; i < global_entries; i++) {
             scores[i].doc_id = i;
@@ -221,7 +213,7 @@ int main(int argc, char *argv[]) {
               global_entries < cfg.k ? global_entries : cfg.k;
           printf("\nTop %ld documentos mais similares:\n", top_k);
           printf("---------------------------------\n");
-          long int *top_ids = malloc(top_k * sizeof(long int));
+          long int *top_ids = (long int *)malloc(top_k * sizeof(long int));
           if (top_ids) {
             for (long int i = 0; i < top_k; i++) {
               top_ids[i] = scores[i].doc_id;
@@ -287,7 +279,7 @@ static int preprocess_documents_sequential(const Config *cfg,
   global_entries = cfg->entries;
   global_idf = hash_new();
 
-  global_tf = calloc(global_entries, sizeof(hash_t *));
+  global_tf = (hash_t **)calloc(global_entries, sizeof(hash_t *));
   if (!global_tf) {
     fprintf(stderr, "Falha ao alocar memória para global_tf\n");
     return -1;
@@ -323,8 +315,7 @@ static int preprocess_documents_sequential(const Config *cfg,
   hash_merge(global_idf, local_idf);
   hash_free(local_idf);
 
-  printf("[FASE 1] Vocabulário construído: %zu palavras\n",
-         hash_size(global_idf));
+  printf("[FASE 1] Vocabulário construído: %zu palavras\n", global_idf->size);
   printf("[FASE 1] Calculando IDF global...\n");
   for (size_t i = 0; i < global_idf->cap; i++) {
     HashEntry *e = global_idf->buckets[i];
@@ -336,9 +327,7 @@ static int preprocess_documents_sequential(const Config *cfg,
       e = e->next;
     }
   }
-  global_vocab_size = hash_size(global_idf);
-
-  global_doc_norms = calloc(global_entries, sizeof(double));
+  global_doc_norms = (double *)calloc(global_entries, sizeof(double));
   if (!global_doc_norms) {
     fprintf(stderr, "Erro ao alocar memória para global_doc_norms\n");
     return -1;
@@ -346,8 +335,7 @@ static int preprocess_documents_sequential(const Config *cfg,
 
   clock_gettime(CLOCK_MONOTONIC, &t_end_fase1);
   double elapsed_fase1 = get_elapsed_time(&t_start_fase1, &t_end_fase1);
-  printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n",
-         global_vocab_size);
+  printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n", global_idf->size);
   printf("[FASE 1] Tempo: %.3f segundos\n", elapsed_fase1);
 
   struct timespec t_start_fase2, t_end_fase2;
@@ -355,8 +343,7 @@ static int preprocess_documents_sequential(const Config *cfg,
 
   printf("\n[FASE 2] Calculando TF-IDF e normas (sequencial)...\n");
   compute_tf_idf(global_tf, global_idf, global_entries, 0);
-  compute_doc_norms(global_doc_norms, global_tf, global_entries,
-                    global_vocab_size, 0);
+  compute_doc_norms(global_doc_norms, global_tf, global_entries, 0);
 
   clock_gettime(CLOCK_MONOTONIC, &t_end_fase2);
   double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);
@@ -430,7 +417,7 @@ static double *compute_similarities_seq(const hash_t *query_tf,
     return NULL;
   }
 
-  double *similarities = calloc(num_docs, sizeof(double));
+  double *similarities = (double *)calloc(num_docs, sizeof(double));
   if (!similarities) {
     return NULL;
   }
@@ -488,7 +475,6 @@ static void free_global_structures(void) {
 
   free_stopwords();
 
-  global_vocab_size = 0;
   global_entries = 0;
 }
 

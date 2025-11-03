@@ -36,7 +36,7 @@
  */
 static char *safe_strdup(const char *s) {
   size_t n = strlen(s) + 1;
-  char *p = malloc(n);
+  char *p = (char *)malloc(n);
   if (!p) {
     perror("malloc");
     exit(1);
@@ -73,7 +73,7 @@ uint64_t hash_str(const char *str, size_t len) {
  * @note Termina o programa em caso de falha de alocação
  */
 hash_t *hash_new(void) {
-  hash_t *set = malloc(sizeof(*set));
+  hash_t *set = (hash_t *)malloc(sizeof(*set));
   if (!set) {
     perror("malloc");
     exit(1);
@@ -81,7 +81,7 @@ hash_t *hash_new(void) {
 
   set->cap = HASH_INIT_CAP;
   set->size = 0;
-  set->buckets = calloc(set->cap, sizeof(HashEntry *));
+  set->buckets = (HashEntry **)calloc(set->cap, sizeof(HashEntry *));
   if (!set->buckets) {
     perror("calloc");
     exit(1);
@@ -126,7 +126,7 @@ void hash_free(hash_t *set) {
  * @note Função estática, uso interno apenas
  */
 static void hash_rehash(hash_t *set, size_t ncap) {
-  HashEntry **nb = calloc(ncap, sizeof(HashEntry *));
+  HashEntry **nb = (HashEntry **)calloc(ncap, sizeof(HashEntry *));
   if (!nb) {
     perror("calloc");
     exit(1);
@@ -176,7 +176,7 @@ void hash_add(hash_t *set, const char *word, double value) {
     }
   }
 
-  HashEntry *e = malloc(sizeof(*e));
+  HashEntry *e = (HashEntry *)malloc(sizeof(*e));
   if (!e) {
     perror("malloc");
     exit(1);
@@ -237,30 +237,6 @@ void hash_merge(hash_t *dst, const hash_t *src) {
 }
 
 /**
- * @brief Retorna número de entradas na tabela hash
- *
- * Conta todas as entradas percorrendo os buckets.
- *
- * @param set Tabela hash
- * @return Número de entradas
- */
-size_t hash_size(const hash_t *set) {
-  if (!set || !set->cap)
-    return 0;
-
-  long int size = 0;
-  for (size_t i = 0; i < set->cap; i++) {
-    HashEntry *e = set->buckets[i];
-    while (e) {
-      size++;
-      e = e->next;
-    }
-  }
-
-  return size;
-}
-
-/**
  * @brief Busca valor associado a uma palavra
  *
  * @param set Tabela hash
@@ -272,10 +248,10 @@ double hash_find(const hash_t *set, const char *word) {
     return 0.0;
 
   size_t wlen = strlen(word);
-  size_t idx = hash_str(word, wlen) % set->cap;
+  size_t idx = hash_str(word, wlen) & (set->cap - 1);
   HashEntry *e = set->buckets[idx];
   while (e) {
-    if (!strcmp(e->word, word))
+    if (!memcmp(e->word, word, wlen))
       return e->value;
     e = e->next;
   }

@@ -20,6 +20,7 @@
 #include "../include/hash_t.h"
 #include "../include/log.h"
 #include "../include/sqlite_helper.h"
+#include "../include/time_utils.h"
 #include <libstemmer.h>
 #include <math.h>
 #include <pthread.h>
@@ -32,7 +33,6 @@
 extern hash_t **global_tf;
 extern hash_t *global_idf;
 extern double *global_doc_norms;
-extern size_t global_vocab_size;
 extern long int global_entries;
 
 /**
@@ -53,7 +53,7 @@ void set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc,
     pthread_exit(NULL);
   }
 
-  // Para cada documento local, contar n_i (documentos que contêm cada palavra)
+  // Para cada documento local, contar n_i (documentos que contem cada palavra)
   for (long int doc_idx = 0; doc_idx < count; doc_idx++) {
     long int doc_id = start_doc + doc_idx;
     if (!tf[doc_id])
@@ -69,13 +69,15 @@ void set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc,
         if (!vocab_entry) {
           // Palavra não existe: adicionar com n_i = 1 e marcar epoch
           hash_add(vocab, doc_entry->word, 1.0);
-          // Buscar novamente após add (pode ter ocorrido rehash)
+          // Buscar novamente após add, 
           vocab_entry = hash_get(vocab, doc_entry->word);
-          if (vocab_entry)
-            vocab_entry->epoch = doc_id;
+          if (!vocab_entry) {
+            fprintf(stderr, "Erro: hash_add/hash_get falhou para palavra '%s'\n", doc_entry->word);
+            pthread_exit(NULL);
+          }
+          vocab_entry->epoch = doc_id;
         } else {
-          // Palavra existe: incrementar n_i apenas se não foi vista neste
-          // documento
+          // Palavra existe: incrementar n_i apenas se não foi vista neste documento
           if (vocab_entry->epoch != (unsigned long)doc_id) {
             vocab_entry->value += 1.0;
             vocab_entry->epoch = doc_id;
@@ -84,121 +86,6 @@ void set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc,
 
         doc_entry = doc_entry->next;
       }
-    }
-  }
-}
-
-// Isso daqui é extremamente idiota
-// Isso daqui já é feito em set_idf_words
-void set_idf_freq(hash_t *idf_local, hash_t **tf, long int start_doc,
-                  long int num_docs) {
-  if (!idf_local || !tf) {
-    fprintf(stderr, "Erro: idf_local ou tf é nulo.\n");
-    pthread_exit(NULL);
-  }
-
-  // Zerar todos os valores antes de contar
-  for (size_t i = 0; i < idf_local->cap; i++) {
-    HashEntry *e = idf_local->buckets[i];
-    while (e) {
-      e->value = 0.0;
-      e = e->next;
-    }
-  }
-
-  // Para cada documento local, contar quantos documentos contêm cada palavra
-  for (long int doc_idx = 0; doc_idx < num_docs; doc_idx++) {
-    long int doc_id = start_doc + doc_idx;
-    if (!tf[doc_id])
-      continue;
-
-    // Para cada palavra neste documento
-    for (size_t i = 0; i < tf[doc_id]->cap; i++) {
-      HashEntry *doc_entry = tf[doc_id]->buckets[i];
-      while (doc_entry) {
-        size_t wlen = doc_entry->wlen;
-        size_t idx = hash_str(doc_entry->word, wlen) & (idf_local->cap - 1);
-
-        // Buscar palavra no vocabulário local e incrementar contador (n_i
-        // local)
-        for (HashEntry *vocab_entry = idf_local->buckets[idx]; vocab_entry;
-             vocab_entry = vocab_entry->next) {
-          if (vocab_entry->wlen == wlen &&
-              memcmp(vocab_entry->word, doc_entry->word, wlen) == 0) {
-            vocab_entry->value += 1.0;
-            break;
-          }
-        }
-        doc_entry = doc_entry->next;
-      }
-    }
-  }
-}
-
-/**
- * @brief Calcula valores IDF para todas as palavras do vocabulário
- *
- * Computa o IDF (Inverse Document Frequency) usando a fórmula:
- * IDF(palavra) = log2(total_documentos / documentos_contendo_palavra)
- *
- * @param set Hash de vocabulário (IDF) a ser calculado
- * @param tf Array de hashes TF de todos os documentos
- * @param doc_count Número total de documentos (double para cálculo)
- * @param num_docs Número de documentos no array tf
- */
-void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
-                   long int num_docs) {
-  if (!set || !tf) {
-    fprintf(stderr, "Erro: set ou tf é nulo.\n");
-    pthread_exit(NULL);
-  }
-
-  // Primeiro, zerar todos os valores (vamos usar como contador)
-  for (size_t i = 0; i < set->cap; i++) {
-    HashEntry *e = set->buckets[i];
-    while (e) {
-      e->value = 0.0;
-      e = e->next;
-    }
-  }
-
-  // Percorrer cada documento uma única vez e incrementar contador para cada
-  // palavra
-  for (long int doc_id = 0; doc_id < num_docs; doc_id++) {
-    if (!tf[doc_id])
-      continue;
-
-    // Para cada palavra neste documento
-    for (size_t i = 0; i < tf[doc_id]->cap; i++) {
-      HashEntry *doc_entry = tf[doc_id]->buckets[i];
-      while (doc_entry) {
-        // Buscar essa palavra no vocabulário global e incrementar seu contador
-        size_t wlen = doc_entry->wlen;
-        size_t idx = hash_str(doc_entry->word, wlen) & (set->cap - 1);
-
-        for (HashEntry *vocab_entry = set->buckets[idx]; vocab_entry;
-             vocab_entry = vocab_entry->next) {
-          if (vocab_entry->wlen == wlen &&
-              memcmp(vocab_entry->word, doc_entry->word, wlen) == 0) {
-            vocab_entry->value += 1.0;
-            break;
-          }
-        }
-
-        doc_entry = doc_entry->next;
-      }
-    }
-  }
-
-  // Agora calcular o IDF com base nos contadores
-  for (size_t i = 0; i < set->cap; i++) {
-    HashEntry *e = set->buckets[i];
-    while (e) {
-      if (e->value > 0)
-        e->value = log2(doc_count / e->value);
-      else
-        e->value = 0.0;
-      e = e->next;
     }
   }
 }
@@ -260,9 +147,8 @@ void compute_tf_idf(hash_t **global_tf, hash_t *global_idf, long int count,
  * @param offset Índice inicial no array global
  */
 void compute_doc_norms(double *global_doc_norms, hash_t **global_tf,
-                       long int doc_count, long int vocab_size,
-                       long int offset) {
-  if (!global_doc_norms || doc_count <= 0 || vocab_size <= 0 || offset < 0) {
+                       long int doc_count, long int offset) {
+  if (!global_doc_norms || doc_count <= 0 || offset < 0) {
     fprintf(stderr, "Erro nos argumentos de entrada.\n");
     return;
   }
@@ -287,7 +173,7 @@ void compute_doc_norms(double *global_doc_norms, hash_t **global_tf,
       }
     }
 
-    // Tomar a raiz quadrada para obter a norma Euclidiana
+    // Tomar a raiz quadrada para obter a norma
     global_doc_norms[doc_id] = sqrt(norm);
   }
 }
@@ -318,6 +204,22 @@ void stem(char ***article_vecs, long int count) {
           strlen(article_vecs[i][j]));
       free(article_vecs[i][j]);
       article_vecs[i][j] = strdup(stemmed);
+      if (!article_vecs[i][j]) {
+        fprintf(stderr, "Erro ao duplicar palavra stemmed\n");
+        sb_stemmer_delete(stemmer);
+        for (long int k = 0; k < j; k++) {
+          free(article_vecs[i][k]);
+        }
+        for (long int k = i; k < count; k++) {
+          if (article_vecs[k]) {
+            for (long int m = 0; article_vecs[k][m]; m++) {
+              free(article_vecs[k][m]);
+            }
+            free(article_vecs[k]);
+          }
+        }
+        return;
+      }
     }
   }
   sb_stemmer_delete(stemmer);
@@ -351,18 +253,14 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count,
         continue;
 
       const char *word = article_vecs[i][j];
-      // Remoção de stopwords diretamente no populate
-      if (!hash_contains(global_stopwords, word) && strlen(word) > 1) {
+      if (!hash_contains(global_stopwords, word)) {
         const char *stemmed = (const char *)sb_stemmer_stem(
             stemmer, (const sb_symbol *)article_vecs[i][j],
             strlen(article_vecs[i][j]));
         hash_add(tf[global_idx], stemmed, 1.0);
-        free(article_vecs[i][j]);
-        article_vecs[i][j] = NULL; // Evitar double free
-      } else {
-        free(article_vecs[i][j]);
-        article_vecs[i][j] = NULL; // Liberar stopwords também
       }
+      // Não liberar tokens individuais - são ponteiros para article_texts
+      article_vecs[i][j] = NULL;
     }
   }
   sb_stemmer_delete(stemmer);
@@ -379,73 +277,51 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count,
  * @return Array de vetores de tokens, ou NULL em erro
  * @note Caller deve liberar usando free_article_vecs()
  */
-char ***tokenize(char **article_texts, long int count) {
-  char ***article_vecs = malloc(count * sizeof(char **));
-  if (!article_vecs) {
-    fprintf(stderr, "Erro ao alocar article_vecs\n");
-    return NULL;
-  }
-
-  const char *delimiters = " \t\n\r,.:;!?/";
-
-  for (long int i = 0; i < count; ++i) {
-    if (!article_texts[i]) {
-      article_vecs[i] = NULL;
-      continue;
-    }
-
-    // Contar tokens sem modificar a string original
-    long int token_count = 0;
-    const char *ptr = article_texts[i];
-    int in_token = 0;
-
-    while (*ptr) {
-      if (strchr(delimiters, *ptr)) {
-        in_token = 0;
-      } else if (!in_token) {
-        token_count++;
-        in_token = 1;
-      }
-      ptr++;
-    }
-
-    // Alocar array de ponteiros
-    article_vecs[i] = malloc((token_count + 1) * sizeof(char *));
-    if (!article_vecs[i]) {
-      continue;
-    }
-
-    // Uma única cópia para tokenização
-    char *text_copy = strdup(article_texts[i]);
-    if (!text_copy) {
-      free(article_vecs[i]);
-      article_vecs[i] = NULL;
-      continue;
-    }
-
-    // Tokenizar e copiar
-    long int j = 0;
-    char *saveptr;
-    char *token = strtok_r(text_copy, delimiters, &saveptr);
-    while (token != NULL) {
-      article_vecs[i][j] = strdup(token);
-      j++;
-      token = strtok_r(NULL, delimiters, &saveptr);
-    }
-    article_vecs[i][j] = NULL;
-
-    free(text_copy);
-  }
-
-  return article_vecs;
-}
+ char ***tokenize(char **article_texts, long int count) {
+   // Alocar vetor com os tokens de cada documento
+   char ***article_vecs = malloc(count * sizeof(char **));
+   if (!article_vecs) return NULL;
+ 
+   const char *delimiters = " \t\n\r,.:;!?/";
+   for (long int i = 0; i < count; ++i) {
+     char *text = article_texts[i];
+     if (!text) {
+       article_vecs[i] = NULL;
+       continue;
+     }
+ 
+     // Contar a quantidade de tokens do doc i
+     long int token_count = 0;
+     int in_token = 0;
+     for (char *p = text; *p; p++) {
+       if (strchr(delimiters, *p)) in_token = 0;
+       else if (!in_token) { token_count++; in_token = 1; }
+     }
+ 
+     // Alocar posições para as quantidade de tokens captadas
+     article_vecs[i] = malloc((token_count + 1) * sizeof(char *));
+     if (!article_vecs[i]) { article_vecs[i] = NULL; continue; }
+ 
+     // Aloca o token para a posição 
+     long int j = 0;
+     char *saveptr;
+     char *token = strtok_r(text, delimiters, &saveptr);
+     while (token) {
+       article_vecs[i][j] = token;
+       j++;
+       token = strtok_r(NULL, delimiters, &saveptr);
+     }
+ 
+     article_vecs[i][j] = NULL;
+   }
+ 
+   return article_vecs;
+ }
 
 /**
- * @brief Remove stopwords e palavras de uma letra dos tokens
+ * @brief Remove stopwords dos tokens
  *
- * Filtra palavras comuns sem valor semântico (a, the, is, etc.)
- * e palavras muito curtas. Modifica os arrays in-place.
- *
+ * Filtra palavras comuns sem valor semântico (a, the, is, etc.).
  * @param article_vecs Array de vetores de tokens a serem filtrados
  * @param count Número de documentos
  */
@@ -460,12 +336,10 @@ void remove_stopwords(char ***article_vecs, long int count) {
     if (!article_vecs[i])
       continue;
 
-    // Filtra stopwords e palavras com apenas uma letra
     long int write_idx = 0;
     for (long int read_idx = 0; article_vecs[i][read_idx] != NULL; ++read_idx) {
       const char *word = article_vecs[i][read_idx];
-      // Mantém a palavra se NÃO for stopword E tiver mais de 1 letra
-      if (!hash_contains(global_stopwords, word) && strlen(word) > 1) {
+      if (!hash_contains(global_stopwords, word)) {
         article_vecs[i][write_idx++] = article_vecs[i][read_idx];
       } else {
         free(article_vecs[i][read_idx]);
@@ -476,7 +350,9 @@ void remove_stopwords(char ***article_vecs, long int count) {
 }
 
 /**
- * @brief Libera memória alocada para vetores de tokens
+ * @brief Libera memória alocada para vetores de tokens (sem liberar tokens individuais)
+ *
+ * Usado quando tokens são ponteiros para article_texts (abordagem 1)
  *
  * @param article_vecs Array de vetores de tokens a serem liberados
  * @param count Número de documentos
@@ -487,9 +363,7 @@ void free_article_vecs(char ***article_vecs, long int count) {
 
   for (long int i = 0; i < count; ++i) {
     if (article_vecs[i]) {
-      for (long int j = 0; article_vecs[i][j] != NULL; ++j) {
-        free(article_vecs[i][j]);
-      }
+      // apenas liberar o array de ponteiros
       free(article_vecs[i]);
     }
   }
@@ -590,8 +464,7 @@ void *preprocess_2(void *arg) {
   compute_tf_idf(global_tf, global_idf, count, t->start);
 
   // [2] Calcular normas dos documentos
-  compute_doc_norms(global_doc_norms, global_tf, count, global_vocab_size,
-                    t->start);
+  compute_doc_norms(global_doc_norms, global_tf, count, t->start);
 
   log_info("[FASE 2] T%02ld: Concluída", t->id);
   pthread_exit(NULL);
@@ -613,14 +486,6 @@ int compare_sim(const void *a, const void *b) {
 }
 
 /**
- * @brief Função auxiliar para calcular tempo decorrido
- */
-static inline double get_elapsed_time(struct timespec *start,
-                                      struct timespec *end) {
-  return (end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec) / 1e9;
-}
-
-/**
  * @brief Executa pré-processamento completo (FASE 1 e FASE 2)
  *
  * @param nthreads Número de threads para processamento paralelo
@@ -636,15 +501,18 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
                       const char *table, const char *filename_tf,
                       const char *filename_idf,
                       const char *filename_doc_norms) {
-  const int MAX_THREADS = 16;
-
   pthread_t *tids = (pthread_t *)malloc(sizeof(pthread_t) * nthreads);
   if (!tids) {
     fprintf(stderr, "Falha ao alocar memória para tids\n");
     return 1;
   }
 
-  thread_args args[MAX_THREADS];
+  thread_args *args = (thread_args *)malloc(sizeof(thread_args) * nthreads);
+  if (!args) {
+    fprintf(stderr, "Falha ao alocar memória para args\n");
+    free(tids);
+    return 1;
+  } 
 
   // Inicializar estruturas globais
   global_idf = hash_new();
@@ -652,6 +520,7 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
   if (!global_tf) {
     fprintf(stderr, "Falha ao alocar memória para global_tf\n");
     free(tids);
+    free(args);
     return 1;
   }
 
@@ -661,6 +530,7 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
     if (!global_tf[i]) {
       fprintf(stderr, "Falha ao alocar hash TF para documento %ld\n", i);
       free(tids);
+      free(args);
       return 1;
     }
   }
@@ -672,6 +542,7 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
   if (!global_stopwords) {
     fprintf(stderr, "Falha ao carregar stopwords\n");
     free(tids);
+    free(args);
     return 1;
   }
 
@@ -699,17 +570,27 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
     if (pthread_create(&tids[i], NULL, preprocess_1, (void *)&args[i])) {
       fprintf(stderr, "Erro ao criar thread %ld\n", i);
       free(tids);
+      free(args);
       return 1;
     }
   }
 
   // Aguardar conclusão da Fase 1 e coletar IDFs locais
-  hash_t *local_idfs[MAX_THREADS];
+  hash_t **local_idfs = (hash_t **)malloc(nthreads * sizeof(hash_t *));
+  if (!local_idfs) {
+    fprintf(stderr, "Erro ao alocar memória para local_idfs\n");
+    free(tids);
+    free(args);
+    return 1;
+  }
+
   for (long int i = 0; i < nthreads; ++i) {
     void *ret_val;
     if (pthread_join(tids[i], &ret_val)) {
       fprintf(stderr, "Erro ao esperar thread %ld\n", i);
       free(tids);
+      free(args);
+      free(local_idfs);
       return 1;
     }
     local_idfs[i] = (hash_t *)ret_val;
@@ -723,9 +604,9 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
       hash_free(local_idfs[i]);
     }
   }
+  free(local_idfs);
 
-  printf("[FASE 1] Vocabulário construído: %zu palavras\n",
-         hash_size(global_idf));
+  printf("[FASE 1] Vocabulário construído: %zu palavras\n", global_idf->size);
 
   // Aplicar log2(N / n_i) em todos os valores
   printf("[FASE 1] Calculando IDF global...\n");
@@ -739,23 +620,23 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
       e = e->next;
     }
   }
-  global_vocab_size = hash_size(global_idf);
 
   // Alocar normas
   global_doc_norms = (double *)calloc(global_entries, sizeof(double));
   if (!global_doc_norms) {
     fprintf(stderr, "Erro ao alocar memória para global_doc_norms\n");
     free(tids);
+    free(args);
     return 1;
   }
 
   clock_gettime(CLOCK_MONOTONIC, &t_end_fase1);
   double elapsed_fase1 = get_elapsed_time(&t_start_fase1, &t_end_fase1);
-  printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n",
-         global_vocab_size);
+  printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n", global_idf->size);
   printf("[FASE 1] Tempo: %.3f segundos\n", elapsed_fase1);
 
-  /* ========== FASE 2: Calcular TF-IDF ========== */
+  /* ---------- FASE 2: Calcular TF-IDF ---------- */
+
   struct timespec t_start_fase2, t_end_fase2;
   clock_gettime(CLOCK_MONOTONIC, &t_start_fase2);
 
@@ -765,6 +646,7 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
     if (pthread_create(&tids[i], NULL, preprocess_2, (void *)&args[i])) {
       fprintf(stderr, "Erro ao criar thread %ld\n", i);
       free(tids);
+      free(args);
       return 1;
     }
   }
@@ -773,10 +655,12 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
   for (long int i = 0; i < nthreads; ++i) {
     if (pthread_join(tids[i], NULL)) {
       fprintf(stderr, "Erro ao esperar thread %ld\n", i);
-      free(tids);
+      free(args);
       return 1;
     }
   }
+
+  free(args);
 
   clock_gettime(CLOCK_MONOTONIC, &t_end_fase2);
   double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);

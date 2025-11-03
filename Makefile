@@ -102,7 +102,7 @@ help:
 	@echo ""
 	@echo "Exemplos:"
 	@echo "  make setup           - Primeira vez: compila e gera modelos"
-	@echo "  make demo            - Demonstração completa da interface ⭐"
+	@echo "  make demo            - Demonstração completa da interface"
 	@echo "  make run ENTRIES=50 VERBOSE=0"
 	@echo "  make run TEST=0 QUERY=\"marine sea species\""
 	@echo "  make run MANUAL=1"
@@ -180,38 +180,4 @@ else
 endif
 	@echo 'Models cleaned..'
 
-test-correctness: $(TARGET)
-	@echo "=========================================="
-	@echo "Executando testes de corretude TF-IDF"
-	@echo "=========================================="
-	@echo ""
-	@sqlite3 data/test.db "SELECT table_id, query_id, query FROM queries ORDER BY \"table\", query_id" | while IFS='|' read -r tbl qid query; do \
-		if [ -z "$$tbl" ] || [ -z "$$qid" ] || [ -z "$$query" ]; then \
-			continue; \
-		fi; \
-		table_name="test_tbl_$$tbl"; \
-		table_exists=$$(sqlite3 data/test.db "SELECT name FROM sqlite_master WHERE type='table' AND name='$$table_name';" 2>/dev/null); \
-		if [ -z "$$table_exists" ]; then \
-			echo "=========================================="; \
-			echo "Tabela: $$table_name"; \
-			echo "Query ID: $$qid"; \
-			echo "Query: $$query"; \🔍 Buscar - Interface para realizar buscas TF-IDF
-
-			echo "AVISO: Tabela não existe no banco de dados. Ignorando..."; \
-			echo "=========================================="; \
-			echo ""; \
-			continue; \
-		fi; \
-		echo "=========================================="; \
-		echo "Tabela: $$table_name"; \
-		echo "Query ID: $$qid"; \
-		echo "Query: $$query"; \
-		echo "=========================================="; \
-		./$(TARGET) --table "$$table_name" --query_user "$$query" --entries $(ENTRIES) --nthreads $(NTHR) $(if $(filter 1,$(VERBOSE)),--verbose,); \
-		echo ""; \
-	done
-	@echo "=========================================="
-	@echo "Testes concluídos!"
-	@echo "=========================================="
-
-.PHONY: all clean clean_models lint format check run help test-correctness ui models demo setup
+.PHONY: all clean clean_models lint format check run help ui models demo setup

@@ -23,7 +23,6 @@
 extern hash_t **global_tf;
 extern hash_t *global_idf;
 extern double *global_doc_norms;
-extern size_t global_vocab_size;
 extern long int global_entries;
 
 /* -------------------- Stopwords -------------------- */
@@ -530,8 +529,6 @@ int load_models(const char *filename_tf, const char *filename_idf,
     free(global_tf);
     return 1;
   }
-
-  global_vocab_size = hash_size(global_idf);
 
   printf("Estruturas carregadas com sucesso.\n");
 

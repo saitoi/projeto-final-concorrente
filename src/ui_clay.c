@@ -31,7 +31,6 @@ hash_t **global_tf = NULL;      // Array de hashes TF (Term Frequency) por docum
 hash_t *global_idf = NULL;      // Hash IDF (Inverse Document Frequency) global
 double *global_doc_norms = NULL; // Normas dos documentos
 long int global_entries = 0;    // Número total de documentos processados
-int global_vocab_size = 0;      // Tamanho do vocabulário
 
 // Fonte global
 Font pixelFont;
@@ -242,10 +241,10 @@ int perform_tfidf_search(const char *db_path, const char *table_name,
     int result = preprocess_query(query, global_idf, &query_tf, &query_norm);
 
     // Verifica se preprocessamento foi bem-sucedido
-    if (result != 0 || query_tf == NULL || hash_size(query_tf) == 0 || query_norm == 0.0) {
+    if (result != 0 || query_tf == NULL || query_tf->size == 0 || query_norm == 0.0) {
         printf("[AVISO] Query não gerou termos válidos após pré-processamento\n");
         printf("[DEBUG] result=%d, query_tf=%p, size=%zu, norm=%f\n",
-            result, (void *) query_tf, query_tf ? hash_size(query_tf) : 0, query_norm);
+            result, (void *) query_tf, query_tf ? query_tf->size : 0, query_norm);
         hash_free(global_idf);
         if (query_tf) hash_free(query_tf);
         return 0;
@@ -1279,7 +1278,7 @@ int main(void) {
     if (global_stopwords == NULL) {
         printf("[AVISO] Stopwords não carregadas. Buscas podem não funcionar corretamente.\n");
     } else {
-        printf("Stopwords carregadas: %ld termos\n", hash_size(global_stopwords));
+        printf("Stopwords carregadas: %ld termos\n", global_stopwords->size);
     }
 
     // Inicializar estado da aplicação
