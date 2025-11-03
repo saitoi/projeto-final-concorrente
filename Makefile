@@ -44,7 +44,7 @@ else ifeq ($(TEST),3)
 	DB = ./data/test.db
     TBL = test_tbl_3
 else ifeq ($(TEST),4)
-    QUERY_FILENAME = ./t/perf/shakespeares_work.txt
+    QUERY_FILENAME = ./tests/performance/queries/shakespeares_query.txt
 else ifeq ($(TEST),5)
     DB = ./book-corpus.db
 else
