@@ -29,6 +29,7 @@ VERBOSE ?= 1
 MANUAL ?= 0
 NTHR ?= 4
 SEQ ?= 0
+K ?= 10
 
 # Mapeamento TEST para TBL_NAME
 ifeq ($(TEST),0)
@@ -116,7 +117,8 @@ run:
     $(if $(TBL),--table "$(TBL)",) \
     $(if $(QUERY),--query_user "$(QUERY)",) \
     $(if $(QUERY_FILENAME),--query_filename $(QUERY_FILENAME),) \
-    $(if $(DB),--db $(DB),)
+    $(if $(DB),--db $(DB),) \
+    $(if $(K),--k $(K),)
 
 %.o: %.c $(HEADERS)
 	@$(CC) $(CFLAGS) -c $< -o $@
