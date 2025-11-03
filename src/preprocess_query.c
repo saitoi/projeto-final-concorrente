@@ -101,19 +101,23 @@ int preprocess_query(const char *query_user, const hash_t *global_idf,
   remove_stopwords(tokens, 1);
   stem(tokens, 1);
 
-  // Calcular TF
+  // Calcular TF apenas para palavras que existem no vocabulário global
   hash_t *query_tf = hash_new();
   for (long int i = 0; tokens[0][i] != NULL; i++) {
-    hash_add(query_tf, tokens[0][i], 1.0);
+    const char *word = tokens[0][i];
+    // Verificar se a palavra existe no vocabulário global antes de adicionar
+    double idf = hash_find(global_idf, word);
+    if (idf > 0.0) {
+      hash_add(query_tf, word, 1.0);
+    }
   }
 
   // Calcular TF-IDF
-  // Não posso usar populate_tf_hash pois ele recebe um vetor de hashes
   for (size_t i = 0; i < query_tf->cap; i++) {
     for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
       if (e->value > 0) {
         double idf = hash_find(global_idf, e->word);
-        e->value = (idf == 0.0) ? 0.0 : (1.0 + log2(e->value)) * idf;
+        e->value = (1.0 + log2(e->value)) * idf;
       }
     }
   }

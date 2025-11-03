@@ -351,8 +351,7 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count,
         continue;
 
       const char *word = article_vecs[i][j];
-      // Remoção de stopwords diretamente no populate
-      if (!hash_contains(global_stopwords, word) && strlen(word) > 1) {
+      if (!hash_contains(global_stopwords, word)) {
         const char *stemmed = (const char *)sb_stemmer_stem(
             stemmer, (const sb_symbol *)article_vecs[i][j],
             strlen(article_vecs[i][j]));
@@ -441,11 +440,9 @@ char ***tokenize(char **article_texts, long int count) {
 }
 
 /**
- * @brief Remove stopwords e palavras de uma letra dos tokens
+ * @brief Remove stopwords dos tokens
  *
- * Filtra palavras comuns sem valor semântico (a, the, is, etc.)
- * e palavras muito curtas. Modifica os arrays in-place.
- *
+ * Filtra palavras comuns sem valor semântico (a, the, is, etc.).
  * @param article_vecs Array de vetores de tokens a serem filtrados
  * @param count Número de documentos
  */
@@ -460,12 +457,10 @@ void remove_stopwords(char ***article_vecs, long int count) {
     if (!article_vecs[i])
       continue;
 
-    // Filtra stopwords e palavras com apenas uma letra
     long int write_idx = 0;
     for (long int read_idx = 0; article_vecs[i][read_idx] != NULL; ++read_idx) {
       const char *word = article_vecs[i][read_idx];
-      // Mantém a palavra se NÃO for stopword E tiver mais de 1 letra
-      if (!hash_contains(global_stopwords, word) && strlen(word) > 1) {
+      if (!hash_contains(global_stopwords, word)) {
         article_vecs[i][write_idx++] = article_vecs[i][read_idx];
       } else {
         free(article_vecs[i][read_idx]);

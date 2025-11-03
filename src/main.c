@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
 
   // Inicializar configuração com valores padrão
   Config cfg = {.nthreads = 4,
-                .entries = 0,
+                .entries = 100,
                 .db = "./data/wiki-small.db",
                 .query_user = "shakespeare english literature",
                 .query_filename = NULL,
@@ -149,11 +149,19 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  if (cfg.entries <= 0) {
+    fprintf(stderr, "Número de entradas inválido (%ld). Deve ser >= 0\n", cfg.entries);
+    return 1;
+  }
+
   // Determinar número de entradas primeiro (para criar nomes de arquivo)
   const char *query_count = "select count(*) from \"%w\";";
   long int total = get_single_int(cfg.db, query_count, cfg.table);
-  if (!cfg.entries || cfg.entries > total) {
-    log_info(
+  if (total == -1) {
+    log_error("Banco de dados não encontrado ou tabela inválida.");
+    return 1;
+  } else if (cfg.entries > total) {
+    log_warn(
         "Número de entradas %ld excedeu a quantidade total de documentos: %ld",
         cfg.entries, total);
     cfg.entries = total;

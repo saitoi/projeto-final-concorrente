@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-"""
-Script de teste de corretude - compara saída do app C com tf_idf.py
-"""
-
 import subprocess
 import sqlite3
 import re
@@ -13,7 +9,6 @@ import csv
 from pathlib import Path
 
 def get_csv_filename(db_path: str) -> str:
-    """Gera nome do CSV baseado no nome do banco de dados."""
     db_name = Path(db_path).stem
     return f"correctness_results_{db_name}.csv"
 
@@ -35,12 +30,12 @@ def get_queries(db_path: str, table_ids: list[int] | None = None) -> list[tuple[
 def parse_output(output: str) -> dict[int, float]:
     similarities: dict[int, float] = {}
     # Procura linhas no formato: [<doc_id>] <similarity> <doc_txt>...
-    # Suporta ANSI color codes ao redor do similarity score
     pattern = r'\[(\d+)\]\s+(?:\x1b\[[0-9;]+m)*([\d.]+)(?:\x1b\[[0-9;]+m)*\s+'
     for match in re.finditer(pattern, output):
         doc_id = int(match.group(1))
         similarity = float(match.group(2))
-        similarities[doc_id] = similarity
+        if similarity > 0.0:
+            similarities[doc_id] = similarity
     return similarities
 
 def run_app_c(table: str, query: str, k: int = 10, entries: int | None = None, db: str = './data/test.db', *, sequential: bool = False, nthreads: int = 4) -> str:
@@ -79,8 +74,8 @@ def compare_results(c_sims: dict[int, float], py_sims: dict[int, float], k: int 
         return False, f"Python não retornou resultados, App C retornou {len(c_sims)} docs", -1.0
 
     # Comparar top-k documentos
-    c_sorted = sorted(c_sims.items(), key=lambda x: x[1], reverse=True)[:k]
-    py_sorted = sorted(py_sims.items(), key=lambda x: x[1], reverse=True)[:k]
+    c_sorted = sorted(c_sims.items(), key=lambda x: (x[1], x[0]), reverse=True)[:k]
+    py_sorted = sorted(py_sims.items(), key=lambda x: (x[1], x[0]), reverse=True)[:k]
 
     errors: list[str] = []
     max_diff = 0.0
