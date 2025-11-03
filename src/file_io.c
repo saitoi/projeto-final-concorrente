@@ -19,6 +19,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+// External global variables from main.c
+extern hash_t **global_tf;
+extern hash_t *global_idf;
+extern double *global_doc_norms;
+extern size_t global_vocab_size;
+extern long int global_entries;
+
 /* -------------------- Stopwords -------------------- */
 
 hash_t *global_stopwords = NULL; /**< Hash global de stopwords */
@@ -69,7 +76,8 @@ void free_stopwords(void) {
 /**
  * @brief Salva tabela hash em arquivo binário
  *
- * Formato: capacidade, tamanho, seguido de (wlen, word, value) para cada entrada.
+ * Formato: capacidade, tamanho, seguido de (wlen, word, value) para cada
+ * entrada.
  *
  * @param gh Tabela hash (tipicamente global_idf)
  * @param filename Caminho do arquivo de saída
@@ -103,7 +111,7 @@ int save_hash(const hash_t *gh, const char *filename) {
   }
 
   fclose(fp);
-  LOG(stdout, "global_idf salvo em %s (%zu entradas)\n", filename, entries_written);
+  log_info("global_idf salvo em %s (%zu entradas)", filename, entries_written);
   return 0;
 }
 
@@ -115,7 +123,8 @@ int save_hash(const hash_t *gh, const char *filename) {
  * @param filename Caminho do arquivo de saída
  * @return 0 em sucesso, -1 em erro
  */
-int save_hash_array(hash_t **hashes, long int num_hashes, const char *filename) {
+int save_hash_array(hash_t **hashes, long int num_hashes,
+                    const char *filename) {
   if (!hashes || !filename) {
     fprintf(stderr, "Erro: hashes ou filename é nulo\n");
     return -1;
@@ -156,7 +165,7 @@ int save_hash_array(hash_t **hashes, long int num_hashes, const char *filename) 
   }
 
   fclose(fp);
-  LOG(stdout, "global_tf salvo em %s (%ld hashes)\n", filename, num_hashes);
+  log_info("global_tf salvo em %s (%ld hashes)", filename, num_hashes);
   return 0;
 }
 
@@ -180,7 +189,7 @@ int save_doc_norms(const double *norms, long int num_docs,
   fwrite(norms, sizeof(double), num_docs, fp);
 
   fclose(fp);
-  printf("global_doc_norms salvo em %s (%ld normas)\n", filename, num_docs);
+  printf("global_doc_norms salvo em %s (%ld normas)", filename, num_docs);
   return 0;
 }
 
@@ -213,10 +222,10 @@ char *get_filecontent(const char *filename_txt) {
   rewind(fp);
 
   if (size <= 0) {
-      fprintf(stderr, "Erro: arquivo vazio ou inválido\n");
-      fclose(fp);
-      return NULL;
-  } 
+    fprintf(stderr, "Erro: arquivo vazio ou inválido\n");
+    fclose(fp);
+    return NULL;
+  }
 
   // Ler conteúdo do arquivo
   char *content = (char *)malloc(size + 1);
@@ -319,7 +328,7 @@ hash_t *load_hash(const char *filename) {
   }
 
   fclose(fp);
-  LOG(stdout, "global_idf carregado de %s (%zu entradas)\n", filename, entries_read);
+  log_info("global_idf carregado de %s (%zu entradas)", filename, entries_read);
   return gh;
 }
 
@@ -432,7 +441,7 @@ hash_t **load_hash_array(const char *filename, long int *num_hashes_out) {
   }
 
   fclose(fp);
-  LOG(stdout, "global_tf carregado de %s (%ld hashes)\n", filename, num_hashes);
+  log_info("global_tf carregado de %s (%ld hashes)", filename, num_hashes);
   return hashes;
 }
 
@@ -469,10 +478,65 @@ double *load_doc_norms(const char *filename, long int *num_docs_out) {
   fread(norms, sizeof(double), num_docs, fp);
 
   fclose(fp);
-  LOG(stdout, "global_doc_norms carregado de %s (%ld normas)\n", filename, num_docs);
+  log_info("global_doc_norms carregado de %s (%ld normas)", filename, num_docs);
 
   if (num_docs_out)
     *num_docs_out = num_docs;
 
   return norms;
+}
+
+/**
+ * @brief Carrega modelos TF-IDF pré-processados dos arquivos binários
+ *
+ * Esta função carrega todas as estruturas necessárias (TF, IDF, normas) dos
+ * arquivos binários e atualiza as variáveis globais correspondentes.
+ *
+ * @param filename_tf Nome do arquivo TF
+ * @param filename_idf Nome do arquivo IDF
+ * @param filename_doc_norms Nome do arquivo de normas
+ * @return 0 em sucesso, 1 em erro
+ */
+int load_models(const char *filename_tf, const char *filename_idf,
+                const char *filename_doc_norms) {
+  printf("Arquivos binários encontrados.. ");
+
+  global_tf = load_hash_array(filename_tf, &global_entries);
+  if (!global_tf) {
+    fprintf(stderr, "Erro ao carregar global_tf de %s\n", filename_tf);
+    return 1;
+  }
+
+  global_idf = load_hash(filename_idf);
+  if (!global_idf) {
+    fprintf(stderr, "Erro ao carregar global_idf de %s\n", filename_idf);
+    // Liberar global_tf
+    for (long int i = 0; i < global_entries; i++) {
+      if (global_tf[i])
+        hash_free(global_tf[i]);
+    }
+    free(global_tf);
+    return 1;
+  }
+
+  global_doc_norms = load_doc_norms(filename_doc_norms, &global_entries);
+  if (!global_doc_norms) {
+    fprintf(stderr, "Erro ao carregar global_doc_norms\n");
+    hash_free(global_idf);
+    for (long int i = 0; i < global_entries; i++) {
+      if (global_tf[i])
+        hash_free(global_tf[i]);
+    }
+    free(global_tf);
+    return 1;
+  }
+
+  global_vocab_size = hash_size(global_idf);
+
+  printf("Estruturas carregadas com sucesso.\n");
+
+  // Carregar stopwords para processar queries
+  load_stopwords("assets/stopwords.txt");
+
+  return 0;
 }

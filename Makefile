@@ -16,7 +16,7 @@ else
 endif
 
 CC = cc
-CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include -g
+CFLAGS = -Wall -Wextra -I.$(PATH_SEP)include -g -DLOG_USE_COLOR
 FCLANG = --checks=-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling
 
 # Parâmetros configuráveis
@@ -29,6 +29,7 @@ VERBOSE ?= 1
 MANUAL ?= 0
 NTHR ?= 4
 SEQ ?= 0
+K ?= 10
 
 # Mapeamento TEST para TBL_NAME
 ifeq ($(TEST),0)
@@ -44,7 +45,7 @@ else ifeq ($(TEST),3)
 	DB = ./data/test.db
     TBL = test_tbl_3
 else ifeq ($(TEST),4)
-    QUERY_FILENAME = ./t/perf/shakespeares_work.txt
+    QUERY_FILENAME = ./tests/performance/queries/shakespeares_query.txt
 else ifeq ($(TEST),5)
     DB = ./book-corpus.db
 else
@@ -58,13 +59,20 @@ ifeq ($(MANUAL),1)
     LDFLAGS = -L./libstemmer/usr/lib/x86_64-linux-gnu -L./libsqlite3/usr/lib/x86_64-linux-gnu -lstemmer -lsqlite3 -lpthread -lm
 endif
 
-ifeq ($(SEQ),0)
-    MAIN_SRC = src$(PATH_SEP)main.c
-else
-    MAIN_SRC = src$(PATH_SEP)main_seq.c
+ifeq ($(MANUAL),2)
+    CFLAGS += -I/opt/homebrew/include -I./libsqlite3/usr/include
+	LDFLAGS = -L/opt/homebrew/lib -lstemmer -lsqlite3 -lpthread -lm
 endif
 
-SRC = $(MAIN_SRC) src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c
+ifeq ($(SEQ),0)
+    MAIN_SRC = src$(PATH_SEP)main.c
+    TARGET = app
+else
+    MAIN_SRC = src$(PATH_SEP)main_seq.c
+    TARGET = app_seq
+endif
+
+SRC = $(MAIN_SRC) src$(PATH_SEP)hash_t.c src$(PATH_SEP)sqlite_helper.c src$(PATH_SEP)preprocess.c src$(PATH_SEP)file_io.c src$(PATH_SEP)preprocess_query.c src$(PATH_SEP)log.c
 OBJ = $(SRC:.c=.o)
 HEADERS = include$(PATH_SEP)hash_t.h include$(PATH_SEP)file_io.h include$(PATH_SEP)preprocess.h include$(PATH_SEP)sqlite_helper.h include$(PATH_SEP)preprocess_query.h include$(PATH_SEP)log.h
 
@@ -109,7 +117,8 @@ run:
     $(if $(TBL),--table "$(TBL)",) \
     $(if $(QUERY),--query_user "$(QUERY)",) \
     $(if $(QUERY_FILENAME),--query_filename $(QUERY_FILENAME),) \
-    $(if $(DB),--db $(DB),)
+    $(if $(DB),--db $(DB),) \
+    $(if $(K),--k $(K),)
 
 %.o: %.c $(HEADERS)
 	@$(CC) $(CFLAGS) -c $< -o $@
