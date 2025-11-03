@@ -29,7 +29,8 @@
 #include "../include/preprocess_query.h"
 #include "../include/sqlite_helper.h"
 
-static inline double get_elapsed_time(struct timespec *start, struct timespec *end) {
+static inline double get_elapsed_time(struct timespec *start,
+                                      struct timespec *end) {
   return (end->tv_sec - start->tv_sec) + (end->tv_nsec - start->tv_nsec) / 1e9;
 }
 
@@ -39,22 +40,22 @@ static inline double get_elapsed_time(struct timespec *start, struct timespec *e
  *  Hashes e vetores compartilhados entre threads
  *  @{
  */
-hash_t **global_tf;              /**< Array de hashes TF (Term Frequency) por documento */
-hash_t *global_idf;              /**< Hash IDF (Inverse Document Frequency) global */
-double *global_doc_norms;        /**< Array com normas dos vetores de documentos */
-size_t global_vocab_size;        /**< Tamanho do vocabulário (palavras únicas) */
-long int global_entries = 0;     /**< Número total de documentos processados */
+hash_t **global_tf; /**< Array de hashes TF (Term Frequency) por documento */
+hash_t *global_idf; /**< Hash IDF (Inverse Document Frequency) global */
+double *global_doc_norms;    /**< Array com normas dos vetores de documentos */
+size_t global_vocab_size;    /**< Tamanho do vocabulário (palavras únicas) */
+long int global_entries = 0; /**< Número total de documentos processados */
 /** @} */
 
 /** @defgroup config Variáveis de Configuração
  *  @{
  */
-int VERBOSE = 0;                 /**< Flag de verbosidade (0=desabilitado, 1=habilitado) */
+int VERBOSE = 0; /**< Flag de verbosidade (0=desabilitado, 1=habilitado) */
 /** @} */
 
 /* --------------- Macros --------------- */
 
-#define MAX_THREADS 16           /**< Número máximo de threads suportadas */
+#define MAX_THREADS 16 /**< Número máximo de threads suportadas */
 #define PRINT_IDF_WORDS 20
 
 /**
@@ -62,12 +63,12 @@ int VERBOSE = 0;                 /**< Flag de verbosidade (0=desabilitado, 1=hab
  * @brief Argumentos passados para cada thread de pré-processamento
  */
 typedef struct {
-  long int start;                /**< Índice inicial do intervalo de documentos */
-  long int end;                  /**< Índice final do intervalo de documentos */
-  long int nthreads;             /**< Número total de threads */
-  long int id;                   /**< ID da thread (0 a nthreads-1) */
-  const char *db;                /**< Caminho para o arquivo SQLite */
-  const char *table;             /**< Nome da tabela no banco de dados */
+  long int start;    /**< Índice inicial do intervalo de documentos */
+  long int end;      /**< Índice final do intervalo de documentos */
+  long int nthreads; /**< Número total de threads */
+  long int id;       /**< ID da thread (0 a nthreads-1) */
+  const char *db;    /**< Caminho para o arquivo SQLite */
+  const char *table; /**< Nome da tabela no banco de dados */
 } thread_args;
 
 /**
@@ -77,15 +78,15 @@ typedef struct {
  * Agrupa todos os parâmetros de linha de comando em uma única estrutura.
  */
 typedef struct {
-  long int entries;              /**< Quantidade de entradas a processar (0=todas) */
-  const char *db;                /**< Arquivo SQLite com os documentos */
-  const char *query_user;        /**< Query do usuário (string direta) */
-  const char *query_filename;    /**< Arquivo contendo a query do usuário */
-  const char *table;             /**< Nome da tabela no banco de dados */
-  int nthreads;                  /**< Número de threads para pré-processamento */
-  int k;                         /**< Número de documentos top-k a retornar */
-  int test;                      /**< Modo de teste (0=desabilitado) */
-  int verbose;                   /**< Verbosidade (0=desabilitado, 1=habilitado) */
+  long int entries;       /**< Quantidade de entradas a processar (0=todas) */
+  const char *db;         /**< Arquivo SQLite com os documentos */
+  const char *query_user; /**< Query do usuário (string direta) */
+  const char *query_filename; /**< Arquivo contendo a query do usuário */
+  const char *table;          /**< Nome da tabela no banco de dados */
+  int nthreads;               /**< Número de threads para pré-processamento */
+  int k;                      /**< Número de documentos top-k a retornar */
+  int test;                   /**< Modo de teste (0=desabilitado) */
+  int verbose;                /**< Verbosidade (0=desabilitado, 1=habilitado) */
 } Config;
 
 typedef struct {
@@ -123,17 +124,15 @@ int main(int argc, char *argv[]) {
   clock_gettime(CLOCK_MONOTONIC, &t_start_total);
 
   // Inicializar configuração com valores padrão
-  Config cfg = {
-    .nthreads = 4,
-    .entries = 0,
-    .db = "./data/wiki-small.db",
-    .query_user = "shakespeare english literature",
-    .query_filename = NULL,
-    .table= "sample_articles",
-    .k = 10,
-    .test = 0,
-    .verbose = 0
-  };
+  Config cfg = {.nthreads = 4,
+                .entries = 0,
+                .db = "./data/wiki-small.db",
+                .query_user = "shakespeare english literature",
+                .query_filename = NULL,
+                .table = "sample_articles",
+                .k = 10,
+                .test = 0,
+                .verbose = 0};
 
   // [1]
   if (parse_cli(argc, argv, &cfg) != 0) {
@@ -157,7 +156,8 @@ int main(int argc, char *argv[]) {
       "\ttable: %s\n"
       "\ttest: %d\n"
       "\tk: %d",
-      argc, cfg.nthreads, cfg.entries, cfg.db, cfg.query_user, cfg.table, cfg.test, cfg.k);
+      argc, cfg.nthreads, cfg.entries, cfg.db, cfg.query_user, cfg.table,
+      cfg.test, cfg.k);
 
   if (cfg.nthreads <= 0 || cfg.nthreads > MAX_THREADS) {
     fprintf(stderr,
@@ -170,7 +170,9 @@ int main(int argc, char *argv[]) {
   const char *query_count = "select count(*) from \"%w\";";
   long int total = get_single_int(cfg.db, query_count, cfg.table);
   if (!cfg.entries || cfg.entries > total) {
-    LOG(stdout, "Número de entradas %ld excedeu a quantidade total de documentos: %ld", cfg.entries, total);
+    LOG(stdout,
+        "Número de entradas %ld excedeu a quantidade total de documentos: %ld",
+        cfg.entries, total);
     cfg.entries = total;
   }
 
@@ -178,15 +180,14 @@ int main(int argc, char *argv[]) {
   char filename_tf[256];
   char filename_idf[256];
   char filename_doc_norms[256];
-  format_filenames(filename_tf, filename_idf, filename_doc_norms,
-                   cfg.table, cfg.entries);
+  format_filenames(filename_tf, filename_idf, filename_doc_norms, cfg.table,
+                   cfg.entries);
 
   // Caso o arquivo não exista: Pré-processamento
-  if (access(filename_tf, F_OK) == -1 ||
-      access(filename_idf, F_OK) == -1 ||
+  if (access(filename_tf, F_OK) == -1 || access(filename_idf, F_OK) == -1 ||
       access(filename_doc_norms, F_OK) == -1) {
 
-    pthread_t *tids = (pthread_t*) malloc(sizeof(pthread_t) * cfg.nthreads);
+    pthread_t *tids = (pthread_t *)malloc(sizeof(pthread_t) * cfg.nthreads);
     if (!tids) {
       fprintf(stderr, "Falha ao alocar memória para tids\n");
       return 1;
@@ -237,7 +238,7 @@ int main(int argc, char *argv[]) {
       args[i].id = i;
       args[i].nthreads = cfg.nthreads;
       args[i].db = cfg.db;
-      args[i].table= cfg.table;
+      args[i].table = cfg.table;
       args[i].start = i * base + (i < rem ? i : rem);
       args[i].end = args[i].start + base + (i < rem);
 
@@ -267,7 +268,8 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    printf("[FASE 1] Vocabulário construído: %zu palavras\n", hash_size(global_idf));
+    printf("[FASE 1] Vocabulário construído: %zu palavras\n",
+           hash_size(global_idf));
 
     // Aplicar log2(N / n_i) em todos os valores
     printf("[FASE 1] Calculando IDF global...\n");
@@ -292,7 +294,9 @@ int main(int argc, char *argv[]) {
 
     clock_gettime(CLOCK_MONOTONIC, &t_end_fase1);
     double elapsed_fase1 = get_elapsed_time(&t_start_fase1, &t_end_fase1);
-    printf("[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n", global_vocab_size);
+    printf(
+        "[FASE 1] Concluída.. IDF computado e vocabulário com %zu palavras\n",
+        global_vocab_size);
     printf("[FASE 1] Tempo: %.3f segundos\n", elapsed_fase1);
 
     /* ========== FASE 2: Calcular TF-IDF ========== */
@@ -320,11 +324,6 @@ int main(int argc, char *argv[]) {
     double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);
     printf("[FASE 2] TF-IDF e normas calculados!\n");
     printf("[FASE 2] Tempo: %.3f segundos\n", elapsed_fase2);
-
-    // Imprimir TF hash global final
-    LOG(stdout, "=== TF Hash Global Final ===");
-    // TODO: Implementar print para hash_t**
-    // print_tf_hash(global_tf, -1, VERBOSE);
 
     // [15]
     // Salvar estruturas globais em arquivos binários
@@ -401,31 +400,34 @@ int main(int argc, char *argv[]) {
     hash_t *query_tf;
     double query_norm;
 
-    int result = preprocess_query(cfg.query_user, global_idf, &query_tf, &query_norm);
+    int result =
+        preprocess_query(cfg.query_user, global_idf, &query_tf, &query_norm);
     if (result != 0) {
       fprintf(stderr, "Erro ao processar consulta do usuário\n");
     } else {
       LOG(stdout, "Consulta processada com sucesso!\n");
       LOG(stdout, "Norma da query: %.6f\n", query_norm);
-      LOG(stdout, "Tamanho do vetor TF-IDF da query: %zu palavras\n", hash_size(query_tf));
+      LOG(stdout, "Tamanho do vetor TF-IDF da query: %zu palavras\n",
+          hash_size(query_tf));
 
       // DEBUG: Exibir palavras da query
       if (VERBOSE) {
-          printf("Palavras na query (após processamento):\n");
-          for (size_t i = 0; i < query_tf->cap; i++) {
-            for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
-              double idf = hash_find(global_idf, e->word);
-              printf("  '%s': IDF=%.6f, TF-IDF=%.6f\n", e->word, idf, e->value);
-            }
+        printf("Palavras na query (após processamento):\n");
+        for (size_t i = 0; i < query_tf->cap; i++) {
+          for (HashEntry *e = query_tf->buckets[i]; e; e = e->next) {
+            double idf = hash_find(global_idf, e->word);
+            printf("  '%s': IDF=%.6f, TF-IDF=%.6f\n", e->word, idf, e->value);
           }
+        }
       }
 
       // Calcular similaridade com todos os documentos
       struct timespec t_start_sim, t_end_sim;
       clock_gettime(CLOCK_MONOTONIC, &t_start_sim);
 
-      double *similarities = compute_similarities(query_tf, query_norm, global_tf,
-                                                   global_doc_norms, global_entries, cfg.nthreads);
+      double *similarities =
+          compute_similarities(query_tf, query_norm, global_tf,
+                               global_doc_norms, global_entries, cfg.nthreads);
 
       clock_gettime(CLOCK_MONOTONIC, &t_end_sim);
       double elapsed_sim = get_elapsed_time(&t_start_sim, &t_end_sim);
@@ -458,20 +460,21 @@ int main(int argc, char *argv[]) {
             top_ids[i] = scores[i].doc_id;
           }
 
-          char **documents = get_documents_by_ids(cfg.db, cfg.table, top_ids, top_k);
+          char **documents =
+              get_documents_by_ids(cfg.db, cfg.table, top_ids, top_k);
           if (documents) {
             for (long int i = 0; i < top_k; i++) {
               if (documents[i]) {
-                printf("[%ld] %.6f  ",
-                       top_ids[i], scores[i].similarity);
+                printf("[%ld] %.6f  ", top_ids[i], scores[i].similarity);
                 // Limitar a exibição a 200 caracteres
                 if (strlen(documents[i]) > 100) {
-		  const char *p = documents[i];
-		  int j = 0;
-		  for (; *p && j < 100; ++j, p++)
-		    putchar(*p);
-		  if (*p) printf("...");
-		  printf("\n");
+                  const char *p = documents[i];
+                  int j = 0;
+                  for (; *p && j < 100; ++j, p++)
+                    putchar(*p);
+                  if (*p)
+                    printf("...");
+                  printf("\n");
                 } else {
                   printf("%s\n", documents[i]);
                 }
@@ -500,7 +503,8 @@ int main(int argc, char *argv[]) {
     printf("\nTop %d palavras (IDF):\n", PRINT_IDF_WORDS);
     printf("---------------------\n");
     for (size_t i = 0, c = 0; i < global_idf->cap && c < PRINT_IDF_WORDS; i++)
-      for (HashEntry *e = global_idf->buckets[i]; e && c < PRINT_IDF_WORDS; e = e->next, c++)
+      for (HashEntry *e = global_idf->buckets[i]; e && c < PRINT_IDF_WORDS;
+           e = e->next, c++)
         printf("%-15s %.2f\n", e->word, e->value);
   }
 
@@ -562,18 +566,18 @@ int parse_cli(int argc, char **argv, Config *cfg) {
     LOG(stderr, "argv[%d]: %s", i, argv[i]);
     fflush(stderr);
 
-    if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc) 
+    if (strcmp(argv[i], "--nthreads") == 0 && i + 1 < argc)
       cfg->nthreads = atoi(argv[++i]);
-    else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc) 
+    else if (strcmp(argv[i], "--entries") == 0 && i + 1 < argc)
       cfg->entries = atol(argv[++i]);
-    else if (strcmp(argv[i], "--db") == 0 && i + 1 < argc) 
+    else if (strcmp(argv[i], "--db") == 0 && i + 1 < argc)
       cfg->db = argv[++i];
     else if (strcmp(argv[i], "--query_user") == 0 && i + 1 < argc)
       cfg->query_user = argv[++i];
     else if (strcmp(argv[i], "--query_filename") == 0 && i + 1 < argc)
       cfg->query_filename = argv[++i];
     else if (strcmp(argv[i], "--table") == 0 && i + 1 < argc)
-      cfg->table= argv[++i];
+      cfg->table = argv[++i];
     else if (strcmp(argv[i], "--k") == 0 && i + 1 < argc)
       cfg->k = atoi(argv[++i]);
     else if (strcmp(argv[i], "--test") == 0 && i + 1 < argc)
@@ -581,20 +585,23 @@ int parse_cli(int argc, char **argv, Config *cfg) {
     else if (strcmp(argv[i], "--verbose") == 0)
       cfg->verbose = 1;
     else {
-      fprintf(stderr,
-        "Uso: %s <parametros nomeados>\n"
-        "  --verbose: Verbosidade (default: 0)\n"
-        "  --nthreads: Número de threads (default: 4)\n"
-        "  --entries: Quantidade de entradas para pré-processamento (default: "
-        "Toda tabela 'sample_articles')\n"
-        "  --db: Nome do arquivo Sqlite (default: './data/wiki-small.db')\n"
-        "  --query_user: Consulta do usuário (default: 'shakespeare english literature')\n"
-        "  --query_filename: Arquivo com a consulta do usuário\n"
-        "  --table: Nome da tabela consultada (default: "
-        "'sample_articles')\n"
-        "  --k: Top-k documentos mais similares (default: 10)\n"
-        "  --test: Modo de teste (default: 0)\n",
-        argv[0]);
+      fprintf(
+          stderr,
+          "Uso: %s <parametros nomeados>\n"
+          "  --verbose: Verbosidade (default: 0)\n"
+          "  --nthreads: Número de threads (default: 4)\n"
+          "  --entries: Quantidade de entradas para pré-processamento "
+          "(default: "
+          "Toda tabela 'sample_articles')\n"
+          "  --db: Nome do arquivo Sqlite (default: './data/wiki-small.db')\n"
+          "  --query_user: Consulta do usuário (default: 'shakespeare english "
+          "literature')\n"
+          "  --query_filename: Arquivo com a consulta do usuário\n"
+          "  --table: Nome da tabela consultada (default: "
+          "'sample_articles')\n"
+          "  --k: Top-k documentos mais similares (default: 10)\n"
+          "  --test: Modo de teste (default: 0)\n",
+          argv[0]);
       return 1;
     }
   }
@@ -619,8 +626,8 @@ void *preprocess_1(void *arg) {
   thread_args *t = (thread_args *)arg;
   long int count = t->end - t->start;
 
-  LOG(stdout, "[FASE 1] T%02ld: Processando %ld documentos [%ld, %ld]",
-      t->id, count, t->start, t->end - 1);
+  LOG(stdout, "[FASE 1] T%02ld: Processando %ld documentos [%ld, %ld]", t->id,
+      count, t->start, t->end - 1);
 
   if (count <= 0) {
     pthread_exit(NULL);
@@ -630,10 +637,10 @@ void *preprocess_1(void *arg) {
 
   // [1] Recuperar textos
   char **article_texts = get_str_arr(t->db,
-                                      "select article_text from \"%w\" "
-                                      "where article_id between ? and ? "
-                                      "order by article_id asc",
-                                      t->start, t->end - 1, t->table);
+                                     "select article_text from \"%w\" "
+                                     "where article_id between ? and ? "
+                                     "order by article_id asc",
+                                     t->start, t->end - 1, t->table);
   if (!article_texts) {
     fprintf(stderr, "Thread %02ld: Erro ao obter dados do banco\n", t->id);
     pthread_exit(NULL);
@@ -660,7 +667,8 @@ void *preprocess_1(void *arg) {
 
   // Limpar memória local
   for (long int i = 0; i < count; i++) {
-    if (article_texts[i]) free(article_texts[i]);
+    if (article_texts[i])
+      free(article_texts[i]);
   }
 
   free(article_texts);
@@ -694,7 +702,8 @@ void *preprocess_2(void *arg) {
   compute_tf_idf(global_tf, global_idf, count, t->start);
 
   // [2] Calcular normas dos documentos
-  compute_doc_norms(global_doc_norms, global_tf, count, global_vocab_size, t->start);
+  compute_doc_norms(global_doc_norms, global_tf, count, global_vocab_size,
+                    t->start);
 
   LOG(stdout, "[FASE 2] T%02ld: Concluída", t->id);
   pthread_exit(NULL);
@@ -708,7 +717,8 @@ void *preprocess_2(void *arg) {
  *
  * @param filename_tf Buffer para nome do arquivo TF (mín. 256 bytes)
  * @param filename_idf Buffer para nome do arquivo IDF (mín. 256 bytes)
- * @param filename_doc_norms Buffer para nome do arquivo de normas (mín. 256 bytes)
+ * @param filename_doc_norms Buffer para nome do arquivo de normas (mín. 256
+ * bytes)
  * @param table Nome da tabela
  * @param entries Número de entradas
  */
@@ -717,11 +727,14 @@ void format_filenames(char *filename_tf, char *filename_idf,
                       long int entries) {
   snprintf(filename_tf, 256, "models/tf_%s_%ld.bin", table, entries);
   snprintf(filename_idf, 256, "models/idf_%s_%ld.bin", table, entries);
-  snprintf(filename_doc_norms, 256, "models/doc_norms_%s_%ld.bin", table, entries);
+  snprintf(filename_doc_norms, 256, "models/doc_norms_%s_%ld.bin", table,
+           entries);
 }
 
 int compare_sim(const void *a, const void *b) {
-    const DocSim *doc1 = (const DocSim *)a;
-    const DocSim *doc2 = (const DocSim *)b;
-    return doc1->similarity > doc2->similarity ? -1 : doc1->similarity < doc2->similarity;
+  const DocSim *doc1 = (const DocSim *)a;
+  const DocSim *doc2 = (const DocSim *)b;
+  return doc1->similarity > doc2->similarity
+             ? -1
+             : doc1->similarity < doc2->similarity;
 }

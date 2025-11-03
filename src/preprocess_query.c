@@ -3,25 +3,25 @@
  * @brief Processamento de queries reutilizando funções de documentos
  */
 
+#include "../include/hash_t.h"
+#include "../include/preprocess.h"
+#include <math.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <pthread.h>
-#include "../include/hash_t.h"
-#include "../include/preprocess.h"
 
 /**
  * @brief Argumentos para threads de cálculo de similaridade
  */
 typedef struct {
-  long int start;                  // Documento inicial
-  long int end;                    // Documento final (exclusivo)
-  const hash_t *query_tf;          // Hash TF-IDF da query
-  double query_norm;               // Norma da query
-  hash_t **global_tf;              // Array de hashes TF-IDF dos documentos
-  const double *global_doc_norms;  // Array de normas dos documentos
-  double *similarities;            // Array de similaridades (compartilhado)
+  long int start;                 // Documento inicial
+  long int end;                   // Documento final (exclusivo)
+  const hash_t *query_tf;         // Hash TF-IDF da query
+  double query_norm;              // Norma da query
+  hash_t **global_tf;             // Array de hashes TF-IDF dos documentos
+  const double *global_doc_norms; // Array de normas dos documentos
+  double *similarities;           // Array de similaridades (compartilhado)
 } similarity_args;
 
 /**
@@ -70,7 +70,8 @@ int preprocess_query(const char *query_user, const hash_t *global_idf,
 
   // Converter query para formato char** (array de 1 string)
   char **query_array = malloc(2 * sizeof(char *));
-  if (!query_array) return -1;
+  if (!query_array)
+    return -1;
   query_array[0] = strdup(query_user);
   query_array[1] = NULL;
 
@@ -80,7 +81,8 @@ int preprocess_query(const char *query_user, const hash_t *global_idf,
   free(query_array);
 
   if (!tokens || !tokens[0]) {
-    if (tokens) free(tokens);
+    if (tokens)
+      free(tokens);
     return -1;
   }
 
@@ -130,19 +132,24 @@ double *compute_similarities(const hash_t *query_tf, double query_norm,
     return NULL;
   }
 
-  if (nthreads <= 0) nthreads = 1;
-  if (nthreads > 16) nthreads = 16;
+  if (nthreads <= 0)
+    nthreads = 1;
+  if (nthreads > 16)
+    nthreads = 16;
 
   double *similarities = (double *)calloc(num_docs, sizeof(double));
-  if (!similarities) return NULL;
+  if (!similarities)
+    return NULL;
 
   pthread_t *threads = malloc(nthreads * sizeof(pthread_t));
   similarity_args *args = malloc(nthreads * sizeof(similarity_args));
 
   if (!threads || !args) {
     free(similarities);
-    if (threads) free(threads);
-    if (args) free(args);
+    if (threads)
+      free(threads);
+    if (args)
+      free(args);
     return NULL;
   }
 
@@ -159,7 +166,8 @@ double *compute_similarities(const hash_t *query_tf, double query_norm,
     args[i].global_doc_norms = global_doc_norms;
     args[i].similarities = similarities;
 
-    if (pthread_create(&threads[i], NULL, compute_similarities_thread, &args[i])) {
+    if (pthread_create(&threads[i], NULL, compute_similarities_thread,
+                       &args[i])) {
       fprintf(stderr, "Erro ao criar thread %d para similaridade\n", i);
       // Cleanup
       for (int j = 0; j < i; j++) {

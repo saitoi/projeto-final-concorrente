@@ -172,7 +172,8 @@ char **get_documents_by_ids(const char *filename, const char *table,
   // Para cada ID, buscar o documento
   for (long int i = 0; i < k; i++) {
     // Query: SELECT article_text FROM table WHERE article_id = ?
-    char *sql = sqlite3_mprintf("SELECT article_text FROM \"%w\" WHERE article_id = ?", table);
+    char *sql = sqlite3_mprintf(
+        "SELECT article_text FROM \"%w\" WHERE article_id = ?", table);
     if (!sql) {
       fprintf(stderr, "Erro ao formatar statement\n");
       // Liberar resultados já alocados

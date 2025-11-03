@@ -35,7 +35,8 @@
  * @param article_vecs Array de vetores de tokens (documentos tokenizados)
  * @param count Número de documentos no array
  */
-void set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc, long int count) {
+void set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc,
+                   long int count) {
   if (!vocab || !tf) {
     fprintf(stderr, "Erro: vocab ou tf é nulo.\n");
     pthread_exit(NULL);
@@ -44,7 +45,8 @@ void set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc, long int coun
   // Para cada documento local, contar n_i (documentos que contêm cada palavra)
   for (long int doc_idx = 0; doc_idx < count; doc_idx++) {
     long int doc_id = start_doc + doc_idx;
-    if (!tf[doc_id]) continue;
+    if (!tf[doc_id])
+      continue;
 
     // Para cada palavra neste documento
     for (size_t i = 0; i < tf[doc_id]->cap; i++) {
@@ -61,7 +63,8 @@ void set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc, long int coun
           if (vocab_entry)
             vocab_entry->epoch = doc_id;
         } else {
-          // Palavra existe: incrementar n_i apenas se não foi vista neste documento
+          // Palavra existe: incrementar n_i apenas se não foi vista neste
+          // documento
           if (vocab_entry->epoch != (unsigned long)doc_id) {
             vocab_entry->value += 1.0;
             vocab_entry->epoch = doc_id;
@@ -76,7 +79,8 @@ void set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc, long int coun
 
 // Isso daqui é extremamente idiota
 // Isso daqui já é feito em set_idf_words
-void set_idf_freq(hash_t *idf_local, hash_t **tf, long int start_doc, long int num_docs) {
+void set_idf_freq(hash_t *idf_local, hash_t **tf, long int start_doc,
+                  long int num_docs) {
   if (!idf_local || !tf) {
     fprintf(stderr, "Erro: idf_local ou tf é nulo.\n");
     pthread_exit(NULL);
@@ -104,9 +108,12 @@ void set_idf_freq(hash_t *idf_local, hash_t **tf, long int start_doc, long int n
         size_t wlen = doc_entry->wlen;
         size_t idx = hash_str(doc_entry->word, wlen) & (idf_local->cap - 1);
 
-        // Buscar palavra no vocabulário local e incrementar contador (n_i local)
-        for (HashEntry *vocab_entry = idf_local->buckets[idx]; vocab_entry; vocab_entry = vocab_entry->next) {
-          if (vocab_entry->wlen == wlen && memcmp(vocab_entry->word, doc_entry->word, wlen) == 0) {
+        // Buscar palavra no vocabulário local e incrementar contador (n_i
+        // local)
+        for (HashEntry *vocab_entry = idf_local->buckets[idx]; vocab_entry;
+             vocab_entry = vocab_entry->next) {
+          if (vocab_entry->wlen == wlen &&
+              memcmp(vocab_entry->word, doc_entry->word, wlen) == 0) {
             vocab_entry->value += 1.0;
             break;
           }
@@ -144,7 +151,8 @@ void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
     }
   }
 
-  // Percorrer cada documento uma única vez e incrementar contador para cada palavra
+  // Percorrer cada documento uma única vez e incrementar contador para cada
+  // palavra
   for (long int doc_id = 0; doc_id < num_docs; doc_id++) {
     if (!tf[doc_id])
       continue;
@@ -157,8 +165,10 @@ void set_idf_value(hash_t *set, hash_t **tf, double doc_count,
         size_t wlen = doc_entry->wlen;
         size_t idx = hash_str(doc_entry->word, wlen) & (set->cap - 1);
 
-        for (HashEntry *vocab_entry = set->buckets[idx]; vocab_entry; vocab_entry = vocab_entry->next) {
-          if (vocab_entry->wlen == wlen && memcmp(vocab_entry->word, doc_entry->word, wlen) == 0) {
+        for (HashEntry *vocab_entry = set->buckets[idx]; vocab_entry;
+             vocab_entry = vocab_entry->next) {
+          if (vocab_entry->wlen == wlen &&
+              memcmp(vocab_entry->word, doc_entry->word, wlen) == 0) {
             vocab_entry->value += 1.0;
             break;
           }
@@ -312,7 +322,8 @@ void stem(char ***article_vecs, long int count) {
  * @param article_vecs Array de vetores de tokens (documentos tokenizados)
  * @param count Número de documentos
  */
-void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long int offset) {
+void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count,
+                      long int offset) {
   struct sb_stemmer *stemmer = sb_stemmer_new("english", NULL);
   if (!stemmer) {
     fprintf(stderr, "Erro ao criar o Stemmer.\n");
@@ -335,11 +346,11 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long in
             stemmer, (const sb_symbol *)article_vecs[i][j],
             strlen(article_vecs[i][j]));
         hash_add(tf[global_idx], stemmed, 1.0);
-	free(article_vecs[i][j]);
-	article_vecs[i][j] = NULL;  // Evitar double free
+        free(article_vecs[i][j]);
+        article_vecs[i][j] = NULL; // Evitar double free
       } else {
         free(article_vecs[i][j]);
-        article_vecs[i][j] = NULL;  // Liberar stopwords também
+        article_vecs[i][j] = NULL; // Liberar stopwords também
       }
     }
   }
@@ -358,64 +369,64 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long in
  * @note Caller deve liberar usando free_article_vecs()
  */
 char ***tokenize(char **article_texts, long int count) {
-    char ***article_vecs = malloc(count * sizeof(char **));
-    if (!article_vecs) {
-        fprintf(stderr, "Erro ao alocar article_vecs\n");
-        return NULL;
+  char ***article_vecs = malloc(count * sizeof(char **));
+  if (!article_vecs) {
+    fprintf(stderr, "Erro ao alocar article_vecs\n");
+    return NULL;
+  }
+
+  const char *delimiters = " \t\n\r,.:;!?/";
+
+  for (long int i = 0; i < count; ++i) {
+    if (!article_texts[i]) {
+      article_vecs[i] = NULL;
+      continue;
     }
-    
-    const char *delimiters = " \t\n\r,.:;!?/";
-    
-    for (long int i = 0; i < count; ++i) {
-        if (!article_texts[i]) {
-            article_vecs[i] = NULL;
-            continue;
-        }
-        
-        // Contar tokens sem modificar a string original
-        long int token_count = 0;
-        const char *ptr = article_texts[i];
-        int in_token = 0;
-        
-        while (*ptr) {
-            if (strchr(delimiters, *ptr)) {
-                in_token = 0;
-            } else if (!in_token) {
-                token_count++;
-                in_token = 1;
-            }
-            ptr++;
-        }
-        
-        // Alocar array de ponteiros
-        article_vecs[i] = malloc((token_count + 1) * sizeof(char *));
-        if (!article_vecs[i]) {
-            continue;
-        }
-        
-        // Uma única cópia para tokenização
-        char *text_copy = strdup(article_texts[i]);
-        if (!text_copy) {
-            free(article_vecs[i]);
-            article_vecs[i] = NULL;
-            continue;
-        }
-        
-        // Tokenizar e copiar
-        long int j = 0;
-        char *saveptr;
-        char *token = strtok_r(text_copy, delimiters, &saveptr);
-        while (token != NULL) {
-            article_vecs[i][j] = strdup(token);
-            j++;
-            token = strtok_r(NULL, delimiters, &saveptr);
-        }
-        article_vecs[i][j] = NULL;
-        
-        free(text_copy);
+
+    // Contar tokens sem modificar a string original
+    long int token_count = 0;
+    const char *ptr = article_texts[i];
+    int in_token = 0;
+
+    while (*ptr) {
+      if (strchr(delimiters, *ptr)) {
+        in_token = 0;
+      } else if (!in_token) {
+        token_count++;
+        in_token = 1;
+      }
+      ptr++;
     }
-    
-    return article_vecs;
+
+    // Alocar array de ponteiros
+    article_vecs[i] = malloc((token_count + 1) * sizeof(char *));
+    if (!article_vecs[i]) {
+      continue;
+    }
+
+    // Uma única cópia para tokenização
+    char *text_copy = strdup(article_texts[i]);
+    if (!text_copy) {
+      free(article_vecs[i]);
+      article_vecs[i] = NULL;
+      continue;
+    }
+
+    // Tokenizar e copiar
+    long int j = 0;
+    char *saveptr;
+    char *token = strtok_r(text_copy, delimiters, &saveptr);
+    while (token != NULL) {
+      article_vecs[i][j] = strdup(token);
+      j++;
+      token = strtok_r(NULL, delimiters, &saveptr);
+    }
+    article_vecs[i][j] = NULL;
+
+    free(text_copy);
+  }
+
+  return article_vecs;
 }
 
 /**

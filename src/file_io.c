@@ -69,7 +69,8 @@ void free_stopwords(void) {
 /**
  * @brief Salva tabela hash em arquivo binário
  *
- * Formato: capacidade, tamanho, seguido de (wlen, word, value) para cada entrada.
+ * Formato: capacidade, tamanho, seguido de (wlen, word, value) para cada
+ * entrada.
  *
  * @param gh Tabela hash (tipicamente global_idf)
  * @param filename Caminho do arquivo de saída
@@ -103,7 +104,8 @@ int save_hash(const hash_t *gh, const char *filename) {
   }
 
   fclose(fp);
-  LOG(stdout, "global_idf salvo em %s (%zu entradas)", filename, entries_written);
+  LOG(stdout, "global_idf salvo em %s (%zu entradas)", filename,
+      entries_written);
   return 0;
 }
 
@@ -115,7 +117,8 @@ int save_hash(const hash_t *gh, const char *filename) {
  * @param filename Caminho do arquivo de saída
  * @return 0 em sucesso, -1 em erro
  */
-int save_hash_array(hash_t **hashes, long int num_hashes, const char *filename) {
+int save_hash_array(hash_t **hashes, long int num_hashes,
+                    const char *filename) {
   if (!hashes || !filename) {
     fprintf(stderr, "Erro: hashes ou filename é nulo\n");
     return -1;
@@ -213,10 +216,10 @@ char *get_filecontent(const char *filename_txt) {
   rewind(fp);
 
   if (size <= 0) {
-      fprintf(stderr, "Erro: arquivo vazio ou inválido\n");
-      fclose(fp);
-      return NULL;
-  } 
+    fprintf(stderr, "Erro: arquivo vazio ou inválido\n");
+    fclose(fp);
+    return NULL;
+  }
 
   // Ler conteúdo do arquivo
   char *content = (char *)malloc(size + 1);
@@ -319,7 +322,8 @@ hash_t *load_hash(const char *filename) {
   }
 
   fclose(fp);
-  LOG(stdout, "global_idf carregado de %s (%zu entradas)", filename, entries_read);
+  LOG(stdout, "global_idf carregado de %s (%zu entradas)", filename,
+      entries_read);
   return gh;
 }
 
@@ -469,7 +473,8 @@ double *load_doc_norms(const char *filename, long int *num_docs_out) {
   fread(norms, sizeof(double), num_docs, fp);
 
   fclose(fp);
-  LOG(stdout, "global_doc_norms carregado de %s (%ld normas)", filename, num_docs);
+  LOG(stdout, "global_doc_norms carregado de %s (%ld normas)", filename,
+      num_docs);
 
   if (num_docs_out)
     *num_docs_out = num_docs;

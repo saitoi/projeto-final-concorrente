@@ -23,7 +23,7 @@
 #ifndef HASH_INIT_CAP
 #define HASH_INIT_CAP 256 /**< Capacidade inicial padrão */
 #endif
-#define MAX_LOAD 0.75             /**< Fator de carga máximo antes de rehash */
+#define MAX_LOAD 0.75 /**< Fator de carga máximo antes de rehash */
 
 /* ------------- Funções Auxiliares ------------- */
 
@@ -230,7 +230,7 @@ void hash_merge(hash_t *dst, const hash_t *src) {
   for (size_t i = 0; i < src->cap; i++) {
     HashEntry *e = src->buckets[i];
     while (e) {
-        hash_add(dst, e->word, e->value);
+      hash_add(dst, e->word, e->value);
       e = e->next;
     }
   }
