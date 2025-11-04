@@ -26,6 +26,13 @@
 int VERBOSE = 0;  // Flag de verbosidade desabilitada para UI
 extern hash_t *global_stopwords;  // Definida em file_io.c
 
+// Variáveis globais do TF-IDF (definidas aqui para a UI)
+hash_t **global_tf = NULL;      // Array de hashes TF (Term Frequency) por documento
+hash_t *global_idf = NULL;      // Hash IDF (Inverse Document Frequency) global
+double *global_doc_norms = NULL; // Normas dos documentos
+long int global_entries = 0;    // Número total de documentos processados
+int global_vocab_size = 0;      // Tamanho do vocabulário
+
 // Fonte global
 Font pixelFont;
 
@@ -103,10 +110,9 @@ typedef struct {
 
 DatabaseConfig databases[] = {
     {"data/wiki-small.db", "sample_articles", "wiki-small", 97549},
-    {"data/test.db", "test_tbl_0", "test", 10},
     {"data/food-reviews.db", "sample_articles", "food-reviews", 568454}
 };
-const int NUM_DATABASES = 3;
+const int NUM_DATABASES = 2;
 
 /**
  * @brief Cria um Clay_String a partir de uma string C
@@ -697,7 +703,7 @@ void CreateUI(void) {
                                 .textColor = COLOR_TEXT
                                 }));
 
-                            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && appState.selectedDbIndex < 2) {
+                            if (Clay_Hovered() && IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && appState.selectedDbIndex < NUM_DATABASES - 1) {
                                 appState.selectedDbIndex++;
 
                                 // Ajustar maxDocuments se necessário
@@ -1370,7 +1376,7 @@ int main(void) {
                 if (IsKeyPressed(KEY_LEFT) && appState.selectedDbIndex > 0) {
                     appState.selectedDbIndex--;
                 }
-                if (IsKeyPressed(KEY_RIGHT) && appState.selectedDbIndex < 2) {
+                if (IsKeyPressed(KEY_RIGHT) && appState.selectedDbIndex < NUM_DATABASES - 1) {
                     appState.selectedDbIndex++;
                 }
 
