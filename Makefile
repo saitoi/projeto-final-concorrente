@@ -79,8 +79,6 @@ HEADERS = include$(PATH_SEP)hash_t.h include$(PATH_SEP)file_io.h include$(PATH_S
 # UI com Clay + Raylib
 UI_TARGET = app_ui
 UI_SRC = src$(PATH_SEP)ui_clay.c
-UI_MENU_TARGET = app_menu
-UI_MENU_SRC = src$(PATH_SEP)ui_clay_menu.c
 UI_LDFLAGS = -lraylib -lm
 
 all: $(TARGET)
@@ -89,7 +87,6 @@ help:
 	@echo "Targets disponíveis:"
 	@echo "  make all             - Compila o projeto (padrão)"
 	@echo "  make ui              - Compila e executa a interface visual (Clay + Raylib)"
-	@echo "  make menu            - Compila e executa o menu interativo completo"
 	@echo "  make setup           - Configura o projeto (gera modelos se necessário)"
 	@echo "  make models          - Gera todos os modelos TF-IDF necessários"
 	@echo "  make demo            - Executa demo da interface (com verificações)"
@@ -110,8 +107,7 @@ help:
 	@echo "  make run TEST=0 QUERY=\"marine sea species\""
 	@echo "  make run MANUAL=1"
 	@echo "  make test-correctness"
-	@echo "  make ui              - Abre interface gráfica simples"
-	@echo "  make menu            - Abre menu interativo completo"
+	@echo "  make ui              - Abre interface gráfica"
 
 $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS)
@@ -120,17 +116,9 @@ $(UI_TARGET): $(UI_SRC) $(HEADERS) src/sqlite_helper.c src/preprocess_query.c
 	@echo "Compilando interface visual com Clay..."
 	$(CC) $(CFLAGS) $(UI_SRC) src/sqlite_helper.c src/preprocess_query.c src/preprocess.c src/hash_t.c src/file_io.c src/log.c -o $(UI_TARGET) $(UI_LDFLAGS) -lsqlite3 -lstemmer
 
-$(UI_MENU_TARGET): $(UI_MENU_SRC) $(HEADERS)
-	@echo "Compilando menu interativo com Clay..."
-	$(CC) $(CFLAGS) $(UI_MENU_SRC) -o $(UI_MENU_TARGET) $(UI_LDFLAGS)
-
 ui: $(UI_TARGET)
 	@echo "Iniciando interface visual..."
 	./$(UI_TARGET)
-
-menu: $(UI_MENU_TARGET)
-	@echo "Iniciando menu interativo..."
-	./$(UI_MENU_TARGET)
 
 # Gera todos os modelos TF-IDF
 models:
@@ -182,7 +170,7 @@ run:
 
 clean:
 	@echo 'Cleaning old binaries..'
-	@$(RM) $(OBJ) $(TARGET) $(UI_TARGET) $(UI_MENU_TARGET)
+	@$(RM) $(OBJ) $(TARGET) $(UI_TARGET)
 
 clean_models:
 ifeq ($(OS),Windows_NT)
@@ -226,4 +214,4 @@ test-correctness: $(TARGET)
 	@echo "Testes concluídos!"
 	@echo "=========================================="
 
-.PHONY: all clean clean_models lint format check run help test-correctness ui menu models demo setup
+.PHONY: all clean clean_models lint format check run help test-correctness ui models demo setup
