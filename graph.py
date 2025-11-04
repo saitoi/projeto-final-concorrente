@@ -11,21 +11,39 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import argparse
 from pathlib import Path
+
+# Configurar parser de argumentos
+parser = argparse.ArgumentParser(
+    prog='graph.py',
+    description='Gerar gráficos de desempenho a partir de resultados de benchmark',
+    epilog='Exemplo: python graph.py wiki-full')
+parser.add_argument('db_filename',
+                    help='Nome do banco de dados (ex: wiki-full, wiki-small, book-corpus)')
+parser.add_argument('-o', '--output-dir',
+                    type=str,
+                    default='results/performance/graphs',
+                    help='Diretório de saída para os gráficos (padrão: results/performance/graphs)')
+args = parser.parse_args()
 
 # Configurar para usar fonte que suporta caracteres especiais
 plt.rcParams['font.family'] = 'DejaVu Sans'
 
 # Criar diretório para salvar gráficos
-output_dir = Path('results/performance/graphs')
+output_dir = Path(args.output_dir)
 output_dir.mkdir(parents=True, exist_ok=True)
 
 # Ler o CSV
-csv_file = 'benchmark_results_wiki-full.csv'
-df = pd.read_csv(csv_file)
+db_name = args.db_filename
+csv_file = f'benchmark_results_{db_name}.csv'
 
-# Extrair nome do banco de dados do nome do arquivo
-db_name = csv_file.replace('benchmark_results_', '').replace('.csv', '')
+if not Path(csv_file).exists():
+    print(f'Erro: Arquivo {csv_file} não encontrado!')
+    exit(1)
+
+print(f'Lendo arquivo: {csv_file}')
+df = pd.read_csv(csv_file)
 
 # Agrupar por data_size, approach e threads, calculando média e desvio padrão
 stats = df.groupby(['data_size', 'approach', 'threads']).agg({
@@ -39,23 +57,42 @@ stats.columns = ['_'.join(col).strip('_') for col in stats.columns.values]
 
 # Ordenar data_sizes numericamente
 size_order = {
+    '1kb': 1,
     '5kb': 5,
     '10kb': 10,
     '50kb': 50,
     '100kb': 100,
     '500kb': 500,
     '1mb': 1024,
+    '5mb': 5120,
     '10mb': 10240,
     '50mb': 51200,
     '100mb': 102400,
     '500mb': 512000,
     '1gb': 1048576,
+    '2gb': 2097152,
     '5gb': 5242880,
-    '6gb': 6291456
+    '6gb': 6291456,
+    '7gb': 7340032,
+    '8gb': 8388608,
+    '10gb': 10485760
 }
 
 data_sizes = df['data_size'].unique()
-sorted_sizes = sorted(data_sizes, key=lambda x: size_order.get(x, 0))
+
+# Verificar se há tamanhos não mapeados
+unmapped = [size for size in data_sizes if size not in size_order]
+if unmapped:
+    print(f'Aviso: Tamanhos não mapeados encontrados: {unmapped}')
+    print('Esses serão colocados no final do gráfico.')
+    # Adicionar tamanhos não mapeados com valor alto
+    for size in unmapped:
+        size_order[size] = float('inf')
+
+# Ordenar crescente (menor para maior, esquerda para direita)
+sorted_sizes = sorted(data_sizes, key=lambda x: size_order.get(x, float('inf')))
+
+print(f'Ordem dos tamanhos (crescente): {sorted_sizes}')
 
 # Obter todos os números de threads únicos
 all_threads = sorted(df['threads'].unique())
@@ -137,7 +174,7 @@ print(f'Gerado: {output_file}')
 # 2. GRÁFICO: Tempo de execução (escala linear, até 100MB)
 fig2, ax2 = plt.subplots(figsize=(12, 7))
 
-small_sizes = [s for s in sorted_sizes if size_order.get(s, 0) <= 102400]
+small_sizes = [s for s in sorted_sizes if size_order.get(s, float('inf')) <= 102400]
 
 # Plotar sequential
 if not df_seq_all.empty:
@@ -282,22 +319,22 @@ for idx, n_threads in enumerate(all_threads):
         plot_with_uncertainty(ax4, x_pos, speedups, stds, f'{n_threads} threads',
                             thread_colors[idx])
 
-# Linha ideal
-x_pos = np.arange(len(sorted_sizes))
-max_speedup = max(all_threads)
-ax4.axhline(y=max_speedup, linestyle=':', color='gray',
-           label=f'Ideal ({max_speedup}x)', alpha=0.7, linewidth=2)
+# Linhas ideais para cada número de threads
+for idx, n_threads in enumerate(all_threads):
+    # Linha horizontal no valor ideal de aceleração para esse número de threads
+    ax4.axhline(y=n_threads, linestyle=':', color=thread_colors[idx],
+               alpha=0.4, linewidth=1.5, label=f'Ideal {n_threads}t')
 
 ax4.set_xlabel('Tamanho dos Dados', fontsize=13, fontweight='bold')
 ax4.set_ylabel('Aceleração (Speedup)', fontsize=13, fontweight='bold')
 ax4.set_title(f'Aceleração por Tamanho de Dados - {db_name}', fontsize=15, fontweight='bold')
 ax4.set_xticks(np.arange(len(sorted_sizes)))
 ax4.set_xticklabels(sorted_sizes, rotation=45, ha='right')
-ax4.legend(fontsize=9, ncol=2, loc='upper left')
+ax4.legend(fontsize=8, ncol=3, loc='upper left')
 ax4.grid(True, alpha=0.3, linestyle='--')
 plt.tight_layout()
 output_file = output_dir / f'aceleracao_{db_name}.png'
-plt.savefig(output_file, dpi=300, bbox_inches='tight')
+plt.savefig(output_file, dpi=300, bbox_inches='tight', transparent=True, format='png')
 plt.close()
 
 print(f'Gerado: {output_file}')
@@ -409,14 +446,17 @@ for idx, n_threads in enumerate(all_threads):
         plot_with_uncertainty(ax6b, x_pos, np.array(speedups), np.array(stds),
                             f'{n_threads}t', thread_colors[idx])
 
-ax6b.axhline(y=max(all_threads), linestyle=':', color='gray',
-            label='Ideal', alpha=0.7, linewidth=2)
+# Linhas ideais para cada número de threads
+for idx, n_threads in enumerate(all_threads):
+    ax6b.axhline(y=n_threads, linestyle=':', color=thread_colors[idx],
+                alpha=0.3, linewidth=1)
+
 ax6b.set_xlabel('Tamanho dos Dados', fontsize=11)
 ax6b.set_ylabel('Aceleração', fontsize=11)
 ax6b.set_title('Aceleração', fontsize=12, fontweight='bold')
 ax6b.set_xticks(np.arange(len(sorted_sizes)))
 ax6b.set_xticklabels(sorted_sizes, rotation=45, ha='right', fontsize=8)
-ax6b.legend(fontsize=8, ncol=2, loc='upper left')
+ax6b.legend(fontsize=7, ncol=2, loc='upper left')
 ax6b.grid(True, alpha=0.3, linestyle='--')
 
 # Eficiência
