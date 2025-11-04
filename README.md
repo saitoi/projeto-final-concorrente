@@ -16,8 +16,8 @@
     ```
 
 4. Verifique se sqlite3 os dev package está instalada.
-4. Verifique se a biblioteca libstemmer do SnowballStemmer está instalada.
-5. Compile e execute:
+5. Verifique se a biblioteca libstemmer do SnowballStemmer está instalada.
+6. Compile e execute:
 
     ```bash
     cc main.c -o app -lsqlite3
@@ -25,7 +25,7 @@
     ./app --nthreads 4 --db alguma_coisa.db --filename_tfidf marcos.bin
     ```
 
-6. **(Preferencialmente) Use o Makefile:**
+7. **(Preferencialmente) Use o Makefile:**
 
     ```bash
     make clean && make
@@ -126,3 +126,59 @@ Após modificar comentários Doxygen no código, regenere a documentação:
 ```bash
 doxygen Doxyfile
 ```
+
+## Interface Visual
+
+O projeto inclui uma interface gráfica desenvolvida com **Clay UI** e **Raylib**, proporcionando uma experiência interativa para realizar buscas TF-IDF.
+
+### Compilação e Execução
+
+```bash
+make ui
+./app_ui
+```
+
+Alternativamente, utilize o script de demonstração que verifica pré-requisitos:
+
+```bash
+make demo
+```
+
+### Funcionalidades
+
+A interface oferece os seguintes recursos:
+
+- **Busca Interativa**: Sistema de busca em tempo real com processamento TF-IDF
+- **Controle de Threads**: Ajuste dinâmico do número de threads (1-16) para processamento paralelo
+- **Seleção de Banco de Dados**: Alternância entre diferentes bases de dados:
+  - `wiki-small` (97.549 documentos)
+  - `test` (conjuntos de teste)
+  - `food-reviews` (568.454 documentos)
+- **Visualização de Resultados**: Exibição ranqueada com scores de similaridade
+- **Controles Intuitivos**: Atalhos de teclado e botões para navegação
+- **Design Moderno**: Interface com gradientes, efeitos de hover e tipografia otimizada
+
+### Geração de Modelos TF-IDF
+
+Para utilizar a interface com todos os bancos de dados disponíveis, é necessário gerar previamente os modelos TF-IDF:
+
+```bash
+./generate_models.sh
+```
+
+O script realizará automaticamente:
+
+1. Geração de modelos para `wiki-small` (97k documentos)
+2. Geração de modelos para `food-reviews` (568k documentos)
+3. Geração de modelos para tabelas de teste
+4. Verificação e reutilização de modelos existentes
+
+**Observação**: O processo de geração pode demandar alguns minutos, especialmente para bases de dados maiores. Para mais informações, consulte [MODELS.md](MODELS.md).
+
+### Controles da Interface
+
+- **ESC**: Sair da aplicação
+- **Roda do Mouse**: Scroll vertical
+- **↑/↓**: Ajustar número de threads
+- **Botões +/-**: Controle de threads e documentos
+- **Enter**: Confirmar busca
