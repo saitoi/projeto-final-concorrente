@@ -175,18 +175,18 @@ int main(int argc, char *argv[]) {
                    cfg.entries);
 
   // Pré-processar ou carregar modelos existentes
-  int load_result;
+  pthread_t *save_threads = NULL;
   if (access(filename_tf, F_OK) == -1 || access(filename_idf, F_OK) == -1 ||
       access(filename_doc_norms, F_OK) == -1) {
-    load_result =
+    // Executar pré-processamento (salvamento acontece em threads paralelas)
+    save_threads =
         run_preprocessing(cfg.nthreads, cfg.entries, cfg.db, cfg.table,
                           filename_tf, filename_idf, filename_doc_norms);
   } else {
-    load_result = load_models(filename_tf, filename_idf, filename_doc_norms);
-  }
-
-  if (load_result != 0) {
-    return 1;
+    int load_result = load_models(filename_tf, filename_idf, filename_doc_norms);
+    if (load_result != 0) {
+      return 1;
+    }
   }
 
   /* --------------- Consulta do Usuário --------------- */
@@ -204,6 +204,18 @@ int main(int argc, char *argv[]) {
       for (HashEntry *e = global_idf->buckets[i]; e && c < PRINT_IDF_WORDS;
            e = e->next, c++)
         printf("%-15s %.2f\n", e->word, e->value);
+  }
+
+  // Aguardar conclusão das threads de salvamento (se houver)
+  if (save_threads) {
+    log_debug("Aguardando conclusão das threads de salvamento...");
+    for (int i = 0; i < 3; i++) {  // MAX_STRUCTS = 3
+      if (pthread_join(save_threads[i], NULL)) {
+        fprintf(stderr, "Erro ao esperar thread de salvamento %d\n", i);
+      }
+    }
+    free(save_threads);
+    log_debug("Threads de salvamento concluídas");
   }
 
   // Liberar todas as estruturas globais

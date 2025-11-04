@@ -2,6 +2,7 @@
 #define PREPROCESS_H
 
 #include "hash_t.h"
+#include <pthread.h>
 
 /**
  * @struct DocSim
@@ -62,7 +63,7 @@ int compare_sim(const void *a, const void *b);
  * @param filename_doc_norms Nome do arquivo de normas para salvar
  * @return 0 em sucesso, 1 em erro
  */
-int run_preprocessing(int nthreads, long int entries, const char *db,
+pthread_t *run_preprocessing(int nthreads, long int entries, const char *db,
                       const char *table, const char *filename_tf,
                       const char *filename_idf, const char *filename_doc_norms);
 

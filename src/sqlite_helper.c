@@ -111,7 +111,7 @@ char **get_str_arr(const char *filename, const char *query, long int start,
   sqlite3_bind_int64(stmt, 2, end);
 
   long int array_size = end - start + 1;
-  result = calloc(array_size, sizeof(char *));
+  result = (char **) calloc(array_size, sizeof(char *));
   if (!result) {
     fprintf(stderr, "Erro ao alocar memória\n");
     sqlite3_finalize(stmt);

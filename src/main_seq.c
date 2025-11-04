@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
       } else {
         log_info( "\n[SIMILARIDADE] Tempo: %.3f segundos\n", elapsed_sim);
 
-        DocSim *scores = malloc(global_entries * sizeof(DocSim));
+        DocSim *scores = (DocSim *)malloc(global_entries * sizeof(DocSim));
         if (scores) {
           for (long int i = 0; i < global_entries; i++) {
             scores[i].doc_id = i;
@@ -221,7 +221,7 @@ int main(int argc, char *argv[]) {
               global_entries < cfg.k ? global_entries : cfg.k;
           printf("\nTop %ld documentos mais similares:\n", top_k);
           printf("---------------------------------\n");
-          long int *top_ids = malloc(top_k * sizeof(long int));
+          long int *top_ids = (long int *)malloc(top_k * sizeof(long int));
           if (top_ids) {
             for (long int i = 0; i < top_k; i++) {
               top_ids[i] = scores[i].doc_id;
@@ -287,7 +287,7 @@ static int preprocess_documents_sequential(const Config *cfg,
   global_entries = cfg->entries;
   global_idf = hash_new();
 
-  global_tf = calloc(global_entries, sizeof(hash_t *));
+  global_tf = (hash_t **)calloc(global_entries, sizeof(hash_t *));
   if (!global_tf) {
     fprintf(stderr, "Falha ao alocar memória para global_tf\n");
     return -1;
@@ -338,7 +338,7 @@ static int preprocess_documents_sequential(const Config *cfg,
   }
   global_vocab_size = hash_size(global_idf);
 
-  global_doc_norms = calloc(global_entries, sizeof(double));
+  global_doc_norms = (double *)calloc(global_entries, sizeof(double));
   if (!global_doc_norms) {
     fprintf(stderr, "Erro ao alocar memória para global_doc_norms\n");
     return -1;
@@ -430,7 +430,7 @@ static double *compute_similarities_seq(const hash_t *query_tf,
     return NULL;
   }
 
-  double *similarities = calloc(num_docs, sizeof(double));
+  double *similarities = (double *)calloc(num_docs, sizeof(double));
   if (!similarities) {
     return NULL;
   }

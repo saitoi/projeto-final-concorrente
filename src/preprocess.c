@@ -28,6 +28,35 @@
 #include <string.h>
 #include <time.h>
 
+#define MAX_IDFS 16
+#define MAX_STRUCTS 3
+
+/**
+ * @brief Argumentos para thread de salvamento de hash array (TF)
+ */
+typedef struct {
+  hash_t **hashes;
+  long int num_hashes;
+  const char *filename;
+} save_hash_array_args;
+
+/**
+ * @brief Argumentos para thread de salvamento de hash único (IDF)
+ */
+typedef struct {
+  const hash_t *hash;
+  const char *filename;
+} save_hash_args;
+
+/**
+ * @brief Argumentos para thread de salvamento de normas
+ */
+typedef struct {
+  const double *norms;
+  long int num_docs;
+  const char *filename;
+} save_doc_norms_args;
+
 // External global variables from main.c
 extern hash_t **global_tf;
 extern hash_t *global_idf;
@@ -379,7 +408,7 @@ void populate_tf_hash(hash_t **tf, char ***article_vecs, long int count,
  * @note Caller deve liberar usando free_article_vecs()
  */
 char ***tokenize(char **article_texts, long int count) {
-  char ***article_vecs = malloc(count * sizeof(char **));
+  char ***article_vecs = (char ***) malloc(count * sizeof(char **));
   if (!article_vecs) {
     fprintf(stderr, "Erro ao alocar article_vecs\n");
     return NULL;
@@ -409,7 +438,7 @@ char ***tokenize(char **article_texts, long int count) {
     }
 
     // Alocar array de ponteiros
-    article_vecs[i] = malloc((token_count + 1) * sizeof(char *));
+    article_vecs[i] = (char **) malloc((token_count + 1) * sizeof(char *));
     if (!article_vecs[i]) {
       continue;
     }
@@ -593,6 +622,39 @@ void *preprocess_2(void *arg) {
 }
 
 /**
+ * @brief Thread wrapper para salvar array de hashes (TF)
+ */
+void *save_hash_array_thread(void *arg) {
+  save_hash_array_args *args = (save_hash_array_args *)arg;
+  if (save_hash_array(args->hashes, args->num_hashes, args->filename))
+      log_error("Erro ao salvar array de hashes\n");
+  free(args);
+  pthread_exit(NULL);
+}
+
+/**
+ * @brief Thread wrapper para salvar hash único (IDF)
+ */
+void *save_hash_thread(void *arg) {
+  save_hash_args *args = (save_hash_args *)arg;
+  if(save_hash(args->hash, args->filename))
+      log_error("Erro ao salvar hash\n");
+  free(args);
+  pthread_exit(NULL);
+}
+
+/**
+ * @brief Thread wrapper para salvar normas de documentos
+ */
+void *save_doc_norms_thread(void *arg) {
+  save_doc_norms_args *args = (save_doc_norms_args *)arg;
+  if (save_doc_norms(args->norms, args->num_docs, args->filename))
+      log_error("Erro ao salvar normas de documentos\n");
+  free(args);
+  pthread_exit(NULL);
+}
+
+/**
  * @brief Função de comparação para ordenar documentos por similaridade
  *
  * @param a Ponteiro para primeiro DocSim
@@ -627,19 +689,22 @@ static inline double get_elapsed_time(struct timespec *start,
  * @param filename_doc_norms Nome do arquivo de normas para salvar
  * @return 0 em sucesso, 1 em erro
  */
-int run_preprocessing(int nthreads, long int entries, const char *db,
+pthread_t *run_preprocessing(int nthreads, long int entries, const char *db,
                       const char *table, const char *filename_tf,
                       const char *filename_idf,
                       const char *filename_doc_norms) {
-  const int MAX_THREADS = 16;
-
   pthread_t *tids = (pthread_t *)malloc(sizeof(pthread_t) * nthreads);
   if (!tids) {
     fprintf(stderr, "Falha ao alocar memória para tids\n");
-    return 1;
+    return NULL;
   }
 
-  thread_args args[MAX_THREADS];
+  thread_args *args = (thread_args *)malloc(sizeof(thread_args) * nthreads);
+  if (!args) {
+    fprintf(stderr, "Falha ao alocar memória para args\n");
+    free(tids);
+    return NULL;
+  }
 
   // Inicializar estruturas globais
   global_idf = hash_new();
@@ -647,7 +712,8 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
   if (!global_tf) {
     fprintf(stderr, "Falha ao alocar memória para global_tf\n");
     free(tids);
-    return 1;
+    free(args);
+    return NULL;
   }
 
   // Inicializar cada hash TF individual
@@ -656,7 +722,8 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
     if (!global_tf[i]) {
       fprintf(stderr, "Falha ao alocar hash TF para documento %ld\n", i);
       free(tids);
-      return 1;
+      free(args);
+      return NULL;
     }
   }
 
@@ -667,7 +734,8 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
   if (!global_stopwords) {
     fprintf(stderr, "Falha ao carregar stopwords\n");
     free(tids);
-    return 1;
+    free(args);
+    return NULL;
   }
 
   printf("Qtd. artigos: %ld\n", entries);
@@ -694,18 +762,19 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
     if (pthread_create(&tids[i], NULL, preprocess_1, (void *)&args[i])) {
       fprintf(stderr, "Erro ao criar thread %ld\n", i);
       free(tids);
-      return 1;
+      free(args);
+      return NULL;
     }
   }
 
   // Aguardar conclusão da Fase 1 e coletar IDFs locais
-  hash_t *local_idfs[MAX_THREADS];
+  hash_t *local_idfs[MAX_IDFS];
   for (long int i = 0; i < nthreads; ++i) {
     void *ret_val;
     if (pthread_join(tids[i], &ret_val)) {
       fprintf(stderr, "Erro ao esperar thread %ld\n", i);
       free(tids);
-      return 1;
+      return NULL;
     }
     local_idfs[i] = (hash_t *)ret_val;
   }
@@ -741,7 +810,8 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
   if (!global_doc_norms) {
     fprintf(stderr, "Erro ao alocar memória para global_doc_norms\n");
     free(tids);
-    return 1;
+    free(args);
+    return NULL;
   }
 
   clock_gettime(CLOCK_MONOTONIC, &t_end_fase1);
@@ -750,7 +820,7 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
          global_vocab_size);
   printf("[FASE 1] Tempo: %.3f segundos\n", elapsed_fase1);
 
-  /* ========== FASE 2: Calcular TF-IDF ========== */
+  /* ---------- FASE 2: Calcular TF-IDF ---------- */
   struct timespec t_start_fase2, t_end_fase2;
   clock_gettime(CLOCK_MONOTONIC, &t_start_fase2);
 
@@ -760,7 +830,8 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
     if (pthread_create(&tids[i], NULL, preprocess_2, (void *)&args[i])) {
       fprintf(stderr, "Erro ao criar thread %ld\n", i);
       free(tids);
-      return 1;
+      free(args);
+      return NULL;
     }
   }
 
@@ -769,27 +840,95 @@ int run_preprocessing(int nthreads, long int entries, const char *db,
     if (pthread_join(tids[i], NULL)) {
       fprintf(stderr, "Erro ao esperar thread %ld\n", i);
       free(tids);
-      return 1;
+      free(args);
+      return NULL;
     }
   }
 
+  free(args);
+  
   clock_gettime(CLOCK_MONOTONIC, &t_end_fase2);
   double elapsed_fase2 = get_elapsed_time(&t_start_fase2, &t_end_fase2);
   printf("[FASE 2] TF-IDF e normas calculados!\n");
   printf("[FASE 2] Tempo: %.3f segundos\n", elapsed_fase2);
 
-  // Salvar estruturas globais em arquivos binários
+  // Salvar estruturas globais em arquivos binários em paralelo
   printf("\nSalvando estruturas em disco\n");
 
-  save_hash_array(global_tf, global_entries, filename_tf);
-  save_hash(global_idf, filename_idf);
-  save_doc_norms(global_doc_norms, global_entries, filename_doc_norms);
+  // Alocar argumentos dinamicamente
+  save_hash_array_args *args_tf = (save_hash_array_args *)malloc(sizeof(save_hash_array_args));
+  save_hash_args *args_idf = (save_hash_args *)malloc(sizeof(save_hash_args));
+  save_doc_norms_args *args_norms = (save_doc_norms_args *)malloc(sizeof(save_doc_norms_args));
+
+  if (!args_tf || !args_idf || !args_norms) {
+    fprintf(stderr, "Erro ao alocar argumentos de salvamento\n");
+    free(tids);
+    free(args_tf);
+    free(args_idf);
+    free(args_norms);
+    return NULL;
+  }
+
+  // Preparando argumentos para as threads
+  args_tf->hashes = global_tf;
+  args_tf->num_hashes = global_entries;
+  args_tf->filename = filename_tf;
+
+  args_idf->hash = global_idf;
+  args_idf->filename = filename_idf;
+
+  args_norms->norms = global_doc_norms;
+  args_norms->num_docs = global_entries;
+  args_norms->filename = filename_doc_norms;
+
+  // Alocar thread IDs dinamicamente para retornar ao main
+  pthread_t *tid_save_structs = (pthread_t *)malloc(sizeof(pthread_t) * MAX_STRUCTS);
+  if (!tid_save_structs) {
+    fprintf(stderr, "Erro ao alocar memória para threads de salvamento\n");
+    free(tids);
+    free(args_tf);
+    free(args_idf);
+    free(args_norms);
+    return NULL;
+  }
+
+  // Criar threads de salvamento
+  if (pthread_create(&tid_save_structs[0], NULL, save_hash_array_thread, (void *)args_tf)) {
+    fprintf(stderr, "Erro ao criar thread para salvar TF\n");
+    free(tids);
+    free(tid_save_structs);
+    free(args_tf);
+    free(args_idf);
+    free(args_norms);
+    return NULL;
+  }
+
+  if (pthread_create(&tid_save_structs[1], NULL, save_hash_thread, (void *)args_idf)) {
+    fprintf(stderr, "Erro ao criar thread para salvar IDF\n");
+    free(tids);
+    free(tid_save_structs);
+    free(args_tf);
+    free(args_idf);
+    free(args_norms);
+    return NULL;
+  }
+
+  if (pthread_create(&tid_save_structs[2], NULL, save_doc_norms_thread, (void *)args_norms)) {
+    fprintf(stderr, "Erro ao criar thread para salvar normas\n");
+    free(tids);
+    free(tid_save_structs);
+    free(args_tf);
+    free(args_idf);
+    free(args_norms);
+    return NULL;
+  }
 
   // Liberar stopwords
   free_stopwords();
 
-  // Liberar array de thread IDs
+  // Liberar array de thread IDs de pré-processamento
   free(tids);
 
-  return 0;
+  // Retornar thread IDs de salvamento para join no main
+  return tid_save_structs;
 }

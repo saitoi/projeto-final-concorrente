@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <pthread.h>
 
 // External global variables from main.c
 extern hash_t **global_tf;
@@ -26,9 +27,10 @@ extern double *global_doc_norms;
 extern size_t global_vocab_size;
 extern long int global_entries;
 
-/* -------------------- Stopwords -------------------- */
+/* -------------------- Variáveis Globais -------------------- */
 
 hash_t *global_stopwords = NULL; /**< Hash global de stopwords */
+long int global_doc_count = 0; /**< Contador global de documentos */
 
 /**
  * @brief Carrega stopwords de arquivo para hash global
@@ -42,7 +44,7 @@ hash_t *global_stopwords = NULL; /**< Hash global de stopwords */
 void load_stopwords(const char *filename) {
   FILE *f = fopen(filename, "r");
   if (!f) {
-    fprintf(stderr, "Erro ao abrir arquivo de stopwords: %s\n", filename);
+    log_error("Erro ao abrir arquivo de stopwords: %s\n", filename);
     return;
   }
 
@@ -85,14 +87,14 @@ void free_stopwords(void) {
  */
 int save_hash(const hash_t *gh, const char *filename) {
   if (!gh || !filename) {
-    fprintf(stderr, "Erro: hash_t ou filename é nulo\n");
-    return -1;
+    log_error("Erro: hash_t ou filename é nulo\n");
+    return 1;
   }
 
   FILE *fp = fopen(filename, "wb");
   if (!fp) {
-    fprintf(stderr, "Erro ao abrir arquivo %s para escrita\n", filename);
-    return -1;
+    log_error("Erro ao abrir arquivo %s para escrita\n", filename);
+    return 1;
   }
 
   // Salvar capacidade e tamanho
@@ -126,14 +128,14 @@ int save_hash(const hash_t *gh, const char *filename) {
 int save_hash_array(hash_t **hashes, long int num_hashes,
                     const char *filename) {
   if (!hashes || !filename) {
-    fprintf(stderr, "Erro: hashes ou filename é nulo\n");
-    return -1;
+    log_error("Erro: hashes ou filename é nulo");
+    return 1;
   }
 
   FILE *fp = fopen(filename, "wb");
   if (!fp) {
-    fprintf(stderr, "Erro ao abrir arquivo %s para escrita\n", filename);
-    return -1;
+    log_error("Erro ao abrir arquivo %s para escrita", filename);
+    return 1;
   }
 
   // Salvar número de hashes
@@ -172,14 +174,14 @@ int save_hash_array(hash_t **hashes, long int num_hashes,
 int save_doc_norms(const double *norms, long int num_docs,
                    const char *filename) {
   if (!norms || !filename) {
-    fprintf(stderr, "Erro: norms ou filename é nulo\n");
-    return -1;
+    log_error("Erro: norms ou filename é nulo");
+    return 1;
   }
 
   FILE *fp = fopen(filename, "wb");
   if (!fp) {
-    fprintf(stderr, "Erro ao abrir arquivo %s para escrita\n", filename);
-    return -1;
+    log_error("Erro ao abrir arquivo %s para escrita", filename);
+    return 1;
   }
 
   // Salvar número de documentos
@@ -189,7 +191,7 @@ int save_doc_norms(const double *norms, long int num_docs,
   fwrite(norms, sizeof(double), num_docs, fp);
 
   fclose(fp);
-  printf("global_doc_norms salvo em %s (%ld normas)", filename, num_docs);
+  log_info("global_doc_norms salvo em %s (%ld normas)", filename, num_docs);
   return 0;
 }
 
@@ -486,11 +488,40 @@ double *load_doc_norms(const char *filename, long int *num_docs_out) {
   return norms;
 }
 
+// Checagem de erro de carregamento feito em load_models
+
 /**
- * @brief Carrega modelos TF-IDF pré-processados dos arquivos binários
+ * @brief Thread para carregar array de hashes (TF)
+ */
+void *load_hash_array_thread(void *arg) {
+  const char *filename = (const char *)arg;
+  global_tf = load_hash_array(filename, &global_entries);
+  pthread_exit(NULL);
+}
+
+/**
+ * @brief Thread para carregar hash único (IDF)
+ */
+void *load_hash_thread(void *arg) {
+  const char *filename = (const char *)arg;
+  global_idf = load_hash(filename);
+  pthread_exit(NULL);
+}
+
+/**
+ * @brief Thread para carregar normas de documentos
+ */
+void *load_doc_norms_thread(void *arg) {
+  const char *filename = (const char *)arg;
+  global_doc_norms = load_doc_norms(filename, &global_doc_count);
+  pthread_exit(NULL);
+}
+
+/**
+ * @brief Carrega modelos TF-IDF pré-processados dos arquivos binários em paralelo
  *
  * Esta função carrega todas as estruturas necessárias (TF, IDF, normas) dos
- * arquivos binários e atualiza as variáveis globais correspondentes.
+ * arquivos binários usando 3 threads paralelas.
  *
  * @param filename_tf Nome do arquivo TF
  * @param filename_idf Nome do arquivo IDF
@@ -501,15 +532,40 @@ int load_models(const char *filename_tf, const char *filename_idf,
                 const char *filename_doc_norms) {
   printf("Arquivos binários encontrados.. ");
 
-  global_tf = load_hash_array(filename_tf, &global_entries);
-  if (!global_tf) {
-    fprintf(stderr, "Erro ao carregar global_tf de %s\n", filename_tf);
+  pthread_t load_tids[3];
+
+  // Criar threads de carregamento paralelo
+  if (pthread_create(&load_tids[0], NULL, load_hash_array_thread, (void *)filename_tf)) {
+    log_error("Erro ao criar thread para carregar TF");
     return 1;
   }
 
-  global_idf = load_hash(filename_idf);
+  if (pthread_create(&load_tids[1], NULL, load_hash_thread, (void *)filename_idf)) {
+    log_error("Erro ao criar thread para carregar IDF");
+    pthread_join(load_tids[0], NULL);
+    return 1;
+  }
+
+  if (pthread_create(&load_tids[2], NULL, load_doc_norms_thread, (void *)filename_doc_norms)) {
+    log_error("Erro ao criar thread para carregar normas");
+    pthread_join(load_tids[0], NULL);
+    pthread_join(load_tids[1], NULL);
+    return 1;
+  }
+
+  // Aguardar conclusão de todas as threads
+  for (int i = 0; i < 3; i++) {
+    pthread_join(load_tids[i], NULL);
+  }
+
+  // Validar se todos os carregamentos foram bem-sucedidos
+  if (!global_tf) {
+    log_error("Erro ao carregar global_tf de %s", filename_tf);
+    return 1;
+  }
+
   if (!global_idf) {
-    fprintf(stderr, "Erro ao carregar global_idf de %s\n", filename_idf);
+    log_error("Erro ao carregar global_idf de %s", filename_idf);
     // Liberar global_tf
     for (long int i = 0; i < global_entries; i++) {
       if (global_tf[i])
@@ -519,10 +575,11 @@ int load_models(const char *filename_tf, const char *filename_idf,
     return 1;
   }
 
-  global_doc_norms = load_doc_norms(filename_doc_norms, &global_entries);
-  if (!global_doc_norms) {
-    fprintf(stderr, "Erro ao carregar global_doc_norms\n");
+  if (!global_doc_norms || global_doc_count != global_entries) {
+    log_error("Erro ao carregar global_doc_norms de %s", filename_doc_norms);
+    // Liberar global_idf
     hash_free(global_idf);
+    // Liberar global_tf
     for (long int i = 0; i < global_entries; i++) {
       if (global_tf[i])
         hash_free(global_tf[i]);

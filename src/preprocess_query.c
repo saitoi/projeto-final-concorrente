@@ -81,7 +81,7 @@ int preprocess_query(const char *query_user, const hash_t *global_idf,
   }
 
   // Converter query para formato char** (array de 1 string)
-  char **query_array = malloc(2 * sizeof(char *));
+  char **query_array = (char **) malloc(2 * sizeof(char *));
   if (!query_array)
     return -1;
   query_array[0] = strdup(query_user);
@@ -157,8 +157,8 @@ double *compute_similarities(const hash_t *query_tf, double query_norm,
   if (!similarities)
     return NULL;
 
-  pthread_t *threads = malloc(nthreads * sizeof(pthread_t));
-  similarity_args *args = malloc(nthreads * sizeof(similarity_args));
+  pthread_t *threads = (pthread_t *)malloc(nthreads * sizeof(pthread_t));
+  similarity_args *args = (similarity_args *)malloc(nthreads * sizeof(similarity_args));
 
   if (!threads || !args) {
     free(similarities);
