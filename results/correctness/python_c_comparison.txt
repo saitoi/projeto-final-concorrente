@@ -1,0 +1,301 @@
+----------------------------------------------------------------------
+CORRETUDE: C Multithreaded vs Beta tf_idf.py
+----------------------------------------------------------------------
+Testando todas as tabelas
+Top-K: 10
+Threads a testar: [1, 2, 4, 8, 16]
+
+Testando: test_tbl_0 - Query ID 1
+  Consulta: "marine sea species new"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_0 - Query ID 2
+  Consulta: "whale whales migration oceans"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_0 - Query ID 3
+  Consulta: "scientists researchers marine sea"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_0 - Query ID 4
+  Consulta: "deep sea expedition mariana trench marine"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_0 - Query ID 5
+  Consulta: "coral reef recovery sea"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_1 - Query ID 1
+  Consulta: "pawn knight rook king"
+  [t= 1] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_1 - Query ID 2
+  Consulta: "knight move chess"
+  [t= 1] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_1 - Query ID 3
+  Consulta: "rook king move"
+  [t= 1] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_1 - Query ID 4
+  Consulta: "rodeo horse ox"
+  [t= 1] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_1 - Query ID 5
+  Consulta: "pawn police jail move"
+  [t= 1] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_2 - Query ID 1
+  Consulta: "2020 oscars winners list parasite 1917"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_2 - Query ID 2
+  Consulta: "oscars nominees ceremony 2020 february"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_2 - Query ID 3
+  Consulta: "parasite palme dor cannes oscars"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_2 - Query ID 4
+  Consulta: "national team list copa america world cup qualifiers"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_2 - Query ID 5
+  Consulta: "brasileirao 2020 top scorers assist leaders season calendar"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 1
+  Consulta: "kim il sung juche ideology leadership"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 2
+  Consulta: "famine 1990s arduous march food shortage"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 3
+  Consulta: "kim jong un nuclear tests diplomacy sanctions"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 4
+  Consulta: "pyongyang capital parade military"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 5
+  Consulta: "north korea china relations ally trade"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 6
+  Consulta: "demilitarized zone border south korea"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 7
+  Consulta: "propaganda media control mass games"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 8
+  Consulta: "defectors escape asylum south korea"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 9
+  Consulta: "kim jong il cinema propaganda films"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 10
+  Consulta: "united states negotiations nuclear weapons"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 11
+  Consulta: "political ideology juche socialism independence"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_3 - Query ID 12
+  Consulta: "korean war invasion 1950 armistice"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_4 - Query ID 1
+  Consulta: "volcano national monument united states"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_4 - Query ID 2
+  Consulta: "bishop of constantinople thessalonica arian"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_4 - Query ID 3
+  Consulta: "bounded entire holomorphic function liouville theorem"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_4 - Query ID 4
+  Consulta: "british actor television films 20th century"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_4 - Query ID 5
+  Consulta: "australian rules footballer victorian football league"
+  [t= 1] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-10 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_5 - Query ID 1
+  Consulta: "isso nao vai funcionar"
+  [t= 1] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_6 - Query ID 1
+  Consulta: "pawn knight rook king"
+  [t= 1] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_6 - Query ID 2
+  Consulta: "rodeo horse ox"
+  [t= 1] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+
+Testando: test_tbl_6 - Query ID 3
+  Consulta: "pawn police jail move"
+  [t= 1] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 2] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 4] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t= 8] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+  [t=16] [32mPASSOU[0m: Top-5 documentos correspondem com tolerância 0.001
+
+
+Total de testes: 180
+[32mPassou: 180[0m
+[32mFalhou: 0[0m
+
+[32mTODOS OS TESTES PASSARAM![0m

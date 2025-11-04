@@ -23,7 +23,7 @@
 #ifndef HASH_INIT_CAP
 #define HASH_INIT_CAP 256 /**< Capacidade inicial padrão */
 #endif
-#define MAX_LOAD 0.75             /**< Fator de carga máximo antes de rehash */
+#define MAX_LOAD 0.75 /**< Fator de carga máximo antes de rehash */
 
 /* ------------- Funções Auxiliares ------------- */
 
@@ -185,6 +185,7 @@ void hash_add(hash_t *set, const char *word, double value) {
   e->word = safe_strdup(word);
   e->wlen = wlen;
   e->value = value;
+  e->epoch = 0;
   e->next = set->buckets[idx];
   set->buckets[idx] = e;
   set->size++;
@@ -229,7 +230,7 @@ void hash_merge(hash_t *dst, const hash_t *src) {
   for (size_t i = 0; i < src->cap; i++) {
     HashEntry *e = src->buckets[i];
     while (e) {
-        hash_add(dst, e->word, e->value);
+      hash_add(dst, e->word, e->value);
       e = e->next;
     }
   }
@@ -280,4 +281,29 @@ double hash_find(const hash_t *set, const char *word) {
   }
 
   return 0.0;
+}
+
+/**
+ * @brief Busca e retorna o nó (HashEntry) de uma palavra
+ *
+ * Permite acesso direto aos atributos do nó para edição.
+ *
+ * @param set Tabela hash
+ * @param word Palavra a buscar
+ * @return Ponteiro para HashEntry, ou NULL se não encontrado
+ */
+HashEntry *hash_get(hash_t *set, const char *word) {
+  if (!set || !word || !set->cap)
+    return NULL;
+
+  size_t wlen = strlen(word);
+  size_t idx = hash_str(word, wlen) & (set->cap - 1);
+
+  for (HashEntry *e = set->buckets[idx]; e; e = e->next) {
+    if (e->wlen == wlen && memcmp(e->word, word, wlen) == 0) {
+      return e;
+    }
+  }
+
+  return NULL;
 }
