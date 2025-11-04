@@ -509,12 +509,12 @@ void CreateUI(void) {
             .cornerRadius = CLAY_CORNER_RADIUS(12)
                 }) {
                 CLAY_TEXT(CLAY_STRING("TF-IDF Document Search System"), CLAY_TEXT_CONFIG({
-                    .fontSize = 28,
+                    .fontSize = 42,
                     .letterSpacing = 1.5f,
                     .textColor = COLOR_TEXT
                     }));
                 CLAY_TEXT(CLAY_STRING("Processamento Paralelo com Pthreads"), CLAY_TEXT_CONFIG({
-                    .fontSize = 13,
+                    .fontSize = 20,
                     .letterSpacing = 1.0f,
                     .textColor = COLOR_TEXT_DIM
                     }));
@@ -532,7 +532,7 @@ void CreateUI(void) {
                 .cornerRadius = CLAY_CORNER_RADIUS(12)
                 }) {
                 CLAY_TEXT(CLAY_STRING("Buscar Documentos"), CLAY_TEXT_CONFIG({
-                    .fontSize = 16,
+                    .fontSize = 24,
                     .letterSpacing = 1.0f,
                     .textColor = COLOR_TEXT
                     }));
@@ -553,7 +553,7 @@ void CreateUI(void) {
                     }
                     }) {
                     CLAY_TEXT(CLAY_STRING("Q"), CLAY_TEXT_CONFIG({
-                        .fontSize = 24,
+                        .fontSize = 36,
                         .letterSpacing = 1.5f,
                         .textColor = appState.inputActive ? COLOR_TEXT : COLOR_PRIMARY
                         }));
@@ -568,20 +568,20 @@ void CreateUI(void) {
                             snprintf(displayText, sizeof(displayText), "%s", appState.searchQuery);
                         }
                         CLAY_TEXT(MakeClayString(displayText), CLAY_TEXT_CONFIG({
-                            .fontSize = 20,
+                            .fontSize = 30,
                             .letterSpacing = 1.5f,
                             .textColor = (Clay_Color){255, 255, 255, 255}
                             }));
                     } else {
                         if (appState.inputActive && ((int) (GetTime() * 2) % 2 == 0)) {
                             CLAY_TEXT(CLAY_STRING("|"), CLAY_TEXT_CONFIG({
-                                .fontSize = 20,
+                                .fontSize = 30,
                                 .letterSpacing = 1.5f,
                                 .textColor = (Clay_Color){255, 255, 255, 255}
                                 }));
                         } else {
                             CLAY_TEXT(CLAY_STRING("Digite sua consulta aqui... (ex: machine learning algorithms)"), CLAY_TEXT_CONFIG({
-                                .fontSize = 16,
+                                .fontSize = 24,
                                 .letterSpacing = 1.0f,
                                 .textColor = COLOR_TEXT_DIM
                                 }));
@@ -595,7 +595,7 @@ void CreateUI(void) {
                 }
 
                 CLAY_TEXT(CLAY_STRING("Clique no campo para digitar | ENTER para confirmar | ESC para cancelar"), CLAY_TEXT_CONFIG({
-                    .fontSize = 12,
+                    .fontSize = 18,
                     .letterSpacing = 0.8f,
                     .textColor = COLOR_TEXT_DIM
                     }));
@@ -620,7 +620,7 @@ void CreateUI(void) {
                     .cornerRadius = CLAY_CORNER_RADIUS(12)
                     }) {
                     CLAY_TEXT(CLAY_STRING("Banco de Dados"), CLAY_TEXT_CONFIG({
-                        .fontSize = 18,
+                        .fontSize = 27,
                         .letterSpacing = 1.2f,
                         .textColor = COLOR_TEXT
                         }));
@@ -644,7 +644,7 @@ void CreateUI(void) {
                             .cornerRadius = CLAY_CORNER_RADIUS(8)
                             }) {
                             CLAY_TEXT(CLAY_STRING("<"), CLAY_TEXT_CONFIG({
-                                .fontSize = 28,
+                                .fontSize = 42,
                                 .letterSpacing = 1.0f,
                                 .textColor = COLOR_TEXT
                                 }));
@@ -668,7 +668,7 @@ void CreateUI(void) {
                         // Nome do banco atual
                         CLAY(CLAY_ID("DbValue"), {
                             .layout = {
-                                .sizing = {.width = CLAY_SIZING_FIXED(250)},
+                                .sizing = {.width = CLAY_SIZING_FIXED(350)},
                                 .padding = CLAY_PADDING_ALL(12),
                                 .childAlignment = {.x = CLAY_ALIGN_X_CENTER}
                             },
@@ -676,7 +676,7 @@ void CreateUI(void) {
                             .cornerRadius = CLAY_CORNER_RADIUS(8)
                             }) {
                             CLAY_TEXT(MakeClayString(databases[appState.selectedDbIndex].displayName), CLAY_TEXT_CONFIG({
-                                .fontSize = 20,
+                                .fontSize = 30,
                                 .letterSpacing = 1.2f,
                                 .textColor = COLOR_TEXT
                                 }));
@@ -692,7 +692,7 @@ void CreateUI(void) {
                             .cornerRadius = CLAY_CORNER_RADIUS(8)
                             }) {
                             CLAY_TEXT(CLAY_STRING(">"), CLAY_TEXT_CONFIG({
-                                .fontSize = 28,
+                                .fontSize = 42,
                                 .letterSpacing = 1.0f,
                                 .textColor = COLOR_TEXT
                                 }));
@@ -715,7 +715,7 @@ void CreateUI(void) {
                     }
 
                     CLAY_TEXT(CLAY_STRING("Use botoes para alternar entre bancos"), CLAY_TEXT_CONFIG({
-                        .fontSize = 12,
+                        .fontSize = 18,
                         .letterSpacing = 0.8f,
                         .textColor = COLOR_TEXT_DIM
                         }));
@@ -733,7 +733,7 @@ void CreateUI(void) {
                     .cornerRadius = CLAY_CORNER_RADIUS(12)
                     }) {
                     CLAY_TEXT(CLAY_STRING("Numero de Threads"), CLAY_TEXT_CONFIG({
-                        .fontSize = 18,
+                        .fontSize = 27,
                         .letterSpacing = 1.2f,
                         .textColor = COLOR_TEXT
                         }));
@@ -757,7 +757,7 @@ void CreateUI(void) {
                             .cornerRadius = CLAY_CORNER_RADIUS(8)
                             }) {
                             CLAY_TEXT(CLAY_STRING("-"), CLAY_TEXT_CONFIG({
-                                .fontSize = 28,
+                                .fontSize = 42,
                                 .letterSpacing = 1.0f,
                                 .textColor = COLOR_TEXT
                                 }));
@@ -772,7 +772,7 @@ void CreateUI(void) {
                         snprintf(threadText, sizeof(threadText), "%d threads", appState.numThreads);
                         CLAY(CLAY_ID("ThreadsValue"), {
                             .layout = {
-                                .sizing = {.width = CLAY_SIZING_FIXED(150)},
+                                .sizing = {.width = CLAY_SIZING_FIXED(250)},
                                 .padding = CLAY_PADDING_ALL(12),
                                 .childAlignment = {.x = CLAY_ALIGN_X_CENTER}
                             },
@@ -780,7 +780,7 @@ void CreateUI(void) {
                             .cornerRadius = CLAY_CORNER_RADIUS(8)
                             }) {
                             CLAY_TEXT(MakeClayString(threadText), CLAY_TEXT_CONFIG({
-                                .fontSize = 24,
+                                .fontSize = 36,
                                 .letterSpacing = 1.5f,
                                 .textColor = COLOR_TEXT
                                 }));
@@ -796,7 +796,7 @@ void CreateUI(void) {
                             .cornerRadius = CLAY_CORNER_RADIUS(8)
                             }) {
                             CLAY_TEXT(CLAY_STRING("+"), CLAY_TEXT_CONFIG({
-                                .fontSize = 28,
+                                .fontSize = 42,
                                 .letterSpacing = 1.0f,
                                 .textColor = COLOR_TEXT
                                 }));
@@ -808,7 +808,7 @@ void CreateUI(void) {
                     }
 
                     CLAY_TEXT(CLAY_STRING("Use botoes ou setas ^ v para ajustar (1-16)"), CLAY_TEXT_CONFIG({
-                        .fontSize = 12,
+                        .fontSize = 18,
                         .letterSpacing = 0.8f,
                         .textColor = COLOR_TEXT_DIM
                         }));
@@ -827,7 +827,7 @@ void CreateUI(void) {
                 .cornerRadius = CLAY_CORNER_RADIUS(12)
                 }) {
                 CLAY_TEXT(CLAY_STRING("Documentos"), CLAY_TEXT_CONFIG({
-                    .fontSize = 20,
+                    .fontSize = 30,
                     .letterSpacing = 1.2f,
                     .textColor = COLOR_TEXT
                     }));
@@ -852,7 +852,7 @@ void CreateUI(void) {
                         .cornerRadius = CLAY_CORNER_RADIUS(8)
                         }) {
                         CLAY_TEXT(CLAY_STRING("-"), CLAY_TEXT_CONFIG({
-                            .fontSize = 28,
+                            .fontSize = 42,
                             .letterSpacing = 1.0f,
                             .textColor = COLOR_TEXT
                             }));
@@ -877,7 +877,7 @@ void CreateUI(void) {
                     }
                     CLAY(CLAY_ID("DocsValue"), {
                         .layout = {
-                            .sizing = {.width = CLAY_SIZING_FIXED(180)},
+                            .sizing = {.width = CLAY_SIZING_FIXED(280)},
                             .padding = CLAY_PADDING_ALL(12),
                             .childAlignment = {.x = CLAY_ALIGN_X_CENTER}
                         },
@@ -885,7 +885,7 @@ void CreateUI(void) {
                         .cornerRadius = CLAY_CORNER_RADIUS(8)
                         }) {
                         CLAY_TEXT(MakeClayString(docsText), CLAY_TEXT_CONFIG({
-                            .fontSize = 24,
+                            .fontSize = 36,
                             .letterSpacing = 1.5f,
                             .textColor = COLOR_TEXT
                             }));
@@ -901,7 +901,7 @@ void CreateUI(void) {
                         .cornerRadius = CLAY_CORNER_RADIUS(8)
                         }) {
                         CLAY_TEXT(CLAY_STRING("+"), CLAY_TEXT_CONFIG({
-                            .fontSize = 28,
+                            .fontSize = 42,
                             .letterSpacing = 1.0f,
                             .textColor = COLOR_TEXT
                             }));
@@ -920,7 +920,7 @@ void CreateUI(void) {
                 }
 
                 CLAY_TEXT(CLAY_STRING("Use botoes ou ALT + setas <- -> para: 1k, 5k, 10k, 25k, 50k, Todos"), CLAY_TEXT_CONFIG({
-                    .fontSize = 12,
+                    .fontSize = 18,
                     .letterSpacing = 0.8f,
                     .textColor = COLOR_TEXT_DIM
                     }));
@@ -938,7 +938,7 @@ void CreateUI(void) {
                 .cornerRadius = CLAY_CORNER_RADIUS(12)
                 }) {
                 CLAY_TEXT(CLAY_STRING("Top-K Resultados"), CLAY_TEXT_CONFIG({
-                    .fontSize = 20,
+                    .fontSize = 30,
                     .letterSpacing = 1.2f,
                     .textColor = COLOR_TEXT
                     }));
@@ -963,7 +963,7 @@ void CreateUI(void) {
                         .cornerRadius = CLAY_CORNER_RADIUS(8)
                         }) {
                         CLAY_TEXT(CLAY_STRING("-"), CLAY_TEXT_CONFIG({
-                            .fontSize = 28,
+                            .fontSize = 42,
                             .letterSpacing = 1.0f,
                             .textColor = COLOR_TEXT
                             }));
@@ -978,7 +978,7 @@ void CreateUI(void) {
                     snprintf(topKText, sizeof(topKText), "Top %d", appState.topK);
                     CLAY(CLAY_ID("TopKValue"), {
                         .layout = {
-                            .sizing = {.width = CLAY_SIZING_FIXED(180)},
+                            .sizing = {.width = CLAY_SIZING_FIXED(280)},
                             .padding = CLAY_PADDING_ALL(12),
                             .childAlignment = {.x = CLAY_ALIGN_X_CENTER}
                         },
@@ -986,7 +986,7 @@ void CreateUI(void) {
                         .cornerRadius = CLAY_CORNER_RADIUS(8)
                         }) {
                         CLAY_TEXT(MakeClayString(topKText), CLAY_TEXT_CONFIG({
-                            .fontSize = 24,
+                            .fontSize = 36,
                             .letterSpacing = 1.5f,
                             .textColor = COLOR_TEXT
                             }));
@@ -1002,7 +1002,7 @@ void CreateUI(void) {
                         .cornerRadius = CLAY_CORNER_RADIUS(8)
                         }) {
                         CLAY_TEXT(CLAY_STRING("+"), CLAY_TEXT_CONFIG({
-                            .fontSize = 28,
+                            .fontSize = 42,
                             .letterSpacing = 1.0f,
                             .textColor = COLOR_TEXT
                             }));
@@ -1014,7 +1014,7 @@ void CreateUI(void) {
                 }
 
                 CLAY_TEXT(CLAY_STRING("Quantidade de resultados a exibir (1-10)"), CLAY_TEXT_CONFIG({
-                    .fontSize = 12,
+                    .fontSize = 18,
                     .letterSpacing = 0.8f,
                     .textColor = COLOR_TEXT_DIM
                     }));
@@ -1036,7 +1036,7 @@ void CreateUI(void) {
                 }
                 }) {
                 CLAY_TEXT(CLAY_STRING("Status do Sistema"), CLAY_TEXT_CONFIG({
-                    .fontSize = 18,
+                    .fontSize = 27,
                     .letterSpacing = 1.2f,
                     .textColor = COLOR_TEXT
                     }));
@@ -1051,13 +1051,13 @@ void CreateUI(void) {
                         appState.statusMessage, dotCount, "...");
 
                     CLAY_TEXT(MakeClayString(loadingMsg), CLAY_TEXT_CONFIG({
-                        .fontSize = 16,
+                        .fontSize = 24,
                         .letterSpacing = 1.0f,
                         .textColor = COLOR_PRIMARY
                         }));
                 } else {
                     CLAY_TEXT(MakeClayString(appState.statusMessage), CLAY_TEXT_CONFIG({
-                        .fontSize = 16,
+                        .fontSize = 24,
                         .letterSpacing = 1.0f,
                         .textColor = COLOR_SUCCESS
                         }));
@@ -1078,7 +1078,7 @@ void CreateUI(void) {
                     char progressText[32];
                     snprintf(progressText, sizeof(progressText), "Progresso: %.0f%%", appState.processingProgress * 100);
                     CLAY_TEXT(MakeClayString(progressText), CLAY_TEXT_CONFIG({
-                        .fontSize = 14,
+                        .fontSize = 21,
                         .letterSpacing = 0.8f,
                         .textColor = COLOR_TEXT_DIM
                         }));
@@ -1097,13 +1097,13 @@ void CreateUI(void) {
                 }) {
                 if (appState.isProcessing) {
                     CLAY_TEXT(CLAY_STRING("Processando..."), CLAY_TEXT_CONFIG({
-                        .fontSize = 20,
+                        .fontSize = 30,
                         .letterSpacing = 1.5f,
                         .textColor = COLOR_TEXT
                         }));
                 } else {
                     CLAY_TEXT(CLAY_STRING("Buscar Documentos"), CLAY_TEXT_CONFIG({
-                        .fontSize = 20,
+                        .fontSize = 30,
                         .letterSpacing = 1.5f,
                         .textColor = COLOR_TEXT
                         }));
@@ -1176,7 +1176,7 @@ void CreateUI(void) {
                     char titleText[64];
                     snprintf(titleText, sizeof(titleText), "Search Results - Found %d documents", appState.numResults);
                     CLAY_TEXT(MakeClayString(titleText), CLAY_TEXT_CONFIG({
-                        .fontSize = 14,
+                        .fontSize = 21,
                         .letterSpacing = 0.8f,
                         .textColor = COLOR_SUCCESS
                         }));
@@ -1208,7 +1208,7 @@ void CreateUI(void) {
                                 appState.results[i].score);
 
                             CLAY_TEXT(MakeClayString(resultLines[i * 2]), CLAY_TEXT_CONFIG({
-                                .fontSize = 13,
+                                .fontSize = 20,
                                 .letterSpacing = 0.6f,
                                 .textColor = COLOR_PRIMARY
                                 }));
@@ -1223,7 +1223,7 @@ void CreateUI(void) {
                             }
 
                             CLAY_TEXT(MakeClayString(resultLines[i * 2 + 1]), CLAY_TEXT_CONFIG({
-                                .fontSize = 12,
+                                .fontSize = 18,
                                 .letterSpacing = 0.5f,
                                 .textColor = COLOR_TEXT_DIM
                                 }));
@@ -1238,7 +1238,7 @@ void CreateUI(void) {
                         appState.searchThreads > 1 ? "s" : "");
 
                     CLAY_TEXT(MakeClayString(perfInfo), CLAY_TEXT_CONFIG({
-                        .fontSize = 11,
+                        .fontSize = 17,
                         .letterSpacing = 0.5f,
                         .textColor = COLOR_SUCCESS
                         }));
@@ -1256,7 +1256,7 @@ void CreateUI(void) {
                 .cornerRadius = CLAY_CORNER_RADIUS(8)
                 }) {
                 CLAY_TEXT(CLAY_STRING("ESC: Sair | Roda: Scroll | ^v: Threads | Use botoes para DB e Docs"), CLAY_TEXT_CONFIG({
-                    .fontSize = 12,
+                    .fontSize = 18,
                     .letterSpacing = 0.8f,
                     .textColor = COLOR_TEXT_DIM
                     }));
