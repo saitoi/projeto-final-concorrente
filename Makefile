@@ -118,7 +118,7 @@ $(TARGET): $(OBJ)
 
 $(UI_TARGET): $(UI_SRC) $(HEADERS) src/sqlite_helper.c src/preprocess_query.c
 	@echo "Compilando interface visual com Clay..."
-	$(CC) $(CFLAGS) $(UI_SRC) src/sqlite_helper.c src/preprocess_query.c src/preprocess.c src/hash_t.c src/file_io.c -o $(UI_TARGET) $(UI_LDFLAGS) -lsqlite3 -lstemmer
+	$(CC) $(CFLAGS) $(UI_SRC) src/sqlite_helper.c src/preprocess_query.c src/preprocess.c src/hash_t.c src/file_io.c src/log.c -o $(UI_TARGET) $(UI_LDFLAGS) -lsqlite3 -lstemmer
 
 $(UI_MENU_TARGET): $(UI_MENU_SRC) $(HEADERS)
 	@echo "Compilando menu interativo com Clay..."
