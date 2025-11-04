@@ -334,11 +334,11 @@ int perform_tfidf_search(const char *db_path, const char *table_name,
             strncpy(results_out[num_results].title, doc_texts[i], copy_len);
             results_out[num_results].title[copy_len] = '\0';  // Garantir terminação
 
-            // Substituir quebras de linha por espaços para melhor visualização
+            // Substituir caracteres problemáticos por espaços
+            // Mantém apenas caracteres ASCII imprimíveis (32-126)
             for (int j = 0; j < copy_len; j++) {
-                if (results_out[num_results].title[j] == '\n' ||
-                    results_out[num_results].title[j] == '\r' ||
-                    results_out[num_results].title[j] == '\t') {
+                unsigned char c = (unsigned char) results_out[num_results].title[j];
+                if (c < 32 || c > 126) {
                     results_out[num_results].title[j] = ' ';
                 }
             }
@@ -489,7 +489,7 @@ void CreateUI(void) {
         .clip = {
             .vertical = true,
             .horizontal = false,
-            .childOffset = {0, -appState.scrollOffset}
+            .childOffset = {0, appState.scrollOffset}
         }
         }) {
 
@@ -1161,13 +1161,6 @@ void CreateUI(void) {
 
             // ========== RESULTADOS DA BUSCA ==========
             if (appState.numResults > 0) {
-                // DEBUG: Log do estado dos resultados (só uma vez por frame)
-                static int lastLoggedResults = -1;
-                if (lastLoggedResults != appState.numResults) {
-                    printf("[RENDER DEBUG] Renderizando %d resultados\n", appState.numResults);
-                    lastLoggedResults = appState.numResults;
-                }
-
                 CLAY(CLAY_ID("ResultsSection"), {
                     .layout = {
                         .sizing = {.width = CLAY_SIZING_GROW(0)},
@@ -1179,11 +1172,9 @@ void CreateUI(void) {
                     .cornerRadius = CLAY_CORNER_RADIUS(12)
                     }) {
                     // Título
-                    char titleText[64];
-                    snprintf(titleText, sizeof(titleText), "Search Results - Found %d documents", appState.numResults);
-                    CLAY_TEXT(MakeClayString(titleText), CLAY_TEXT_CONFIG({
-                        .fontSize = 21,
-                        .letterSpacing = 0.8f,
+                    CLAY_TEXT(CLAY_STRING("Resultados da Busca"), CLAY_TEXT_CONFIG({
+                        .fontSize = 24,
+                        .letterSpacing = 1.0f,
                         .textColor = COLOR_SUCCESS
                         }));
 
@@ -1328,10 +1319,10 @@ int main(void) {
         // Scroll da página principal (sempre ativo)
         float wheelMove = GetMouseWheelMove();
         if (wheelMove != 0) {
-            appState.scrollOffset -= wheelMove * 40.0f;  // 40px por scroll
+            appState.scrollOffset += wheelMove * 40.0f;  // 40px por scroll (invertido)
 
             // Limitar scroll (não pode rolar para cima além do topo)
-            if (appState.scrollOffset < 0) {
+            if (appState.scrollOffset > 0) {
                 appState.scrollOffset = 0;
             }
         }        // Scroll para resultados (desabilitado por enquanto, usando scroll principal)
@@ -1427,9 +1418,6 @@ int main(void) {
             }
         }
 
-        // Nota: Simulação de progresso foi removida - resultados aparecem imediatamente
-        // TODO: Integrar backend TF-IDF real aqui
-
         // Atualizar dimensões se a janela foi redimensionada
         Clay_SetLayoutDimensions((Clay_Dimensions) { GetScreenWidth(), GetScreenHeight() });
 
@@ -1444,7 +1432,7 @@ int main(void) {
 
         Clay_SetPointerState(
             (Clay_Vector2) {
-            mousePos.x, mousePos.y - appState.scrollOffset  // Aplicar offset de scroll
+            mousePos.x, mousePos.y  // Clay gerencia scroll internamente
         },
             IsMouseButtonDown(MOUSE_LEFT_BUTTON)
         );
@@ -1462,11 +1450,7 @@ int main(void) {
         BeginDrawing();
         ClearBackground((Color) { 43, 41, 51, 255 });
 
-        // Aplicar transformação de scroll
-        rlPushMatrix();
-        rlTranslatef(0, -appState.scrollOffset, 0);
-
-        // Processar comandos de renderização
+        // Processar comandos de renderização (Clay gerencia scroll via childOffset)
         for (int i = 0; i < renderCommands.length; i++) {
             Clay_RenderCommand *cmd = &renderCommands.internalArray[i];
 
@@ -1495,9 +1479,6 @@ int main(void) {
                     break;
             }
         }
-
-        // Restaurar matriz de transformação
-        rlPopMatrix();
 
         EndDrawing();
     }
