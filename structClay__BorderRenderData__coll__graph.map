@@ -1,0 +1,9 @@
+<map id="Clay_BorderRenderData" name="Clay_BorderRenderData">
+<area shape="rect" id="Node000001" title=" " alt="" coords="105,93,283,119"/>
+<area shape="rect" id="Node000002" href="$structClay__Color.html" title=" " alt="" coords="5,5,97,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="83,35,176,91,173,95,81,40"/>
+<area shape="rect" id="Node000003" href="$structClay__CornerRadius.html" title=" " alt="" coords="121,5,267,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="197,45,197,93,191,93,191,45"/>
+<area shape="rect" id="Node000004" href="$structClay__BorderWidth.html" title=" " alt="" coords="291,5,430,31"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="337,41,290,72,232,96,230,91,287,67,334,37"/>
+</map>

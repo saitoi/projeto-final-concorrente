@@ -1,0 +1,41 @@
+<map id="Clay_ElementDeclaration" name="Clay_ElementDeclaration">
+<area shape="rect" id="Node000001" title=" " alt="" coords="1191,322,1377,347"/>
+<area shape="rect" id="Node000002" href="$structClay__LayoutConfig.html" title=" " alt="" coords="867,83,1009,109"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="1024,101,1097,119,1134,134,1168,154,1210,194,1243,242,1267,287,1281,321,1276,323,1262,290,1239,245,1206,198,1165,158,1132,138,1095,124,1022,106"/>
+<area shape="rect" id="Node000003" href="$structClay__Sizing.html" title=" " alt="" coords="527,22,624,47"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="638,41,799,67,874,81,873,86,798,72,637,46"/>
+<area shape="rect" id="Node000004" href="$structClay__SizingAxis.html" title=" " alt="" coords="260,22,385,47"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="399,32,527,32,527,37,399,37"/>
+<area shape="rect" id="Node000005" href="$structClay__SizingMinMax.html" title=" " alt="" coords="5,22,155,47"/>
+<area shape="poly" id="edge4_Node000004_Node000005" title=" " alt="" coords="169,32,260,32,260,37,169,37"/>
+<area shape="rect" id="Node000006" href="$structClay__Padding.html" title=" " alt="" coords="521,71,630,97"/>
+<area shape="poly" id="edge5_Node000002_Node000006" title=" " alt="" coords="644,84,866,91,866,96,643,89"/>
+<area shape="rect" id="Node000007" href="$structClay__ChildAlignment.html" title=" " alt="" coords="496,121,655,146"/>
+<area shape="poly" id="edge6_Node000002_Node000007" title=" " alt="" coords="668,122,798,109,866,102,867,107,799,115,668,128"/>
+<area shape="rect" id="Node000008" href="$structClay__Color.html" title=" " alt="" coords="529,181,621,206"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="635,181,740,171,805,169,876,170,950,176,1025,189,1099,209,1168,238,1200,257,1229,279,1272,320,1269,323,1225,283,1197,261,1165,242,1097,214,1024,194,950,182,876,176,805,174,740,177,635,187"/>
+<area shape="rect" id="Node000018" href="$structClay__BorderElementConfig.html" title=" " alt="" coords="840,223,1036,249"/>
+<area shape="poly" id="edge19_Node000018_Node000008" title=" " alt="" coords="635,198,696,205,840,222,839,227,696,211,635,203"/>
+<area shape="rect" id="Node000009" href="$structClay__CornerRadius.html" title=" " alt="" coords="865,273,1011,298"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="1025,293,1167,312,1212,319,1211,325,1166,317,1024,298"/>
+<area shape="rect" id="Node000010" href="$structClay__AspectRatioElementConfig.html" title=" " alt="" coords="823,322,1053,347"/>
+<area shape="poly" id="edge9_Node000001_Node000010" title=" " alt="" coords="1067,332,1191,332,1191,337,1067,337"/>
+<area shape="rect" id="Node000011" href="$structClay__ImageElementConfig.html" title=" " alt="" coords="841,371,1035,397"/>
+<area shape="poly" id="edge10_Node000001_Node000011" title=" " alt="" coords="1049,368,1166,352,1211,345,1212,350,1167,357,1050,373"/>
+<area shape="rect" id="Node000012" href="$structClay__FloatingElementConfig.html" title=" " alt="" coords="835,470,1041,495"/>
+<area shape="poly" id="edge11_Node000001_Node000012" title=" " alt="" coords="1054,465,1111,450,1165,428,1197,409,1226,387,1269,345,1273,349,1230,391,1200,414,1168,433,1112,455,1055,470"/>
+<area shape="rect" id="Node000013" href="$structClay__Vector2.html" title=" " alt="" coords="522,419,629,445"/>
+<area shape="poly" id="edge12_Node000012_Node000013" title=" " alt="" coords="643,442,696,451,835,469,834,474,696,456,642,447"/>
+<area shape="rect" id="Node000017" href="$structClay__ClipElementConfig.html" title=" " alt="" coords="849,421,1027,446"/>
+<area shape="poly" id="edge17_Node000017_Node000013" title=" " alt="" coords="642,430,848,430,848,436,642,435"/>
+<area shape="rect" id="Node000014" href="$structClay__Dimensions.html" title=" " alt="" coords="508,490,643,515"/>
+<area shape="poly" id="edge13_Node000012_Node000014" title=" " alt="" coords="656,502,798,499,856,493,856,498,799,504,656,507"/>
+<area shape="rect" id="Node000015" href="$structClay__FloatingAttachPoints.html" title=" " alt="" coords="479,539,672,565"/>
+<area shape="poly" id="edge14_Node000012_Node000015" title=" " alt="" coords="685,548,742,539,797,523,809,514,821,504,853,493,855,498,824,509,812,518,800,528,743,545,686,553"/>
+<area shape="rect" id="Node000016" href="$structClay__CustomElementConfig.html" title=" " alt="" coords="837,519,1039,545"/>
+<area shape="poly" id="edge15_Node000001_Node000016" title=" " alt="" coords="1052,520,1111,505,1165,479,1203,448,1234,411,1274,346,1279,349,1239,414,1207,452,1168,484,1112,510,1054,525"/>
+<area shape="poly" id="edge16_Node000001_Node000017" title=" " alt="" coords="1040,416,1103,403,1166,385,1216,366,1258,345,1261,350,1218,371,1168,391,1104,408,1041,421"/>
+<area shape="poly" id="edge18_Node000001_Node000018" title=" " alt="" coords="1037,249,1102,262,1168,280,1217,299,1260,319,1257,324,1215,304,1166,285,1101,267,1036,254"/>
+<area shape="rect" id="Node000019" href="$structClay__BorderWidth.html" title=" " alt="" coords="506,242,645,267"/>
+<area shape="poly" id="edge20_Node000018_Node000019" title=" " alt="" coords="659,254,799,251,848,246,848,251,799,256,659,259"/>
+</map>

@@ -1,0 +1,10 @@
+var searchData=
+[
+  ['parse_5fcli_0',['parse_cli',['../main_8c.html#a999cf99c57acc7e6d834dd8e80e3d4bb',1,'main.c']]],
+  ['perform_5ftfidf_5fsearch_1',['perform_tfidf_search',['../ui__clay_8c.html#a5516d2190f21d7f37115943c14a6a76d',1,'ui_clay.c']]],
+  ['populate_5ftf_5fhash_2',['populate_tf_hash',['../preprocess_8c.html#a387e7dab38f32ab92f56fd9d70796144',1,'populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long int offset):&#160;preprocess.c'],['../preprocess_8h.html#a387e7dab38f32ab92f56fd9d70796144',1,'populate_tf_hash(hash_t **tf, char ***article_vecs, long int count, long int offset):&#160;preprocess.c']]],
+  ['preprocess_5f1_3',['preprocess_1',['../preprocess_8c.html#a0ecbeb0d5545e75d2b30416a3a0c8059',1,'preprocess_1(void *arg):&#160;preprocess.c'],['../preprocess_8h.html#a0ecbeb0d5545e75d2b30416a3a0c8059',1,'preprocess_1(void *arg):&#160;preprocess.c']]],
+  ['preprocess_5f2_4',['preprocess_2',['../preprocess_8c.html#ab037c16bcbc924c1c82720bf12d6fb36',1,'preprocess_2(void *arg):&#160;preprocess.c'],['../preprocess_8h.html#ab037c16bcbc924c1c82720bf12d6fb36',1,'preprocess_2(void *arg):&#160;preprocess.c']]],
+  ['preprocess_5fquery_5',['preprocess_query',['../preprocess__query_8c.html#ac3935e68ac7f21895fbf567bb33a968a',1,'preprocess_query(const char *query_user, const hash_t *global_idf, hash_t **query_tf_out, double *query_norm_out):&#160;preprocess_query.c'],['../preprocess__query_8h.html#ac3935e68ac7f21895fbf567bb33a968a',1,'preprocess_query(const char *query_user, const hash_t *global_idf, hash_t **query_tf_out, double *query_norm_out):&#160;preprocess_query.c']]],
+  ['process_5fand_5fdisplay_5fquery_6',['process_and_display_query',['../preprocess__query_8c.html#a2394b87f92546811c4f5bc10c77a1c21',1,'process_and_display_query(const char *query_user, int nthreads, int k, const char *db, const char *table):&#160;preprocess_query.c'],['../preprocess__query_8h.html#a2394b87f92546811c4f5bc10c77a1c21',1,'process_and_display_query(const char *query_user, int nthreads, int k, const char *db, const char *table):&#160;preprocess_query.c']]]
+];

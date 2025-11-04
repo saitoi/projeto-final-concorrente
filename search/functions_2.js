@@ -1,0 +1,7 @@
+var searchData=
+[
+  ['get_5fdocuments_5fby_5fids_0',['get_documents_by_ids',['../sqlite__helper_8c.html#a1012ca5d39c17a66e5ead37494303496',1,'get_documents_by_ids(const char *filename, const char *table, const long int *doc_ids, long int k):&#160;sqlite_helper.c'],['../sqlite__helper_8h.html#abc9ae95261759883afdc2c1b9a2b4af5',1,'get_documents_by_ids(const char *db, const char *table, const long int *doc_ids, long int k):&#160;sqlite_helper.c']]],
+  ['get_5ffilecontent_1',['get_filecontent',['../file__io_8c.html#a88bbeff6bcb5cabdad1ffb8859f701e0',1,'get_filecontent(const char *filename_txt):&#160;file_io.c'],['../file__io_8h.html#a88bbeff6bcb5cabdad1ffb8859f701e0',1,'get_filecontent(const char *filename_txt):&#160;file_io.c']]],
+  ['get_5fsingle_5fint_2',['get_single_int',['../sqlite__helper_8c.html#add86c785cfaa456ff53fc317d27fa8f5',1,'get_single_int(const char *filename, const char *query, const char *table):&#160;sqlite_helper.c'],['../sqlite__helper_8h.html#aa17046d5ea4960b5ca9c2d869a87a778',1,'get_single_int(const char *db, const char *query, const char *table):&#160;sqlite_helper.c']]],
+  ['get_5fstr_5farr_3',['get_str_arr',['../sqlite__helper_8c.html#aadb01322cb5728cadf955039ea75345e',1,'get_str_arr(const char *filename, const char *query, long int start, long int end, const char *table):&#160;sqlite_helper.c'],['../sqlite__helper_8h.html#ad479deb13b20f1bac8e29e6658528bb9',1,'get_str_arr(const char *db, const char *query, long int start, long int count, const char *table):&#160;sqlite_helper.c']]]
+];

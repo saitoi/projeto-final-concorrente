@@ -1,0 +1,7 @@
+<map id="Clay_CustomRenderData" name="Clay_CustomRenderData">
+<area shape="rect" id="Node000001" title=" " alt="" coords="31,93,216,119"/>
+<area shape="rect" id="Node000002" href="$structClay__Color.html" title=" " alt="" coords="5,5,97,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="50,45,51,57,55,68,68,81,84,91,81,95,64,85,50,71,45,58,44,45"/>
+<area shape="rect" id="Node000003" href="$structClay__CornerRadius.html" title=" " alt="" coords="124,5,269,31"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="187,44,169,71,142,95,139,91,165,68,183,41"/>
+</map>

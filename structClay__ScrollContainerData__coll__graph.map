@@ -1,0 +1,10 @@
+<map id="Clay_ScrollContainerData" name="Clay_ScrollContainerData">
+<area shape="rect" id="Node000001" title=" " alt="" coords="149,196,337,221"/>
+<area shape="rect" id="Node000002" href="$structClay__Vector2.html" title=" " alt="" coords="5,5,112,31"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="51,44,43,81,45,100,52,117,76,145,108,167,143,183,177,193,175,198,141,188,105,172,73,149,47,120,40,101,38,81,46,43"/>
+<area shape="rect" id="Node000004" href="$structClay__ClipElementConfig.html" title=" " alt="" coords="153,93,332,119"/>
+<area shape="poly" id="edge4_Node000004_Node000002" title=" " alt="" coords="97,34,219,91,217,95,95,39"/>
+<area shape="rect" id="Node000003" href="$structClay__Dimensions.html" title=" " alt="" coords="357,93,491,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="392,128,265,198,262,194,390,123"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="245,133,245,196,240,196,240,133"/>
+</map>

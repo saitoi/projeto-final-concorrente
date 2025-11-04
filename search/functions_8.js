@@ -1,0 +1,10 @@
+var searchData=
+[
+  ['save_5fdoc_5fnorms_0',['save_doc_norms',['../file__io_8c.html#a0b9ae9ab60ee1e57890b501ae1cdd5cf',1,'save_doc_norms(const double *norms, long int num_docs, const char *filename):&#160;file_io.c'],['../file__io_8h.html#a0b9ae9ab60ee1e57890b501ae1cdd5cf',1,'save_doc_norms(const double *norms, long int num_docs, const char *filename):&#160;file_io.c']]],
+  ['save_5fhash_1',['save_hash',['../file__io_8c.html#a71d132bad5534d8ef867214a4d7a3b3f',1,'save_hash(const hash_t *gh, const char *filename):&#160;file_io.c'],['../file__io_8h.html#a71d132bad5534d8ef867214a4d7a3b3f',1,'save_hash(const hash_t *gh, const char *filename):&#160;file_io.c']]],
+  ['save_5fhash_5farray_2',['save_hash_array',['../file__io_8c.html#a733d49e2af32e952a5dc738f4bf0fe2b',1,'save_hash_array(hash_t **hashes, long int num_hashes, const char *filename):&#160;file_io.c'],['../file__io_8h.html#a733d49e2af32e952a5dc738f4bf0fe2b',1,'save_hash_array(hash_t **hashes, long int num_hashes, const char *filename):&#160;file_io.c']]],
+  ['set_5fidf_5ffreq_3',['set_idf_freq',['../preprocess_8c.html#aaaae77031e33af965bf91ac512c1c55b',1,'preprocess.c']]],
+  ['set_5fidf_5fvalue_4',['set_idf_value',['../preprocess_8c.html#a5d9a2cb964d97d122f8f8d09da125d8b',1,'set_idf_value(hash_t *set, hash_t **tf, double doc_count, long int num_docs):&#160;preprocess.c'],['../preprocess_8h.html#a5d9a2cb964d97d122f8f8d09da125d8b',1,'set_idf_value(hash_t *set, hash_t **tf, double doc_count, long int num_docs):&#160;preprocess.c']]],
+  ['set_5fidf_5fwords_5',['set_idf_words',['../preprocess_8c.html#a15e254308ab3c8eaeb6150aee1a72d58',1,'set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc, long int count):&#160;preprocess.c'],['../preprocess_8h.html#a15e254308ab3c8eaeb6150aee1a72d58',1,'set_idf_words(hash_t *vocab, hash_t **tf, long int start_doc, long int count):&#160;preprocess.c']]],
+  ['stem_6',['stem',['../preprocess_8c.html#a991b35192d741987c495feee6909a0f1',1,'stem(char ***article_vecs, long int count):&#160;preprocess.c'],['../preprocess_8h.html#a991b35192d741987c495feee6909a0f1',1,'stem(char ***article_vecs, long int count):&#160;preprocess.c']]]
+];

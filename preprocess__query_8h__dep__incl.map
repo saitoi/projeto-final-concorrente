@@ -1,0 +1,11 @@
+<map id="include/preprocess_query.h" name="include/preprocess_query.h">
+<area shape="rect" id="Node000001" title=" " alt="" coords="190,5,334,45"/>
+<area shape="rect" id="Node000002" href="$main_8c.html" title="Sistema de busca de documentos usando TF&#45;IDF e similaridade de cosseno." alt="" coords="5,93,95,119"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="199,53,82,96,80,91,198,48"/>
+<area shape="rect" id="Node000003" href="$main__seq_8c.html" title=" " alt="" coords="119,93,237,119"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="234,57,192,95,189,91,230,53"/>
+<area shape="rect" id="Node000004" href="$preprocess__query_8c.html" title="Processamento de queries reutilizando funções de documentos." alt="" coords="261,93,431,119"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="294,53,335,91,332,95,290,57"/>
+<area shape="rect" id="Node000005" href="$ui__clay_8c.html" title="Interface visual usando Clay UI Library." alt="" coords="455,93,555,119"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="334,47,470,91,468,96,332,52"/>
+</map>

@@ -1,0 +1,27 @@
+<map id="src/file_io.c" name="src/file_io.c">
+<area shape="rect" id="Node000001" title="Funções de I/O para serialização e carregamento de estruturas." alt="" coords="415,5,510,31"/>
+<area shape="rect" id="Node000002" href="$file__io_8h.html" title=" " alt="" coords="51,79,187,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="416,32,188,78,187,73,415,26"/>
+<area shape="rect" id="Node000006" href="$log_8h.html" title=" " alt="" coords="308,79,425,104"/>
+<area shape="poly" id="edge6_Node000001_Node000006" title=" " alt="" coords="449,33,395,72,392,68,446,29"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="475,152,541,177"/>
+<area shape="poly" id="edge11_Node000001_Node000009" title=" " alt="" coords="469,30,503,138,498,140,464,32"/>
+<area shape="rect" id="Node000011" title=" " alt="" coords="501,79,571,104"/>
+<area shape="poly" id="edge12_Node000001_Node000011" title=" " alt="" coords="477,29,516,67,512,71,473,33"/>
+<area shape="rect" id="Node000012" title=" " alt="" coords="595,79,666,104"/>
+<area shape="poly" id="edge13_Node000001_Node000012" title=" " alt="" coords="491,28,592,71,590,76,489,33"/>
+<area shape="rect" id="Node000003" href="$hash__t_8h.html" title=" " alt="" coords="80,152,157,177"/>
+<area shape="poly" id="edge2_Node000002_Node000003" title=" " alt="" coords="121,104,121,138,116,138,116,104"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="5,225,80,251"/>
+<area shape="poly" id="edge5_Node000002_Node000004" title=" " alt="" coords="108,106,89,127,70,153,58,183,50,212,45,211,53,181,66,151,84,124,104,102"/>
+<area shape="poly" id="edge3_Node000003_Node000004" title=" " alt="" coords="108,179,67,218,63,214,105,175"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="105,225,175,251"/>
+<area shape="poly" id="edge4_Node000003_Node000005" title=" " alt="" coords="125,177,135,211,130,213,120,178"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="181,152,256,177"/>
+<area shape="poly" id="edge7_Node000006_Node000007" title=" " alt="" coords="344,106,256,148,254,144,342,102"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="280,152,363,177"/>
+<area shape="poly" id="edge8_Node000006_Node000008" title=" " alt="" coords="361,106,338,142,334,139,357,103"/>
+<area shape="poly" id="edge9_Node000006_Node000009" title=" " alt="" coords="391,102,474,143,472,148,388,106"/>
+<area shape="rect" id="Node000010" title=" " alt="" coords="387,152,451,177"/>
+<area shape="poly" id="edge10_Node000006_Node000010" title=" " alt="" coords="377,103,404,139,400,142,373,106"/>
+</map>

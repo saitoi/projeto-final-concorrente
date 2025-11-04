@@ -1,0 +1,20 @@
+var searchData=
+[
+  ['score_0',['score',['../structScoredDocument.html#af9f13153e8488e04543b8c53465e458e',1,'ScoredDocument::score'],['../structSearchResult.html#aa0b2dfb99347bba2aa0387cc87ab7058',1,'SearchResult::score']]],
+  ['scrollcontainerdimensions_1',['scrollContainerDimensions',['../structClay__ScrollContainerData.html#aee3e3b34cbeef1df7051e7118f04b4dc',1,'Clay_ScrollContainerData']]],
+  ['scrolloffset_2',['scrollOffset',['../structAppState.html#a190d107aa8a43eb4230ea1b7e133e0f8',1,'AppState']]],
+  ['scrollposition_3',['scrollPosition',['../structClay__ScrollContainerData.html#a172a82594e08e65650628dd843294e29',1,'Clay_ScrollContainerData']]],
+  ['searchquery_4',['searchQuery',['../structAppState.html#a55c1ab25d5fc74c17134126d8666632b',1,'AppState']]],
+  ['searchthreads_5',['searchThreads',['../structAppState.html#aa42ccd16c7abf0482884562c0e3421d5',1,'AppState']]],
+  ['searchtime_6',['searchTime',['../structAppState.html#a1a13318c4b0eed374fbaa85a619f0d93',1,'AppState']]],
+  ['selecteddbindex_7',['selectedDbIndex',['../structAppState.html#aee99849ccc97d0ab2219707bc7b83c10',1,'AppState']]],
+  ['similarities_8',['similarities',['../structsimilarity__args.html#a2f8142052f4725bd36a62815ede91cd7',1,'similarity_args']]],
+  ['similarity_9',['similarity',['../structDocSim.html#ae2bd7120b4e91b75664794ef588ba3ea',1,'DocSim']]],
+  ['size_10',['size',['../structClay__SizingAxis.html#ae5e31fe53800588bf4a968a6db87d5d3',1,'Clay_SizingAxis::size'],['../structhash__t.html#a7e797b117b700f127d636b80c5541a53',1,'hash_t::size']]],
+  ['sizing_11',['sizing',['../structClay__LayoutConfig.html#a4845b5270f8b4446468e297e1859e496',1,'Clay_LayoutConfig']]],
+  ['start_12',['start',['../structsimilarity__args.html#af468050deee88f22ea44e7367fffafc9',1,'similarity_args::start'],['../structthread__args.html#aa443846ff0a7ab8c0fe70fd80960c17d',1,'thread_args::start']]],
+  ['state_13',['state',['../structClay__PointerData.html#a77723b96943a4cc4c56250bbebb59ea6',1,'Clay_PointerData']]],
+  ['statusmessage_14',['statusMessage',['../structAppState.html#a87bf85e6ed61d8703b448efd48331cf4',1,'AppState']]],
+  ['stringcontents_15',['stringContents',['../structClay__TextRenderData.html#a8e0377e0866010633af740f6c2ab4d6d',1,'Clay_TextRenderData']]],
+  ['stringid_16',['stringId',['../structClay__ElementId.html#af0d36063f0a714a61bd00b539302fa31',1,'Clay_ElementId']]]
+];
